@@ -1,0 +1,18 @@
+# 构建产物 / 依赖工具 / 逆向产物 / 签名密钥（都不入库）
+build/
+recon/out/
+recon/out*/
+recon/*.deb
+tools/jadx/
+tools/kotlinc/
+tools/android-tools/
+tools/kotlin-stdlib.dex
+tools/*.zip
+dist/*.idsig
+
+# 干净发布用：以下也不入库（体积大 / 含密钥）
+tools/
+recon/
+keystore/
+dist/
+*.apk
