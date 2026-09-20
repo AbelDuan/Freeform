@@ -55,7 +55,7 @@ object AppCtx {
         if (proc != ctx.packageName) {
             fixed = runCatching { ctx.createPackageContext(proc, 0) }.getOrDefault(ctx)
         }
-        val op = runCatching { fixed.opPackageName }.getOrNull()
+        val op = runCatching { fixed?.opPackageName }.getOrNull()
         if (op != proc) {
             runCatching {
                 Class.forName("android.app.ContextImpl")

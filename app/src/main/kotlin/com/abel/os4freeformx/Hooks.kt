@@ -1287,8 +1287,8 @@ object Hooks {
         repo.javaClass.getMethod("getMiuiFreeformTaskInfo", Integer.TYPE).invoke(repo, id)
     }.getOrNull()
 
-    private fun call(o: Any, name: String): Any? =
-        runCatching { o.javaClass.getMethod(name).invoke(o) }.getOrNull()
+    private fun call(o: Any?, name: String): Any? =
+        runCatching { o?.javaClass?.getMethod(name)?.invoke(o) }.getOrNull()
 
     // ---------------- 2.2 / 2.3 记录用户调整后的 bounds ----------------
 

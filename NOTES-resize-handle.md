@@ -237,3 +237,70 @@ MIUI 那圈"背景/阴影"与窗口几何经常对不上（真机：「一边内
 - 已确认无关的（避免重复尝试）：`InsetsStateController` 各方法、`DisplayLayout.stableInsets`、
   `SplitLayout.getDisplayStableInsets`(multiple/sosc)、`mRootBounds`、`mDividerInsets`、
   `mDotInsetsHeight/mBottomInsetsHeight`、`MultipleSplitLayout`、`SoScShapeView`、`mHostLeash` 等。
+
+---
+
+## 内外屏切换 / 旋转变形 + 外屏菜单溢出：三处修复（2026-09-20）
+
+反馈的三个 bug：
+
+1. 内外屏切换时，小窗变形状、变比例尺寸；
+2. 屏幕旋转之后，小窗变更比例和尺寸；
+3. 在外屏点三点菜单，弹出的按钮超出了背景。
+
+### 根因
+
+**#1 / #2 是同一个根因：`Bounds.clamp()` 宽、高各自独立裁切**
+
+- 记忆 key `pkg|短边x长边`（`Bounds.screenKey`）本身与旋转、内外屏无关，是**正确**的，
+  所以「查记忆」这一步没问题；
+- 问题在恢复时调用的 `clamp()`：记忆 bounds 一旦超出目标可视区，它把**宽、高两条边各自独立裁一条**——
+  只要某条边放不下就直接砍短，长宽比随之被破坏。旋转（可视区宽高对调）或切到更小的外屏时必然触发，
+  表现就是「比例和尺寸一起变」；
+- 另外**当前屏还没有记忆时没有任何兜底**，直接落回系统默认矩形（默认形状同样是变形的）。
+
+**#3 是比例按钮写死了固定宽度**
+
+- `ratioButton` 用 `LinearLayout.LayoutParams((42 * density).toInt(), h)`，固定 42dp 宽，
+  而注入的那一行是 `MATCH_PARENT`；
+- 外屏菜单背景比内屏窄，4 个固定宽按钮加上左右间距放不下，就溢出到背景之外。
+
+### 修复
+
+`Bounds.kt`
+
+- 新增 `clampKeepRatio(r, area)`：按 `scale = min(1, min(areaW/w, areaH/h))` **整体等比缩放**后再夹位置；
+  放得下时 `scale = 1`、尺寸原样，**任何情况都不单独裁边** → 形状始终不变，只在越界时整体缩小。
+- 新增 `getAny(ctx, pkg)`：遍历 `pkg|` 前缀，取该应用**任一屏幕**下的记忆，供当前屏无记忆时兜底。
+
+`Hooks.kt`
+
+- `installLaunchBounds`（小窗打开恢复，挂在 `getFreeformRect` 家族上）：
+  当前屏有记忆 → `clampKeepRatio` 等比夹；当前屏无记忆 → `getAny` 取其它屏记忆再 `clampKeepRatio`
+  缩到当前屏（日志前缀 `ffr-fallback-<pkg>`）。
+- `getRestoredBounds`（迷你/贴边态点回来）：同样改用 `clampKeepRatio`，换屏/旋转后保形状、不越界。
+- `persist` 的存储 / heal 路径**仍用原 `clamp`**：那里是「位置越界」的修正与比较，
+  改成等比夹会改变「是否需要 heal」的判定（属于记录逻辑），保持原样更稳。
+- `ratioButton`：`LayoutParams((42 * density), h)` → `LayoutParams(0, h, 1f)`（`weight = 1` 弹性宽度），
+  四个按钮平分菜单宽度，内屏/外屏都不会再溢出。
+
+### 思考与调整
+
+- **最初判断被修正**：一开始怀疑是「记忆 key 没带屏幕/方向维度」，核对 `screenKey`
+  后确认 key（`短边x长边`）本就与旋转、内外屏无关，真正破坏形状的是恢复端的 `clamp`，归因随之修正。
+- **`getAny` 是顺带补的兜底**：原逻辑在首屏没有记忆时直接用系统默认，同样会变形；
+  补上「借别的屏记忆等比缩过来」后，第一次遇到新几何也能保住形状。
+- **没有在 `persist` 里也换成 `clampKeepRatio`**：有意为之，理由见上（会动 record/heal 的判定）。
+- **顺带修了两处 Kotlin 编译错误**：在 Windows + Android SDK 35 `build-tools`（`d8` + `apksigner`）
+  本地构建时暴露；容器 arm64 工具链此前未暴露，属工具链/版本差异，**行为不变**：
+  - `AppCtx.fixPackage`：`fixed` 经 `getOrDefault(ctx)` 后按平台可空处理，
+    `fixed.opPackageName` 报「可空接收者」→ 改 `fixed?.opPackageName`；
+  - `Hooks.call`：参数声明为非空 `Any`，但调用点 `call(ti, …)` 的 `ti` 是 `Any?` →
+    参数改 `Any?`，函数体一并 `o?.javaClass?.getMethod(name)?.invoke(o)`。
+
+### 待真机验证（未完成）
+
+- **旋转修复的前提**：旋转时小窗要**走 `getFreeformRect` 重开**，恢复路径才会被调到。
+  若 HyperOS 在旋转时只对现存窗口做 relayout、不重开，模块够不到，需要另挂「显示 / 配置变更」钩子。
+  真机用 `./verify.sh` 看是否出现「恢复 …」/「ffr-fallback-…」日志来确认命中的是哪条路径。
+- #3 的 `weight = 1` 需在外屏实际点开三点菜单，确认按钮已收回背景内。
