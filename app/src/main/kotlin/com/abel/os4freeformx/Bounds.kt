@@ -189,4 +189,50 @@ object Bounds {
         if (out.bottom > area.bottom) out.offsetTo(out.left, area.bottom - out.height())
         return out
     }
+
+    /**
+     * 等比把 bounds 夹进 area（保持长宽比，只在越界时整体缩小，绝不单独裁一条边）。
+     *
+     * 原来的 [clamp] 是「宽、高各自独立裁切」：旋转或换到更小的外屏时，某一条边被直接砍短，
+     * 长宽比被破坏——真机现象就是「小窗变更比例和尺寸」（#1 内外屏切换 / #2 旋转）。
+     * 这里改成「整体按 min(宽比, 高比) 缩放」，形状不变，只缩到能放进新屏幕。
+     * 放得下时 scale=1，尺寸原样保留，不影响正常恢复。
+     */
+    fun clampKeepRatio(r: Rect, area: Rect): Rect {
+        val w = r.width()
+        val h = r.height()
+        if (w <= 0 || h <= 0) return Rect(r)
+        val areaW = maxOf(area.width(), 1)
+        val areaH = maxOf(area.height(), 1)
+        val scale = minOf(1f, minOf(areaW.toFloat() / w, areaH.toFloat() / h))
+        val nw = maxOf((w * scale).toInt(), 1)
+        val nh = maxOf((h * scale).toInt(), 1)
+        val out = Rect(r.left, r.top, r.left + nw, r.top + nh)
+        // 缩完再夹位置，保证完全落在可视区
+        if (out.left < area.left) out.offsetTo(area.left, out.top)
+        if (out.top < area.top) out.offsetTo(out.left, area.top)
+        if (out.right > area.right) out.offsetTo(area.right - out.width(), out.top)
+        if (out.bottom > area.bottom) out.offsetTo(out.left, area.bottom - out.height())
+        return out
+    }
+
+    /**
+     * 取该应用任意一个「屏幕」下的记忆（key 形如 `pkg|WxH`）。
+     * 当目标屏幕还没有记忆时，用来兜底：把别的屏幕的尺寸按比例缩到当前屏幕，
+     * 这样「内外屏切换 / 旋转」第一次遇到新几何也能保住原来的形状，而不是退化成系统默认。
+     */
+    fun getAny(ctx: Context, pkg: String): Rect? {
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (!loaded || now - lastLoad > 300) {
+            loaded = false
+            load(ctx)
+            lastLoad = now
+        }
+        synchronized(this) {
+            for ((k, v) in cache) {
+                if (k.startsWith("$pkg|")) return Rect(v)
+            }
+        }
+        return null
+    }
 }

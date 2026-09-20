@@ -482,13 +482,24 @@ object Hooks {
                             if (res != null && Cfg.rememberBounds && !mini && !pkg.isNullOrEmpty()) {
                                 val ctx = (if (ctxIdx >= 0) chain.getArg(ctxIdx) as? Context else null) ?: AppCtx.get()
                                 if (ctx != null) {
+                                    val dm = ctx.resources.displayMetrics
+                                    val area = Rect(0, statusBarHeight(ctx), dm.widthPixels, dm.heightPixels)
                                     val screen = Bounds.screenKey(ctx)
-                                    val memo = Bounds.get(ctx, pkg, screen)
+                                    // 优先用「当前屏幕」的记忆；没有则该应用其它屏幕的记忆按比例缩到当前屏，
+                                    // 保住形状（#1 内外屏切换 / #2 旋转：第一次遇到新几何也不退化成系统默认）
+                                    var memo = Bounds.get(ctx, pkg, screen)
+                                    if (memo == null) {
+                                        val any = Bounds.getAny(ctx, pkg)
+                                        if (any != null) {
+                                            memo = Bounds.clampKeepRatio(any, area)
+                                            Logx.once("ffr-fallback-$pkg",
+                                                "当前屏无记忆，$pkg 用其它屏记忆 $any 等比缩到 $memo")
+                                        }
+                                    }
                                     if (memo != null) {
                                         val systemDefault = Rect(res)
-                                        val dm = ctx.resources.displayMetrics
-                                        val area = Rect(0, statusBarHeight(ctx), dm.widthPixels, dm.heightPixels)
-                                        val fixed = Bounds.clamp(memo, area)
+                                        // 等比夹进可视区：旋转/换屏只整体缩放、不裁边，形状不变
+                                        val fixed = Bounds.clampKeepRatio(memo, area)
                                         if (rectIdx >= 0) (chain.getArg(rectIdx) as? Rect)?.set(fixed)
                                         res.set(fixed)
                                         Logx.always("恢复 $pkg@$screen -> $fixed（记忆 $memo，系统默认 $systemDefault）")
@@ -793,7 +804,10 @@ object Hooks {
                             val pkg = info?.let { taskPkg(it) }
                             val memo = pkg?.let { Bounds.get(ctx, it, Bounds.screenKey(ctx)) }
                             if (memo != null) {
-                                rect.set(memo)
+                                // 等比夹进当前可视区：内外屏切换/旋转后，mini 恢复也保形状、不越界
+                                val dm = ctx.resources.displayMetrics
+                                val area = Rect(0, statusBarHeight(ctx), dm.widthPixels, dm.heightPixels)
+                                rect.set(Bounds.clampKeepRatio(memo, area))
                                 // 只替换恢复矩形，**不改 scale**：之前覆盖 scale 是为了修尺寸记忆，
                                 // 但后来证明那是别的原因，而覆盖 scale 会让 mini→正常的转换异常
                                 // （真机：贴边迷你态点击不再回到悬浮窗，而是点到内容）。
@@ -883,7 +897,9 @@ object Hooks {
         tv.textSize = 12f
         tv.gravity = android.view.Gravity.CENTER
         tv.setTextColor(android.graphics.Color.WHITE)
-        tv.layoutParams = android.widget.LinearLayout.LayoutParams((42 * density).toInt(), h).apply {
+        // 用 weight=1 的弹性宽度：四个按钮平分菜单宽度，无论内屏/外屏（菜单背景窄）都不会超出背景。
+        // 之前写死 42dp 固定宽，外屏菜单背景比内屏窄，四个按钮加起来就超出背景了（#3）。
+        tv.layoutParams = android.widget.LinearLayout.LayoutParams(0, h, 1f).apply {
             marginStart = (2 * density).toInt()
             marginEnd = (2 * density).toInt()
         }
@@ -1573,6 +1589,9 @@ object Hooks {
         }
         // 记录时就夹到可视区（上边界=状态栏高度），这样记忆里永远不会存越界坐标：
         // 恢复端即使还是旧的 y=0 夹取，也不会把三点栏顶到状态栏底下。
+        // 注：这里用 Bounds.clamp（位置/超限修正），与下方 heal 比较保持一致；
+        // 等比缩放（保形状）只在「恢复端」installLaunchBounds 里做，那里才会遇到
+        // 不同屏幕/旋转几何，是 #1 内外屏切换 / #2 旋转「比例被改」的真正修复点。
         val dm = ctx.resources.displayMetrics
         val area = Rect(0, statusBarHeight(ctx), dm.widthPixels, dm.heightPixels)
         val safe = Bounds.clamp(bounds, area)
