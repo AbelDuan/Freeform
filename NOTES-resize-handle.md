@@ -304,3 +304,55 @@ MIUI 那圈"背景/阴影"与窗口几何经常对不上（真机：「一边内
   若 HyperOS 在旋转时只对现存窗口做 relayout、不重开，模块够不到，需要另挂「显示 / 配置变更」钩子。
   真机用 `./verify.sh` 看是否出现「恢复 …」/「ffr-fallback-…」日志来确认命中的是哪条路径。
 - #3 的 `weight = 1` 需在外屏实际点开三点菜单，确认按钮已收回背景内。
+
+---
+
+## 旋转 / 内外屏切换保比例：relayout 配置变更套用（2026-09-20 续）
+
+### 背景与确认
+
+上一个小节的三处修复上线后，真机反馈：**窗口不再乱变形，但旋转屏幕 / 切换内外屏，小窗仍会恢复为系统默认比例。**
+
+这印证了上一节「待真机验证」里担心的那条路径：HyperOS 在旋转 / 内外屏切换时，
+对**现存**小窗做的是 **relayout（重新布局）而非重开**，`getFreeformRect`（`installLaunchBounds`）
+这条恢复钩子根本不会被调用 —— 记忆恢复没机会介入，小窗就被 MIUI 塞回默认比例。
+
+### 修复思路
+
+挂点选在已经 hook 的 `MiuiDecorationController.relayout`：它每次装饰重排都会触发，
+旋转 / 换屏必过。在它的 after-hook 里做两件事：
+
+1. **检测配置变更**：用 `displayId:orientation` 作为配置键（按 `taskId` 索引，避免换屏时
+   装饰实例被重建导致漏触发），与上次见到的比较。只有 orientation 或 displayId 真正变了才继续。
+2. **套回记忆**：命中后延迟 350ms（等 MIUI 把旋转/换屏后的布局安定下来，否则会被它的最终布局覆盖），
+   把记忆里的尺寸经 `clampKeepRatio` 等比缩到当前可视区、连同 `freeformScale`，
+   通过 **`WindowContainerTransaction`**（`setBounds` + `setMiuiFreeformInfoChange`）直接套回窗口。
+   这条 WCT 通道与 `restoreScaleIfNeeded` 已验证可用，是 SystemUI 进程内对运行中小窗改尺寸/位置的标准做法，
+   **不重开应用、无闪烁**。
+
+兜底与防护：
+
+- 当前屏有记忆用当前屏（key = `短边x长边`）；当前屏无记忆（首次换屏）则用 `getAny` 借其它屏记忆等比缩过来，形状照样保住。
+- 同一配置键只排程一次（`appliedForConfig`），且只在「配置键首次出现之后」才套用 ——
+  开窗那一刻 `lastConfigKey` 为空，直接记下、不打扰 `installLaunchBounds` 自己的恢复。
+- 若用户刚在拖动/缩放（`gestureEndedAt` 2.5s 内）则跳过，让位给手势。
+- 窗口不可见 / 非 freeform / 取不到包名 / 没有任何记忆，一律不套用（保持系统行为，不会更差）。
+
+### 新增代码
+
+`Hooks.kt`
+
+- `maybeReapplyOnConfigChange(ctrl, info)`：配置变更检测 + 排程。
+- `reapplyBoundsFromMemory(ctrl, dispId)`：取记忆 → `clampKeepRatio` → 调套用。
+- `applyBoundsAndScale(decoration, id, target, scale)`：WCT `setBounds` + `setMiuiFreeformInfoChange` → `applyTransaction`。
+- 状态表 `lastConfigKey` / `appliedForConfig`（`ConcurrentHashMap<Int,String>`，按 taskId）。
+- `relayout` after-hook 顶部插入 `runCatching { maybeReapplyOnConfigChange(ctrl, info) }`。
+
+### 待真机验证（未完成）
+
+- `relayout` 是否在旋转 / 内外屏切换时确实触发，且 `displayId` / `orientation` 能正确反映变化
+  （尤其内屏↔外屏：两个 display 的 `displayId` 是否真不同）。看日志 `配置变更: … -> …`。
+- 套用是否真正生效、且不被 MIUI 后续布局覆盖（看 `配置套用: … -> target=…` 与 `配置套用提交`）。
+- 若 relayout 在换屏时**不触发**（装饰被整段销毁重建、且新实例拿不到旧 `lastConfigKey` 之外还读不到新 displayId），
+  需改挂 `DisplayManager` / `onConfigurationChanged` 广播或 `ShellTaskOrganizer` 的 task 变更回调。
+- 套用延迟 350ms 是否合适：若真机看到「先弹默认比例、再跳回记忆比例」的闪一下，可上调到 500~600ms。

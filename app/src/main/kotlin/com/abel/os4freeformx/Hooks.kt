@@ -1367,9 +1367,98 @@ object Hooks {
 
     /** 手势按下时的 bounds：抬起时只有真的变了才算用户调整（点一下不算）。 */
     private val gestureDownBounds = WeakHashMap<Any, Rect>()
+    /** 上次见到的“配置键”（displayId:orientation）。用来检测旋转/内外屏切换。按 taskId 索引，避免换屏时装饰实例重建导致漏触发。 */
+    private val lastConfigKey = ConcurrentHashMap<Int, String>()
+    /** 已经为哪个配置键排程过套用，避免同一个配置变更重复触发。 */
+    private val appliedForConfig = ConcurrentHashMap<Int, String>()
 
     private fun currentBounds(decoration: Any): Rect? =
         field(decoration, "mRunningTaskInfo")?.let { taskBounds(it) }
+
+    // ---------------- 配置变更（旋转 / 内外屏切换）保比例 ----------------
+
+    /**
+     * 旋转 / 内屏↔外屏切换时，MIUI 对**现存**小窗做的是 relayout（不是重开），
+     * 不会走 getFreeformRect 恢复记忆 —— 于是小窗被塞回系统默认比例（#1 / #2）。
+     *
+     * 这里在 relayout 里检测 orientation / displayId 变化，命中就把记忆里的尺寸
+     * （等比缩放）直接套回窗口。
+     *
+     * 防误触发 / 防循环：
+     * - 首次见到某装饰（lastConfigKey 为 null）不打扰——开窗时的恢复由 installLaunchBounds 负责；
+     * - 同一配置键只排程一次（appliedForConfig）；
+     * - 套用延迟 350ms，等 MIUI 把旋转/换屏后的布局安定下来，否则会被它的最终布局覆盖。
+     */
+    private fun maybeReapplyOnConfigChange(ctrl: Any, info: Any?) {
+        val ti = info ?: return
+        if (taskWindowingMode(ti) != MODE_FREEFORM) return
+        val id = taskId(ctrl)
+        if (id < 0) return
+        val dispId = (field(ti, "displayId") as? Int) ?: -1
+        val ctx = AppCtx.get() ?: return
+        val orientation = ctx.resources.configuration.orientation
+        val configKey = "$dispId:$orientation"
+        val prev = lastConfigKey[id]
+        if (prev == null) { lastConfigKey[id] = configKey; return }
+        if (prev == configKey) { lastConfigKey[id] = configKey; return }
+        lastConfigKey[id] = configKey
+        if (appliedForConfig[id] == configKey) return
+        appliedForConfig[id] = configKey
+        Logx.always("配置变更: $prev -> $configKey，排程套用记忆尺寸（task=$id）")
+        Handler(Looper.getMainLooper()).postDelayed({
+            runCatching { reapplyBoundsFromMemory(ctrl, dispId) }
+        }, 350)
+    }
+
+    private fun reapplyBoundsFromMemory(ctrl: Any, dispId: Int) {
+        runCatching {
+            val info = field(ctrl, "mRunningTaskInfo") ?: return@runCatching
+            if (taskWindowingMode(info) != MODE_FREEFORM) return@runCatching
+            if (field(info, "isVisible") as? Boolean != true) return@runCatching
+            // 用户刚在拖动/缩放（旋转/换屏时一般不在拖）：让位给用户手势
+            val sinceGesture = android.os.SystemClock.elapsedRealtime() - (gestureEndedAt[ctrl] ?: 0)
+            if (sinceGesture < 2500) {
+                Logx.once("cfg-gesture-" + taskId(ctrl), "配置套用跳过：刚手势结束（task=${taskId(ctrl)}）")
+                return@runCatching
+            }
+            val ctx = AppCtx.get() ?: return@runCatching
+            val pkg = taskPkg(info) ?: return@runCatching
+            val screen = Bounds.screenKeyFor(ctx, dispId)
+            // 当前屏有记忆用当前屏；没有则拿其它屏记忆按比例缩到当前屏（#1 首次换屏也保形状）
+            val memo = Bounds.get(ctx, pkg, screen) ?: Bounds.getAny(ctx, pkg) ?: return@runCatching
+            val dm = ctx.resources.displayMetrics
+            val area = Rect(0, statusBarHeight(ctx), dm.widthPixels, dm.heightPixels)
+            val target = Bounds.clampKeepRatio(memo, area)
+            val scale = Bounds.getScale(ctx, pkg, screen)   // 跨屏兜底（getAny）时无精确 scale，为 0 时不套
+            Logx.always("配置套用: pkg=$pkg screen=$screen memo=$memo -> target=$target scale=$scale")
+            applyBoundsAndScale(ctrl, taskId(ctrl), target, scale)
+        }.onFailure { Logx.e("配置套用失败", it) }
+    }
+
+    /**
+     * 直接把尺寸 / scale 套回一个正在运行的小窗（不改走重开，无闪烁）。
+     * 复用 restoreScaleIfNeeded 已验证可用的 WindowContainerTransaction 通道：
+     * 取装饰上的 mTaskOrganizer 与任务 token，setBounds + setMiuiFreeformInfoChange 后 applyTransaction。
+     */
+    private fun applyBoundsAndScale(decoration: Any, id: Int, target: Rect, scale: Float) {
+        runCatching {
+            val org = field(decoration, "mTaskOrganizer") ?: return
+            val info = field(decoration, "mRunningTaskInfo") ?: return
+            val token = field(info, "token") ?: call(info, "getToken") ?: return
+            val wctCls = cls("android.window.WindowContainerTransaction")
+            val tokenCls = cls("android.window.WindowContainerToken")
+            val wct = wctCls.getDeclaredConstructor().newInstance()
+            if (scale > 0f) {
+                val changeCls = cls("miui.app.MiuiFreeFormManager\$MiuiFreeFormInfoChange")
+                val change = changeCls.getDeclaredConstructor().newInstance()
+                changeCls.getMethod("setMiuiFreeformScale", java.lang.Float.TYPE).invoke(change, scale)
+                wctCls.getMethod("setMiuiFreeformInfoChange", tokenCls, changeCls).invoke(wct, token, change)
+            }
+            wctCls.getMethod("setBounds", tokenCls, Rect::class.java).invoke(wct, token, target)
+            org.javaClass.getMethod("applyTransaction", wctCls).invoke(org, wct)
+            Logx.always("配置套用提交: task=$id -> $target scale=$scale")
+        }.onFailure { Logx.e("配置套用提交失败", it) }
+    }
 
     private fun installBoundsRecorder(m: MainHook, cl: ClassLoader) {
         // 证据探针：MIUI 的手势分发层（若 handleDown/UpEvent 不派发，至少这里能看到）
@@ -1424,9 +1513,12 @@ object Hooks {
             XposedInterface.Hooker { chain ->
                 val r = chain.proceed()
                 try {
-                    val ctrl = chain.thisObject
-                    val info = field(ctrl, "mRunningTaskInfo")
-                    val visible = info?.let { field(it, "isVisible") as? Boolean } == true
+                val ctrl = chain.thisObject
+                val info = field(ctrl, "mRunningTaskInfo")
+                // 旋转 / 内外屏切换：现存小窗 relayout 而非重开，不会走 getFreeformRect 恢复记忆，
+                // 于是被塞回默认比例。检测到 orientation/displayId 变化就套回记忆尺寸。
+                runCatching { maybeReapplyOnConfigChange(ctrl, info) }
+                val visible = info?.let { field(it, "isVisible") as? Boolean } == true
                     if (info != null && taskWindowingMode(info) == MODE_FREEFORM) {
                         val p = taskPkg(info)
                         val b = taskBounds(info)
