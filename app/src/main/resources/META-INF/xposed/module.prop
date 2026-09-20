@@ -1,0 +1,9 @@
+id=os4_freeformx
+name=OS4FreeFromX
+author=AbelDuan
+description=HyperOS 4 小窗增强：分应用(含折叠态)小窗尺寸记忆 / 拖动调整 / 沉浸式底栏（隐藏三点与手势条背景、保留触摸）/ 小窗参数设置
+minApiVersion=100
+targetApiVersion=102
+staticScope=true
+version=0.1.1
+versionCode=2

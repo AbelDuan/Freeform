@@ -1,0 +1,8 @@
+# 构建产物 / 依赖工具 / 逆向产物 / 签名密钥（都不入库）
+build/
+dist/*.idsig
+dist/*.apk
+recon/
+keystore/
+tools/
+.env
