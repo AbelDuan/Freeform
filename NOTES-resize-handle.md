@@ -1137,3 +1137,28 @@ Bundle 键（照抄官方）：`multiple_launch_taskIds`(int[], 互不相同的�
 
 **结论**：要实现"四指上滑 → 系统弹选择应用 → 加进分屏"，必须把 scope 扩到桌面进程。
 这一步需要用户决定（LSPosed 里勾选 `com.miui.home` + 模块 scope.list 增加该进程）。
+
+### 39. ⛔ 结论：`startMultipleSplits` 这条路彻底关闭（2026-09-21）
+用户实测：四指分屏后**一段时间 SystemUI 会重启**（换成官方接口 `IMultiTaskingStateManager` 之后仍然如此）。
+
+**最终结论（三条路径都已试过，全部失败）**：
+| 尝试 | 结果 |
+| --- | --- |
+| 直调 `MultipleSplitController#startMultipleSplits` | 黑屏、SystemUI 重启 |
+| 调官方接口 `IMultiTaskingStateManager#startMultipleSplits` | 同样黑屏 / 延迟 SystemUI 重启 |
+| 自己拼 stage（`transferSoScToMultipleSplit` + `insertMultipleSplitBy*`） | 左半屏变小 + 右侧黑块 |
+
+**根因判断**：官方 `startMultipleSplits` 的 Bundle 期望的是**桌面进程构造好的、完整的一次分屏事务**
+（含 `multiple_launch_taskIds` 互不相同的真实任务 + 对应 bounds + way），
+并且它假定调用方处在"桌面正在做分组动画"的上下文里。
+**在 SystemUI 进程里脱离该上下文调用，状态机会停在中间态 → 延迟崩溃/重启。**
+
+用户底线"只用官方接口"**依然成立** —— 官方接口确实找到了、也确实调了，
+**是这个接口不允许脱离它的调用上下文使用**（不是参数问题：`ok=true` 也照样崩）。
+
+**因此 `four_finger_multi` 永久锁死为 false**（`Constants.DEF_FOUR_FINGER_MULTI`），
+不再提供"加层进多分屏"能力。多分屏请继续使用**系统原生手势**。
+**保留并已验证可用的**：单任务 → 双分屏（四指上滑，另一侧出桌面让用户选）。
+
+**用户还指出**：桌面 app 是 **Rust** 写的，**不好 hook**、也不打算走"模拟点击"的路子。
+所以"由桌面提供选择界面"这条也不作为实现方向。
