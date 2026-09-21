@@ -591,3 +591,29 @@ installGestures: onInputEvent 挂载=true（gestures=true 屏=1672x2364 密度=2
 ```
 **教训**：以后新增"会吞事件"的手势，开关判断必须放在吞事件之前；起手区必须与系统自身热区
 （尤其底部中间、左右边缘返回手势）显式留出让位区。
+
+### 12. 角滑的最终约束：只在「单应用全屏」生效（2026-09-21，用户指定）
+用户明确规则：**角落上滑只在单应用全屏时才触发**。
+
+这是对第 11 节冲突的正解 —— 分屏/多分屏状态下，屏幕下部（尤其右侧斜滑）就是 MIUI 自己的
+「上滑到左上角进分屏 / 底部中间上滑进多分屏」热区，模块必须**完全退让**。
+
+实现（`Gestures.onUp`）：
+```kotlin
+if (Cfg.cornerFreeform && isPlainFullscreen()) { swallow = true; consumed = true; cornerSwipeToFreeform() }
+else if (Cfg.cornerFreeform) Logx.always("手势: 角滑命中但当前不是单应用全屏（分屏/小窗），放行给系统")
+```
+`isPlainFullscreen()` = `!splitActive() && !soScActive() && 前台任务 windowingMode == 1`。
+
+同时判定区收紧（第 11 节基础上）：
+| 参数 | 旧 | 新 |
+| --- | --- | --- |
+| 起手区宽 | 左右各 40% | **左右各 22%** |
+| 起手区高 | 屏幕下 45% | **屏幕下 22%** |
+| 方向比 \|dy/dx\| | 0.6 ~ 2.6 | **0.75 ~ 1.35**（必须明显斜向） |
+| 最小行程 | 140dp | **200dp** |
+| 底部让位区 | 120dp × 中间 1/3 | **220dp × 中间 1/2** |
+
+**演示取证（官方逻辑恢复正常）**：用户在被要求演示后完成"双分屏→三分屏→四分屏"全部操作，
+期间 SystemUI PID 恒定（无崩溃），官方 `MultipleSplitTransitionHandler` 转场全部成功；
+我们的角滑三次命中但都是 `开关=false`（放行），证明"先判开关再吞事件"的修复有效。

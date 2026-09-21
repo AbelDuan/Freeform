@@ -55,12 +55,14 @@ object Gestures {
      * 固定 dp 会出现"内屏能滑、外屏滑不动"（真机踩过：`input swipe` 落到 (1324,1709) 时
      * 判定区却按另一组尺寸算，起手就被否掉）。
      */
-    private const val CORNER_ZONE_W = 0.40f   // 左右各 40% 宽算"角"
-    private const val CORNER_ZONE_H = 0.45f   // 屏幕下 45% 高算"角"
+    // ⚠️ 收紧到最角落：官方「上滑到左上角 / 底部中间上滑进多分屏」的起手区就在屏幕下部，
+    // 之前 40%×45% 的判定区会大量误命中（真机演示：从右下角自然上滑就命中三次）。
+    private const val CORNER_ZONE_W = 0.22f   // 左右各 22% 宽
+    private const val CORNER_ZONE_H = 0.22f   // 屏幕下 22% 高
 
-    private val cornerMinTravel get() = dp(140f)
-    private const val CORNER_MIN_RATIO = 0.6f
-    private const val CORNER_MAX_RATIO = 2.6f
+    private val cornerMinTravel get() = dp(200f)
+    private const val CORNER_MIN_RATIO = 0.75f
+    private const val CORNER_MAX_RATIO = 1.35f
 
     private const val FF_MIN_POINTERS = 4
     private val ffMinTravel get() = dp(70f)
@@ -112,7 +114,11 @@ object Gestures {
 
         // ② 注册 EventHandler + 确保 receiver 存在（全屏场景下 MIUI 可能还没建 receiver）
         main.post { ensureReceiver() }
-        watchTestHook()
+        // ⚠️ 测试轮询默认**关闭**：它每 1.5s 跨进程 call 一次 ContentProvider，
+        // 在 SystemUI 启动早期 Context 还没就绪时会抛
+        // `NullPointerException: getDefaultClassLoader(...) must not be null`，
+        // 真机表现为分屏里滑动黑屏/闪退。只有显式打开测试开关才启动。
+        if (Cfg.testHook) main.post { watchTestHook() }
         Logx.always(
             "installGestures: onInputEvent 挂载=$hooked（gestures=${Cfg.gestures} " +
                 "屏=${screenW}x${screenH} 密度=$density）"
@@ -179,7 +185,7 @@ object Gestures {
         val x = ev.rawX
         val y = ev.rawY
         // 底部正中最下缘留给 MIUI 自己的"底部中间上滑进多分屏"，角滑不在这里起手
-        val inBottomCenter = y >= h - dp(120f) && x > w * 0.33f && x < w * 0.67f
+        val inBottomCenter = y >= h - dp(220f) && x > w * 0.25f && x < w * 0.75f
         if (!inBottomCenter && y >= h * (1f - CORNER_ZONE_H) && y <= h) {
             val left = x <= w * CORNER_ZONE_W
             val right = x >= w * (1f - CORNER_ZONE_W)
@@ -251,10 +257,15 @@ object Gestures {
                 // ⚠️ 开关关闭时必须**原样放行**：以前是先 swallow=true 再看开关，
                 // 结果"关掉角滑"仍然会把这串事件吃掉，把 MIUI 自己的「底部中间上滑进多分屏」掐死
                 // （真机反馈：角落上滑与多分屏中间底部上滑冲突，无法完成官方操作）。
-                if (Cfg.cornerFreeform) {
+                // ⚠️ 只在**单应用全屏**时才动作：分屏/多分屏/已有小窗的场景里，
+                // 这一片正是 MIUI 自己「上滑到左上角进分屏 / 底部中间上滑进多分屏」的热区，
+                // 我们一旦介入就会把官方手势掐死（真机演示踩过）。
+                if (Cfg.cornerFreeform && isPlainFullscreen()) {
                     swallow = true
                     consumed = true
                     cornerSwipeToFreeform()
+                } else if (Cfg.cornerFreeform) {
+                    Logx.always("手势: 角滑命中但当前不是单应用全屏（分屏/小窗），放行给系统")
                 }
             } else {
                 Logx.v("手势: 角滑未命中 行程=${dist.toInt()} dx=${dx.toInt()} dy=${dy.toInt()} bad=$cornerBad")
@@ -657,6 +668,22 @@ object Gestures {
         }
         null
     }.getOrNull()
+
+    /**
+     * 当前是否"普通单应用全屏"。
+     *
+     * 真机演示确认的冲突：分屏/多分屏状态下，屏幕下部（尤其右侧斜滑）是 MIUI 自己的
+     * 分屏热区，模块的角滑必须**完全退让**，只在单应用全屏时才接管。
+     * 判定用的都是已封装的查询：`splitActive` / `soScActive` / 前台任务 windowingMode。
+     */
+    private fun isPlainFullscreen(): Boolean {
+        if (splitActive() || soScActive()) return false
+        val info = topTask() ?: return false
+        return modeOf(info) == MODE_FULLSCREEN
+    }
+
+    /** `WINDOWING_MODE_FULLSCREEN`。 */
+    private const val MODE_FULLSCREEN = 1
 
     /**
      * 当前分屏组里的任务 id。

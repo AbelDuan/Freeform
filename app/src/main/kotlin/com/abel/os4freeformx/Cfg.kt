@@ -22,6 +22,7 @@ object Cfg {
     @Volatile var gestures = Constants.DEF_GESTURES
     @Volatile var cornerFreeform = Constants.DEF_CORNER_FREEFORM
     @Volatile var fourFingerSplit = Constants.DEF_FOUR_FINGER_SPLIT
+    @Volatile var testHook = Constants.DEF_TEST_HOOK
 
     /** 只记住模块引用，不读 prefs（system_server 启动阶段只允许这一步）。 */
     fun setModule(m: XposedModule) {
@@ -58,6 +59,7 @@ object Cfg {
             gestures = p.getBoolean(Constants.K_GESTURES, Constants.DEF_GESTURES)
             cornerFreeform = p.getBoolean(Constants.K_CORNER_FREEFORM, Constants.DEF_CORNER_FREEFORM)
             fourFingerSplit = p.getBoolean(Constants.K_FOUR_FINGER_SPLIT, Constants.DEF_FOUR_FINGER_SPLIT)
+            testHook = p.getBoolean(Constants.K_TEST_HOOK, Constants.DEF_TEST_HOOK)
             Logx.verbose = log
         }.onFailure { Logx.e("reload 失败", it) }
     }
@@ -85,7 +87,9 @@ object Cfg {
     }
 
     private fun readFromProvider() {
-        val ctx = AppCtx.get()
+        // Context 在 SystemUI 启动早期可能还不完整（真机见过 getDefaultClassLoader NPE），
+        // 这里整体包起来，失败只记一次日志，绝不向外抛。
+        val ctx = runCatching { AppCtx.get() }.getOrNull()
         if (ctx == null) {
             Logx.once("cfgNoCtx", "读配置失败: 取不到 Context")
             return
@@ -116,6 +120,7 @@ object Cfg {
             gestures = b.getBoolean(Constants.K_GESTURES, Constants.DEF_GESTURES)
             cornerFreeform = b.getBoolean(Constants.K_CORNER_FREEFORM, Constants.DEF_CORNER_FREEFORM)
             fourFingerSplit = b.getBoolean(Constants.K_FOUR_FINGER_SPLIT, Constants.DEF_FOUR_FINGER_SPLIT)
+            testHook = b.getBoolean(Constants.K_TEST_HOOK, Constants.DEF_TEST_HOOK)
             Logx.verbose = log
         }.onFailure { Logx.e("读配置失败", it) }
         val after = "$log|$immersive|$rememberBounds"
