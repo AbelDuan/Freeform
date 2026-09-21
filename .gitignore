@@ -6,3 +6,4 @@ recon/
 keystore/
 tools/
 .env
+dist/*.bundle
