@@ -857,3 +857,15 @@ rootTaskId=6724
 
 **教训**：反射探测方法时不要"猜类"，先去反编译产物里 `grep '\.method public <name>'`
 确认它到底在哪个类上；静默 `runCatching` 会把这类错误藏得很深。
+
+### 25. 分屏内加窗的时序修复（2026-09-21）
+`transferSoScToMultipleSplit` 是**异步转场**。之前代码是"调转分屏 → 立刻 `insertPane`"，
+转场还没落地就插 stage，结果就是**stage 建了但空的**（用户看到的"另一侧黑屏"）。
+已改为转分屏后 `main.postDelayed({ insertPane(...) }, 450)`，给官方转场留出落地时间。
+
+**分屏内加分屏的完整链路（当前实现）**：
+1. 命中四指上滑 → `soScActive()`（经 `SoScUtils.getInstance().isSoScActive()`）判定
+2. 双分屏：`transferSoScToMultipleSplit([getLeftTopStage(), getRightBottomStage()], [0,1])`
+3. 等 450ms 转场落地
+4. `insertMultipleSplitByIntent(wct, PendingIntent(候选包), index)` —— 由系统启动应用进新 stage
+5. `ShellTaskOrganizer#applyTransaction(wct)` 提交

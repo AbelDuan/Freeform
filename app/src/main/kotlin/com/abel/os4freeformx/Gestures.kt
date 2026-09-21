@@ -457,8 +457,15 @@ object Gestures {
                     )
                     return@runCatching
                 }
-                if (!splitActive() && soScActive()) transferSoScToMulti()
-                insertPane(cand, group.size)
+                // 双分屏 → 多分屏是一次**异步转场**：紧接着插 stage 往往在转场完成前执行，
+                // 结果就是"stage 建了但空的"（真机现象：另一侧黑屏）。
+                // 所以转分屏后延迟再插（450ms 足够官方转场落地）。
+                if (!splitActive() && soScActive()) {
+                    transferSoScToMulti()
+                    main.postDelayed({ insertPane(cand, group.size) }, 450)
+                } else {
+                    insertPane(cand, group.size)
+                }
                 return@runCatching
             }
             // ⚠️ 分屏场景暂时**只识别不动作**：
