@@ -917,3 +917,17 @@ MultipleSplitRootTaskOrganizer.prepareExitMultipleSplit
 而我那条 `transferSoScToMultipleSplit` + `insertMultipleSplitBy*` 是自己拼的，
 真机表现就是用户看到的"原分屏被重新布局 + 右侧黑块"。
 接线方案已明确（见第 26 节），等这一版验证不再有黑块后再上。
+
+### 28. ⚠️ 回退记录：`prepareDragDropTaskToSoSc` 会黑屏（2026-09-21 实测）
+第 27 节我按抓到的原生链换成 `SoScUtils.prepareDragDropTaskToSoSc(wct, taskId, hotArea, caller)`，
+**真机结果：双分屏两侧都黑屏，不进系统默认桌面**（用户实测）。
+说明这个方法的参数语义（尤其后两个 int）我**并没有摸对** —— 它内部是给"拖拽进行中"的状态机用的，
+脱离拖拽会话直接调，状态机停在中间态就成了黑屏。
+
+**已回退到 `openWindowFromFullscreen(taskId, null)`**（`MulWinSwitchTransition`），
+因为它真机验证过：
+- 能真正起分屏（main/side 双 stage，dumpsys 取证）；
+- 行为正是系统默认的"半屏应用 + 半屏桌面让用户选"。
+
+**教训**：日志里看到的方法名 ≠ 可以脱离上下文调用。抓调用链只能确认"谁调了谁"，
+**不能确认"脱离原有会话是否还能用"**；这类涉及状态机的方法，必须小步灰度 + 立即可回退。

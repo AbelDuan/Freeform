@@ -514,45 +514,16 @@ object Gestures {
 
     private fun dragToSplitInternal(taskId: Int, pkg: String) {
         runCatching {
-            val soc = socUtils() ?: run {
-                Logx.e("进分屏: 取不到 SoScUtils")
-                return@runCatching
-            }
-            val wctCls = Class.forName("android.window.WindowContainerTransaction", false, uiLoader)
-            val wct = wctCls.getDeclaredConstructor().newInstance()
-            // **照抄原生调用链**（抓用户原生操作日志确认）：
-            //   SoScUtilsImpl.prepareDragDropTaskToSoSc(wct, taskId, hotAreaType, caller)
-            //     → SoScSplitScreenController#prepareDragDropTaskToSoSc
-            //     → SoScStageCoordinator#prepareDragDropTaskToSoSc（真正落 bounds 的地方）
-            // 之前用 openWindowFromFullscreen 只是它的上游封装，参数语义不同，会出现"直接翻桌面"。
-            val m = soc.javaClass.methods.firstOrNull {
-                it.name == "prepareDragDropTaskToSoSc" && it.parameterTypes.size == 4
-            } ?: run {
-                Logx.e("进分屏: 找不到 prepareDragDropTaskToSoSc(4 参)")
-                return@runCatching
-            }
-            val args = arrayOfNulls<Any?>(4)
-            args[0] = wct                                  // WindowContainerTransaction
-            args[1] = Integer.valueOf(taskId)              // 进分屏的任务
-            args[2] = Integer.valueOf(HOT_AREA_SPLIT_LEFT_OR_TOP)  // 热区：左上角
-            args[3] = Integer.valueOf(0)                   // caller
-            m.invoke(soc, *args)
-            Logx.always("进分屏: 已调原生 prepareDragDropTaskToSoSc(task=$taskId hotArea=$HOT_AREA_SPLIT_LEFT_OR_TOP pkg=$pkg)")
-            // 提交并收尾（与原生一致：applyTransaction + finishEnterSplitScreen）
-            val org = runCatching {
-                val ctl = cls(Constants.CLS_MULTITASKING_CTL).getMethod("getInstance").invoke(null)
-                ctl?.let { c -> orgOf(c) ?: orgOf(c.javaClass.getMethod("getMultipleSplitController").invoke(c)) }
-            }.getOrNull()
-            if (org != null) {
-                org.javaClass.getMethod("applyTransaction", wctCls).invoke(org, wct)
-                Logx.always("进分屏: WCT 已提交")
-            }
-            runCatching {
-                val txCls = Class.forName("android.view.SurfaceControl\$Transaction")
-                soc.javaClass.getMethod("finishEnterSplitScreen", txCls)
-                    .invoke(soc, txCls.getDeclaredConstructor().newInstance())
-                Logx.always("进分屏: finishEnterSplitScreen 已调用")
-            }.onFailure { Logx.v("进分屏: 无 finishEnterSplitScreen（可忽略）") }
+            val ctl = cls(Constants.CLS_MULTITASKING_CTL).getMethod("getInstance").invoke(null) ?: return@runCatching
+            val trans = ctl.javaClass.getMethod("getMulWinSwitchTransition").invoke(ctl) ?: return@runCatching
+            // ✅ 用 `openWindowFromFullscreen(taskId, intent)` —— 真机验证过**能真正起分屏**，
+            // 而且行为就是系统默认的"半屏应用 + 半屏桌面/让用户选"（用户实测确认）。
+            // ⚠️ 不要换成 `prepareDragDropTaskToSoSc`：我用它试过一版，参数语义没摸对，
+            //    真机表现是**两侧都黑屏**（2026-09-21 实测），已回退。
+            trans.javaClass.getMethod(
+                "openWindowFromFullscreen", Integer.TYPE, android.app.PendingIntent::class.java
+            ).invoke(trans, Integer.valueOf(taskId), null)
+            Logx.always("进分屏: 已请求 openWindowFromFullscreen(task=$taskId pkg=$pkg)")
         }.onFailure { e ->
             val root = (e as? java.lang.reflect.InvocationTargetException)?.targetException ?: e
             Logx.e("进分屏失败: ${root.javaClass.name}: ${root.message}", root)
