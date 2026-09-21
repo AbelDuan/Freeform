@@ -805,3 +805,21 @@ MultipleSplitController.transferSoScToMultipleSplit(stageList, indexList);
 
 验证顺序建议：先开 `four_finger_split_indoor=true`，在**双分屏**里四指上滑一次；
 若看到 `已请求 SoSc→多分屏（stage=[leftTop,rightBottom] index=[0,1]）` 且不闪退，再继续调插入那一步。
+
+### 22. 灰度开关已打开，等真机验证（2026-09-21）
+按用户选择，打开了分屏内动作的灰度开关：
+```
+gestures=true  corner_freeform=true  four_finger_split=true  four_finger_split_indoor=true
+```
+**注意**：改配置后要 `am force-stop com.abel.os4freeformx` 让模块 App 重读盘 ——
+否则它内存里的 SharedPreferences 还是旧值（provider 会一直回旧配置，真机踩过两次）。
+
+**在双分屏里四指上滑的预期日志**（参数已按官方语义改正，见第 21 节）：
+```
+手势: 四指上滑命中(MOVE) 行程=… 手指数=4
+四指上滑: SoSc=true 多分屏=false 组内=[…]
+四指上滑: 候选池=N 合格=M
+四指上滑: 已请求 SoSc→多分屏（stage=[leftTop,rightBottom] index=[0,1]，照官方语义）
+四指上滑: 多分屏插桩已提交（task=… index=…）
+```
+**若再出现闪退**：把 `four_finger_split_indoor` 改回 false（或直接 `gestures=false`）即可完全止血。
