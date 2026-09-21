@@ -425,3 +425,27 @@ MIUI 那圈"背景/阴影"与窗口几何经常对不上（真机：「一边内
 
 用户选择的是**弹出应用列表让他点选**，所以下一步是：模块 App 侧加一个选择器 Activity
 （`showDialog` 认证或自绘悬浮列表）列出最近任务 → 选中后把 taskId 交给上面的入口。
+
+### 6. 功能② 实现进展（2026-09-21 续）
+四指识别 + 动作骨架已进包，三条链路的真机结论：
+
+1. **识别**：`四指上滑命中 行程=… 手指数=…` 正常（真机用 1 指临时阈值验过识别与后续链路；
+   正式阈值已改回 4）。
+2. **候选来源**：`MultiTaskingTaskRepository#getMultiTaskingTaskInfoList()` 能列出 shell 已知任务
+   （真机：16 个），配合 `taskIdOf`/`pkgOf` 组装成 `pkg|taskId` 候选。
+   ⚠️ `MultipleSplitController#getAllStageTaskInfo()` 在**没有多分屏时返回全部 stage**（真机拿到 6 个 id），
+   不能直接当"当前分屏组"，需要再按 `isMultipleSplitActive()` 分支。
+3. **选择器窗口**：**SystemUI 进程里开不出窗口** —— 两条路都失败过：
+   - `PopupWindow` + 未附着窗口的 View 当锚点 → `BadTokenException: token null is not valid`；
+   - `createWindowContext(TYPE_APPLICATION_OVERLAY)` + `WindowManager.addView` → 同样 BadToken
+     （SystemUI 进程没有 overlay 授权）。
+   **正解：交给模块 App 的 Activity**（`PickActivity`，`Theme.DeviceDefault.Dialog`），
+   它有正常 window token。回传走 `AppPrefs` 写 `PREFS_CFG.pending_pick = "<一次性token>|pkg|taskId"`，
+   SystemUI 侧用带 token 的轮询经 `StoreProvider` 取（20s 超时，token 不匹配不认）。
+   ⚠️ SystemUI 里 `ctx.packageName` 是 `com.android.systemui`，拉起模块 Activity 必须显式写
+   `setClassName("com.abel.os4freeformx", "com.abel.os4freeformx.PickActivity")`，
+   否则 `ActivityNotFoundException`（真机踩过）。
+4. **插入**：`MultipleSplitController#insertMultipleSplitByTask(wct, taskId, index)` +
+   `ShellTaskOrganizer#applyTransaction`（帮助函数 `orgOf()` 按类型扫字段，名字随版本变）。
+   双分屏（SoSc）先 `transferSoScToMultipleSplit(ids, types)` 转多分屏，再插第三个。
+   **这一段还没在真机跑到**（等用户在真实分屏场景下用四指上滑触发）。

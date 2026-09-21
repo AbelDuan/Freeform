@@ -23,6 +23,8 @@ object Constants {
     const val K_GESTURES = "gestures"                // 手势总开关（全局输入挂钩）
     const val K_CORNER_FREEFORM = "corner_freeform"  // 角落斜滑 → 前台应用转小窗
     const val K_FOUR_FINGER_SPLIT = "four_finger_split" // 四指上滑 → 增加分屏
+    /** 选择器回传：`<一次性 token>|<选中的包名>` */
+    const val K_PICK = "pending_pick"
 
     const val DEF_ENABLE_LOG = false
     const val DEF_IMMERSIVE = true

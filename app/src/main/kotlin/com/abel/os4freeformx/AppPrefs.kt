@@ -12,6 +12,12 @@ import android.content.SharedPreferences
  */
 object AppPrefs {
 
+    fun putString(ctx: Context, key: String, value: String) {
+        ce(ctx).edit().putString(key, value).apply()
+        de(ctx)?.edit()?.putString(key, value)?.apply()
+    }
+
+
     private fun ce(ctx: Context): SharedPreferences =
         ctx.getSharedPreferences(Constants.PREFS_CFG, Context.MODE_PRIVATE)
 

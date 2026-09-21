@@ -34,6 +34,7 @@ class StoreProvider : ContentProvider() {
                 putBoolean(Constants.K_GESTURES, c?.getBoolean(Constants.K_GESTURES, Constants.DEF_GESTURES) ?: Constants.DEF_GESTURES)
                 putBoolean(Constants.K_CORNER_FREEFORM, c?.getBoolean(Constants.K_CORNER_FREEFORM, Constants.DEF_CORNER_FREEFORM) ?: Constants.DEF_CORNER_FREEFORM)
                 putBoolean(Constants.K_FOUR_FINGER_SPLIT, c?.getBoolean(Constants.K_FOUR_FINGER_SPLIT, Constants.DEF_FOUR_FINGER_SPLIT) ?: Constants.DEF_FOUR_FINGER_SPLIT)
+                c?.getString(Constants.K_PICK, null)?.let { putString(Constants.K_PICK, it) }
             }
             "put" -> {
                 val k = extras?.getString("k")

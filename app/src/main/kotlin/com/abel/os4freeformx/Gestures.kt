@@ -34,6 +34,9 @@ object Gestures {
     private const val CLS_EVENT_HANDLER =
         "com.android.wm.shell.multitasking.miuimultiwinswitch.miuiwindowdecor.MulWinSwitchEventController\$EventHandler"
 
+    /** 模块自身包名（SystemUI 进程里 `ctx.packageName` 是 com.android.systemui，不能拿来当目标） */
+    private const val MODULE_PKG = "com.abel.os4freeformx"
+
     private const val MODE_FREEFORM = 5
     private const val MODE_MULTI_WINDOW = 3   // WINDOWING_MODE_SPLIT_SCREEN（双应用分屏）
     private const val MODE_MULTI_SPLIT = 6    // HyperOS 多分屏（3~6 应用）
@@ -204,7 +207,7 @@ object Gestures {
         ffY = ev.rawY
         ffStart = ev.eventTime
         ffPeak = ev.pointerCount
-        Logx.v("手势: 四指起手 pointers=${ev.pointerCount} @${ev.rawX.toInt()},${ev.rawY.toInt()}")
+        Logx.always("手势: 四指起手 pointers=${ev.pointerCount} @${ev.rawX.toInt()},${ev.rawY.toInt()}")
     }
 
     private fun onMove(ev: MotionEvent): Boolean {
@@ -257,7 +260,7 @@ object Gestures {
                 consumed = true
                 if (Cfg.fourFingerSplit) fourFingerAddSplit()
             } else {
-                Logx.v("手势: 四指未命中 dy=${dy.toInt()} dx=${dx.toInt()} used=${used}ms peak=$ffPeak")
+                Logx.always("手势: 四指未命中 dy=${dy.toInt()} dx=${dx.toInt()} used=${used}ms peak=$ffPeak")
             }
         }
         reset()
@@ -336,11 +339,208 @@ object Gestures {
 
     // ---------------- 动作 2：四指上滑 → 加分屏（下一轮接线）----------------
 
+    /**
+     * 四指上滑 → 弹出应用选择器 → 把选中的应用加进当前分屏组。
+     *
+     * 只在**分屏进行中**才动作（本 AOSP/MIUI 的分屏与自由小窗是互斥的场景）。
+     * 候选来自 shell 已知的运行任务（`MultiTaskingTaskRepository`），过滤掉已在分屏里的。
+     */
     private fun fourFingerAddSplit() {
-        // 已确认的官方入口：
-        //   MultiTaskingControllerImpl.getMultiTaskingStateManager().dockSplitFromRecent(Bundle)
-        //   MultipleSplitController.insertMultipleSplitByTask(wct, taskId, index)
-        Logx.always("四指上滑: 加窗动作待接线（多分屏=${splitActive()}）")
+        Logx.always("四指上滑: 进入加分屏流程")
+        runCatching {
+            val ctx = AppCtx.get() ?: return@runCatching
+            val inSplit = splitActive() || soScActive()
+            val group = splitTaskIds()
+            val all = allTasks()
+            Logx.always(
+                "四指上滑: 分屏中=${splitActive()} SoSc=${soScActive()} 组内任务=$group shell已知任务=${all.size}"
+            )
+            val cands = all.filter { id -> !group.contains(id) }
+            if (inSplit && cands.isEmpty()) {
+                Logx.always("四指上滑: 没有可加入的任务（shell 已知任务都被分屏占用）")
+                return@runCatching
+            }
+            val items = cands.mapNotNull { info ->
+                pkgOf(info)?.let { "$it|${taskIdOf(info)}" }
+            }.distinct()
+            if (items.isEmpty()) {
+                Logx.always("四指上滑: 候选任务都取不到包名，放弃")
+                return@runCatching
+            }
+            showPicker(ctx, items, group.size)
+        }.onFailure { Logx.e("四指上滑处理失败", it) }
+    }
+
+    /**
+     * 弹应用选择器（SystemUI 进程内直接建系统窗口）。
+     *
+     * 不能用 PopupWindow + 一个没附着到窗口的 View 当锚点：SystemUI 里那样拿不到 window token，
+     * 真机报 `WindowManager$BadTokenException: token null is not valid`。
+     * 正确做法是 `createWindowContext(TYPE_APPLICATION_OVERLAY, null)` 自己开一个窗口上下文，
+     * 再用 `WindowManager.addView` 挂上去（被 hook 进程里 addView 会走 LSPosed 的
+     * `InvocationTargetHandler` 自动补 token）。
+     */
+    private fun showPicker(ctx: Context, pkgs: List<String>, index: Int) {
+        runCatching {
+            val token = java.util.UUID.randomUUID().toString().take(8)
+            pickToken = token
+            val i = Intent().apply {
+                setClassName(MODULE_PKG, "$MODULE_PKG.PickActivity")
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS)
+                putStringArrayListExtra("pkgs", ArrayList(pkgs))
+                putExtra("token", token)
+                putExtra("index", index)
+            }
+            ctx.startActivity(i)
+            Logx.always("四指上滑: 已拉起应用选择器（${pkgs.size} 个候选 token=$token）")
+            awaitPick(ctx, token, pkgs)
+        }.onFailure { Logx.e("拉起选择器失败", it) }
+    }
+
+    @Volatile private var pickToken: String? = null
+
+    /**
+     * 取选中的应用。
+     *
+     * 选择器跑在模块 App 进程（SystemUI 里开不出窗口），结果写在 CFG prefs 的 [Constants.K_PICK]，
+     * 这里用带**一次性 token** 的轮询经 `StoreProvider` 取回 —— 只有 token 匹配才算数，
+     * 所以旧结果或用户手动改配置都不会误触发。20 秒没选就当放弃。
+     */
+    private fun awaitPick(ctx: Context, token: String, pkgs: List<String>) {
+        Thread {
+            val deadline = android.os.SystemClock.uptimeMillis() + 20_000
+            while (android.os.SystemClock.uptimeMillis() < deadline) {
+                runCatching {
+                    val b = ctx.contentResolver.call(
+                        android.net.Uri.parse("content://${Constants.AUTHORITY}"), "getCfg", null, null
+                    )
+                    val v = b?.getString(Constants.K_PICK)
+                    if (!v.isNullOrEmpty() && v.startsWith("$token|")) {
+                        val pkg = v.substringAfter('|')
+                        pickToken = null
+                        main.post { addToSplit(pkg) }
+                        return@Thread
+                    }
+                }
+                try {
+                    Thread.sleep(250)
+                } catch (ie: InterruptedException) {
+                    return@Thread
+                }
+            }
+            Logx.always("四指上滑: 选择器超时未选（候选 ${pkgs.size} 个）")
+        }.apply { isDaemon = true }.start()
+    }
+
+    private fun prettyName(ctx: Context, pkg: String): String = runCatching {
+        val pm = ctx.packageManager
+        pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString()
+    }.getOrDefault(pkg)
+
+    /**
+     * 把选中的应用加进当前分屏组。
+     *
+     * 两条官方路径（都从 SystemUI 进程调用）：
+     * 1. **已在多分屏**（3~6 应用）：`MultipleSplitController#insertMultipleSplitByTask(wct, taskId, i)`
+     *    —— 内部走 `prepareDragTaskToMultipleSplit`，`isMultipleSplitActive()` 为真时直接插桩；
+     * 2. **双应用分屏（SoSc）**：先 `transferSoScToMultipleSplit(ids, types)` 把它转成多分屏
+     *    （launcher 拖图标进分屏走的就是这条），再走 1。
+     */
+    private fun addToSplit(sel: String) {
+        runCatching {
+            val pkg = sel.substringBefore('|')
+            val taskId = sel.substringAfter('|', "").toIntOrNull() ?: run {
+                Logx.e("加分屏: 选择结果格式不对（$sel）")
+                return@runCatching
+            }
+            val ctl = cls(Constants.CLS_MULTITASKING_CTL).getMethod("getInstance").invoke(null) ?: return@runCatching
+            val sc = ctl.javaClass.getMethod("getMultipleSplitController").invoke(ctl) ?: return@runCatching
+            val group = splitTaskIds()
+            Logx.always("加分屏: pkg=$pkg taskId=$taskId 组内=$group 多分屏=${splitActive()} SoSc=${soScActive()}")
+
+            if (!splitActive() && soScActive()) {
+                runCatching {
+                    sc.javaClass.getMethod(
+                        "transferSoScToMultipleSplit", java.util.List::class.java, java.util.List::class.java
+                    ).invoke(sc, group, group.map { Integer.valueOf(0) })
+                    Logx.always("加分屏: 已请求 SoSc → 多分屏转换（${group.size} 个）")
+                }.onFailure { Logx.e("加分屏: SoSc→多分屏转换失败，继续试直插", it) }
+            }
+
+            // WindowContainerTransaction 是 @hide，编译期看不到 → 运行时取
+            val wctCls = Class.forName("android.window.WindowContainerTransaction", false, uiLoader)
+            val wct = wctCls.getDeclaredConstructor().newInstance()
+            sc.javaClass.getMethod(
+                "insertMultipleSplitByTask", wctCls, Integer.TYPE, Integer.TYPE
+            ).invoke(sc, wct, Integer.valueOf(taskId), Integer.valueOf(group.size))
+            // 提交 WCT：ShellTaskOrganizer.applyTransaction(wct)。它挂在 controller / MultipleSplitController 上，
+            // 字段名随版本变（mShellTaskOrganizer / mTaskOrganizer），所以按类型扫一遍字段。
+            val orgInst = orgOf(ctl) ?: orgOf(sc)
+            if (orgInst != null) {
+                orgInst.javaClass.getMethod("applyTransaction", wctCls).invoke(orgInst, wct)
+                Logx.always("加分屏: 已 applyTransaction（taskId=$taskId index=${group.size}）")
+            } else {
+                Logx.e("加分屏: 取不到 ShellTaskOrganizer，WCT 没能提交")
+            }
+        }.onFailure { Logx.e("加分屏失败", it) }
+    }
+
+    /** 在对象（含继承链）里找 ShellTaskOrganizer 实例。 */
+    private fun orgOf(root: Any): Any? = runCatching {
+        var c: Class<*>? = root.javaClass
+        while (c != null) {
+            for (f in c.declaredFields) {
+                if (!f.type.name.endsWith("ShellTaskOrganizer")) continue
+                f.isAccessible = true
+                (f.get(root) as? Any)?.let { return it }
+            }
+            c = c.superclass
+        }
+        null
+    }.getOrNull()
+
+    /** 当前分屏组里的任务 id（多分屏优先，其次 SoSc 双分屏）。 */
+    private fun splitTaskIds(): List<Int> {
+        runCatching {
+            val ctl = cls(Constants.CLS_MULTITASKING_CTL).getMethod("getInstance").invoke(null) ?: return emptyList()
+            val sc = ctl.javaClass.getMethod("getMultipleSplitController").invoke(ctl)
+            val l = sc.javaClass.getMethod("getAllStageTaskInfo").invoke(sc) as? List<*>
+            l?.mapNotNull { it?.let { t -> taskIdOf(unwrap(t)).takeIf { id -> id > 0 } } }?.let { if (it.isNotEmpty()) return it }
+        }
+        runCatching {
+            val l = cls(Constants.CLS_MULTITASKING_CTL).getMethod("getInstance").invoke(null)
+                ?.let { ctl -> ctl.javaClass.getMethod("getMultiTaskingTaskRepository").invoke(ctl) }
+                ?.javaClass?.getMethod("getVisibleSplitChildTaskInfo")?.invoke(
+                    cls(Constants.CLS_MULTITASKING_CTL).getMethod("getInstance").invoke(null)
+                        ?.let { ctl -> ctl.javaClass.getMethod("getMultiTaskingTaskRepository").invoke(ctl) }
+                ) as? List<*>
+            l?.mapNotNull { it?.let { t -> taskIdOf(unwrap(t)).takeIf { id -> id > 0 } } }?.let { return it }
+        }
+        return emptyList()
+    }
+
+    private fun soScActive(): Boolean = runCatching {
+        val ctl = cls(Constants.CLS_MULTITASKING_CTL).getMethod("getInstance").invoke(null) ?: return false
+        val sc = ctl.javaClass.getMethod("getMultipleSplitController").invoke(ctl) ?: return false
+        (sc.javaClass.getMethod("isSoScActive").invoke(sc) as? Boolean) ?: false
+    }.getOrDefault(false)
+
+    /** shell 已知的全部运行任务（按 Z 序）。 */
+    private fun allTasks(): List<Any> {
+        val repo = taskRepo() ?: return emptyList()
+        runCatching {
+            val m = repo.javaClass.getMethod("getMultiTaskingTaskInfoList").invoke(repo)
+            if (m is android.util.SparseArray<*>) {
+                val out = ArrayList<Any>()
+                for (i in 0 until m.size()) m.valueAt(i)?.let { out.add(unwrap(it)) }
+                if (out.isNotEmpty()) return out
+            }
+        }
+        runCatching {
+            val l = repo.javaClass.getMethod("getMultiWindowTasksInZOrder").invoke(repo) as? List<*>
+            l?.let { return it.filterNotNull().map { t -> unwrap(t) } }
+        }
+        return emptyList()
     }
 
     // ---------------- 任务 / 分屏查询 ----------------
