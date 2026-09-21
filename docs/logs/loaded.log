@@ -1,0 +1,60 @@
+﻿=== module load + hook logs (OS4FreeFromX) ===
+09-21 15:14:10.440 E/OS4FreeFromX(10892): 	at android.app.ActivityThread.main(ActivityThread.java:10832)
+09-21 15:14:10.440 E/OS4FreeFromX(10892): 	at java.lang.reflect.Method.invoke(Native Method)
+09-21 15:14:10.440 E/OS4FreeFromX(10892): 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:598)
+09-21 15:14:10.440 E/OS4FreeFromX(10892): 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:1150)
+09-21 15:14:10.473 I/OS4FreeFromX(10892): hook 鎴愬姛 com.android.wm.shell.multitasking.miuimultiwinswitch.miuiwindowdecor.MulWinSwitchEventController$EventReceiver#onInputEvent
+09-21 15:14:10.473 I/OS4FreeFromX(10892): installGestures: onInputEvent 鎸傝浇=true锛坓estures=true 灞?1672x2364 瀵嗗害=2.75锛?
+09-21 15:14:11.766 I/OS4FreeFromX(10892): 鍒嗗睆鍚搁檮: 1170 -> 鑷畾涔夋。 position=1170
+09-21 15:14:11.775 E/OS4FreeFromX(10892): 澶氬垎灞忓崰浣? 椤舵爮 77 / 搴曟爮 44 -> 0
+09-21 15:14:11.776 E/OS4FreeFromX(10892): 澶氬垎灞忔弧灞? mDividerInsets 142 -> 0
+09-21 15:14:11.776 E/OS4FreeFromX(10892): 澶氬垎灞忔弧灞? mRootBounds Rect(0, 0 - 1672, 2364) -> Rect(0, 0 - 1672, 2364)
+09-21 15:14:11.777 I/OS4FreeFromX(10892): 澶氬垎灞忔弧灞? displayStableInsets -> 绌?
+09-21 15:14:11.777 I/OS4FreeFromX(10892): AppCtx: application com.android.systemui/op=com.android.systemui
+09-21 15:14:11.831 E/OS4FreeFromX(10892): 澶氬垎灞忓崰浣? 椤舵爮 77 / 搴曟爮 44 -> 0
+09-21 15:14:11.831 E/OS4FreeFromX(10892): 澶氬垎灞忔弧灞? mDividerInsets 142 -> 0
+09-21 15:14:11.839 I/OS4FreeFromX(10892): installGestures: EventHandler 宸叉敞鍐岋紝receiver 宸茬‘淇濆瓨鍦?
+09-21 15:14:16.987 I/OS4FreeFromX(10892): 閽╁瓙宸叉敹鍒颁簨浠讹紙onInputEvent 鐢熸晥锛?
+09-21 15:14:17.284 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7088 mode=1 pkg=top.funcun.dshfolk bounds=Rect(0, 0 - 1672, 2364)
+09-21 15:14:17.284 I/OS4FreeFromX(10892): 娌夋蹈: 涓嶅啀涓洪《閮ㄤ笁鐐规爮棰勭暀 insets锛坱ask=7088锛?
+09-21 15:14:17.285 I/OS4FreeFromX(10892): 娌夋蹈: 涓嶅啀涓哄簳閮ㄦ墜鍔挎潯棰勭暀 insets锛坱ask=7088锛?
+09-21 15:14:26.833 I/OS4FreeFromX(10892): 娌夋蹈: task=7088 鏍忛殣钘?true (MiuiDotView#25967258)
+09-21 15:14:26.902 I/OS4FreeFromX(10892): 娌夋蹈: task=7088 鏍忛殣钘?true (MiuiDotView#25967258)
+09-21 15:14:26.919 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7347 mode=1 pkg=com.microsoft.emmx bounds=Rect(0, 0 - 1672, 2364)
+09-21 15:14:27.555 I/OS4FreeFromX(10892): 鍏抽棴鏃跺厹搴曡褰? task=7088 pkg=top.funcun.dshfolk bounds=Rect(0, 0 - 1672, 2364)
+09-21 15:14:27.556 I/OS4FreeFromX(10892): 璁板綍璺宠繃锛氶潪鎵嬪娍鏉ユ簮锛坔idden锛?
+09-21 15:14:46.726 I/OS4FreeFromX(10892): 娌夋蹈: task=7088 鏍忛殣钘?true (MiuiDotView#255315430)
+09-21 15:14:46.741 I/OS4FreeFromX(10892): 娌夋蹈: task=7088 鏍忛殣钘?true (MiuiDotView#255315430)
+09-21 15:14:48.557 I/OS4FreeFromX(10892): 娌夋蹈: task=7088 鏍忛殣钘?true (MiuiDotView#255315430)
+09-21 15:15:06.785 I/OS4FreeFromX(10892): 娌夋蹈: task=7088 鏍忛殣钘?true (MiuiDotView#255315430)
+09-21 15:15:06.830 I/OS4FreeFromX(10892): 娌夋蹈: task=7088 鏍忛殣钘?true (MiuiDotView#255315430)
+09-21 15:15:06.840 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7365 mode=1 pkg=com.microsoft.emmx bounds=Rect(0, 0 - 1672, 2364)
+=== candidate split-capable packages ===
+package:com.android.music
+package:com.android.providers.calendar
+package:com.android.calendar
+package:com.android.browser
+package:com.android.settings.intelligence
+package:com.hyper.gallery.plugin
+package:com.android.overlay.gmssettings
+package:com.miui.gallery
+package:com.miui.calculator
+package:com.android.fileexplorer
+package:com.android.inputsettings.overlay.miui
+package:com.miui.settings.rro.device.hide.statusbar.overlay
+package:com.qiyi.video
+package:com.android.role.notes.enabled
+package:com.quark.browser
+package:com.android.settings.overlay.miui
+package:com.miui.settings.rro.common.overlay
+package:com.android.deskclock
+package:com.miui.settings.rro.device.type.overlay
+package:com.tencent.qqmusic
+package:com.android.settings
+package:com.miui.notes
+package:com.android.musicfx
+package:com.android.providers.settings.auto_generated_rro_vendor__
+package:com.miui.settings.rro.device.config.overlay
+package:com.android.providers.settings
+package:com.android.providers.settings.overlay
+package:com.xiaomi.misettings

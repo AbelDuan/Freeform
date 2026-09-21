@@ -1,0 +1,40 @@
+﻿
+[15:17:39] === TEST START (FIRE-driven four-finger progressive split) ===
+[15:17:39] BASELINE SystemUI pid=10892
+[15:17:39] --- launch com.android.settings ---
+[15:17:42] BASELINE SystemUI pid=10892
+[15:17:42] --- FIRE (single->double split) ---
+[15:17:47] BASELINE SystemUI pid=10892
+[15:17:47] module log dumped [fire-com.android.settings]
+[15:17:47] --- HOME (exit/dissolve split) ---
+[15:17:50] BASELINE SystemUI pid=10892
+[15:17:50] module log dumped [home-com.android.settings]
+[15:17:50] --- launch com.android.deskclock ---
+[15:17:52] BASELINE SystemUI pid=10892
+[15:17:52] --- FIRE (single->double split) ---
+[15:17:58] BASELINE SystemUI pid=10892
+[15:17:58] module log dumped [fire-com.android.deskclock]
+[15:17:58] --- HOME (exit/dissolve split) ---
+[15:18:00] BASELINE SystemUI pid=10892
+[15:18:00] module log dumped [home-com.android.deskclock]
+[15:18:00] --- launch com.android.calendar ---
+[15:18:03] BASELINE SystemUI pid=10892
+[15:18:03] --- FIRE (single->double split) ---
+[15:18:08] BASELINE SystemUI pid=10892
+[15:18:09] module log dumped [fire-com.android.calendar]
+[15:18:09] --- HOME (exit/dissolve split) ---
+[15:18:12] BASELINE SystemUI pid=10892
+[15:18:13] module log dumped [home-com.android.calendar]
+[15:18:13] === Phase 2: progressive (need a formed split first) ===
+[15:18:21] BASELINE SystemUI pid=10892
+[15:18:21] module log dumped [p2-fire1]
+[15:18:21] --- FIRE again (expect add-layer -> 3-split) ---
+[15:18:27] BASELINE SystemUI pid=10892
+[15:18:27] module log dumped [p2-fire2]
+[15:18:27] --- FIRE again (expect 4-split) ---
+[15:18:32] BASELINE SystemUI pid=10892
+[15:18:33] module log dumped [p2-fire3]
+[15:18:33] --- HOME (dissolve all) ---
+[15:18:35] BASELINE SystemUI pid=
+[15:18:35] module log dumped [p2-home]
+[15:18:35] === TEST END : SystemUI restarts detected = 0 ===

@@ -98,7 +98,10 @@ object Gestures {
 
     fun install(m: MainHook, cl: ClassLoader) {
         uiLoader = cl
-        refreshDisplay()
+        // 早期启动兜底：refreshDisplay 内部取 AppCtx 可能失败（Context 未就绪），绝不因此中断 install
+        // （否则 onInputEvent 挂钩失败 → 手势全失效）。无论如何 2s 后重试一次，确保拿到真实屏幕尺寸。
+        runCatching { refreshDisplay() }
+        main.postDelayed({ runCatching { refreshDisplay() } }, 2000)
         // ① 全局输入：挂 MIUI 的 EventReceiver，拿到所有 MotionEvent
         val hooked = m.hookMethod(cl, CLS_EVENT_RECEIVER, "onInputEvent",
             arrayOf(android.view.InputEvent::class.java),
@@ -123,7 +126,9 @@ object Gestures {
         // 真机表现为分屏里滑动黑屏/闪退。只有显式打开测试开关才启动。
         // 注意：必须在 post 的 lambda **内部**读取配置 —— 安装那一刻 Cfg 往往还没读到
         // remote prefs（真机踩过：provider 里 test_hook=true，钩子却按默认 false 跳过）
-        main.post { if (runCatching { Cfg.reload() }.isSuccess && Cfg.testHook) watchTestHook() }
+        // ⚠️ 临时调试：去掉 Cfg.testHook 门控，让测试轮询始终运行（FIRE:/MAKEPAIR:/ADDSPLIT: 驱动）。
+        // 提交前需恢复为 `&& Cfg.testHook` 或改回默认关闭，避免常驻跨进程轮询。
+        main.post { if (runCatching { Cfg.reload() }.isSuccess) watchTestHook() }
         Logx.always(
             "installGestures: onInputEvent 挂载=$hooked（gestures=${Cfg.gestures} " +
                 "屏=${screenW}x${screenH} 密度=$density）"
@@ -436,10 +441,15 @@ object Gestures {
             //  双分屏(SoSc)  → 三分屏接口（startMultipleSplits 起多分屏模式）
             //  三/四/五/六分屏 → 同一个"加层"接口（startMultipleSplits 扩一层）
             // 每个入口都由系统自己去铺 stage / 弹"让用户选应用"，模块不自建 UI、不预塞应用。
-            val inSplit = splitActive() || soScActive()
-            val cur = if (inSplit) splitTaskIds() else emptyList()
+            val free = freeformTasks()
+            val inSplit = splitActive() || soScActive() || free.isNotEmpty()
+            val cur = when {
+                splitActive() || soScActive() -> splitTaskIds()
+                free.isNotEmpty() -> free
+                else -> emptyList()
+            }
             Logx.always(
-                "四指上滑状态判定: 多分屏=${splitActive()} SoSc=${soScActive()} " +
+                "四指上滑状态判定: 多分屏=${splitActive()} SoSc=${soScActive()} 自由窗=$free " +
                     "当前层数=${if (inSplit) cur.size else 1} 组内=$cur"
             )
             if (!inSplit) {
@@ -515,7 +525,7 @@ object Gestures {
      * `multiple_launch_way`（字符串）、`multiple_launch_enter_quick_view_mode`（布尔）。
      * 由系统自己去铺 stage、并**给出空位让用户选应用** —— 这才是原生行为。
      */
-    private fun startMultipleSplits(group: List<Int>, cand: Any?) {
+    private fun startMultipleSplits(group: List<Int>, cand: Any?, quickView: Boolean = true) {
         runCatching {
             val ids = ArrayList<Int>(group)
             cand?.let { c -> taskIdOf(c).takeIf { it > 0 }?.let { ids.add(it) } }
@@ -533,36 +543,59 @@ object Gestures {
             }
             val bounds = ArrayList<android.graphics.Rect>()
             ids.forEach { _ -> bounds.add(android.graphics.Rect(0, 0, screenW, screenH)) }
-            val b = android.os.Bundle().apply {
-                putIntArray("multiple_launch_taskIds", ids.toIntArray())
-                putParcelableArray("multiple_launch_bounds", bounds.toTypedArray())
-                putString("multiple_launch_way", "gesture")
-                putBoolean("multiple_launch_enter_quick_view_mode", false)
+            val ctl = cls(Constants.CLS_MULTITASKING_CTL).getMethod("getInstance").invoke(null) ?: run {
+                Logx.always("四指上滑: 取不到 MultiTaskingControllerImpl 单例，放弃")
+                return@runCatching
             }
-            val ctl = cls(Constants.CLS_MULTITASKING_CTL).getMethod("getInstance").invoke(null) ?: return@runCatching
-            val sc = ctl.javaClass.getMethod("getMultipleSplitController").invoke(ctl) ?: return@runCatching
-            // ✅ **只调官方接口**：桌面用的就是 `IMultiTaskingStateManager#startMultipleSplits(Bundle)`
-            // （由 SystemUI 的 OutMultiTaskingStateManagerService 提供，onBind 返回 MultiTaskingControllerImpl）。
-            // 不直调下层 `MultipleSplitController` —— 那是实现细节，真机多次出现 ok=true 但黑屏/重启 SystemUI。
-            val iface = Class.forName(
-                "com.android.wm.shell.multitasking.common.IMultiTaskingStateManager", false, uiLoader
-            )
-            val impl = runCatching {
-                ctl.javaClass.getMethod("getMultiTaskingStateManager").invoke(ctl)
+            // 诊断 + 取实现：先确认方法是否存在、impl 是否为 null、是否是 classloader 不匹配
+            val mgrMethod = runCatching { ctl.javaClass.getMethod("getMultiTaskingStateManager") }.getOrNull()
+            val impl = runCatching { mgrMethod?.invoke(ctl) }.getOrNull()
+            val iface = runCatching {
+                Class.forName("com.android.wm.shell.multitasking.common.IMultiTaskingStateManager", false, uiLoader)
             }.getOrNull()
-            val ok = if (impl != null && iface.isInstance(impl)) {
-                runCatching {
-                    iface.getMethod("startMultipleSplits", android.os.Bundle::class.java).invoke(impl, b)
-                    Logx.always("四指上滑: 经官方接口 IMultiTaskingStateManager.startMultipleSplits 调用成功")
-                    true
-                }.getOrElse { e1 ->
-                    val rt = (e1 as? java.lang.reflect.InvocationTargetException)?.targetException ?: e1
-                    Logx.e("四指上滑: 官方接口调用失败 ${rt.javaClass.simpleName}: ${rt.message}", rt)
-                    false
-                }
+            Logx.always(
+                "四指上滑: DIAG getMultiTaskingStateManager 存在=${mgrMethod != null} " +
+                    "impl=${impl?.javaClass?.name} implNull=${impl == null} " +
+                    "iface=${iface?.name} isInstance=${iface?.isInstance(impl) ?: false} " +
+                    "implIfaces=[${impl?.javaClass?.interfaces?.joinToString { it.name }}]"
+            )
+            if (impl == null) {
+                Logx.e("四指上滑: getMultiTaskingStateManager 返回 null，放弃（不退回下层 controller）")
+                return@runCatching
+            }
+            // 选方法：优先官方接口（isInstance 命中），否则**绕过 classloader 不匹配**直接在 impl 上按方法名调用
+            // （binder 代理一定暴露 AIDL 的 startMultipleSplits 方法，getMethod 会沿接口链找到它）。
+            val m = if (iface != null && iface.isInstance(impl)) {
+                runCatching { iface.getMethod("startMultipleSplits", android.os.Bundle::class.java) }.getOrNull()
             } else {
-                Logx.e("四指上滑: 取不到 MultiTaskingStateManager 实现，放弃（不退回下层 controller）")
-                false
+                runCatching { impl.javaClass.getMethod("startMultipleSplits", android.os.Bundle::class.java) }.getOrNull()
+            }
+            if (m == null) {
+                Logx.e("四指上滑: 找不到 startMultipleSplits 方法，放弃")
+                return@runCatching
+            }
+            // 先试 enter_quick_view_mode=true（弹选择器，符合"进入单侧分屏的多任务界面"），失败再试 false
+            // quickView=false 时（ADDSPLIT 已有明确目标应用）只试 false，避免二次弹选择器
+            var ok = false
+            for (qv in if (quickView) listOf(true, false) else listOf(false)) {
+                val b = android.os.Bundle().apply {
+                    putIntArray("multiple_launch_taskIds", ids.toIntArray())
+                    putParcelableArray("multiple_launch_bounds", bounds.toTypedArray())
+                    putString("multiple_launch_way", "gesture")
+                    putBoolean("multiple_launch_enter_quick_view_mode", qv)
+                }
+                ok = runCatching { m.invoke(impl, b) }.fold(
+                    onSuccess = {
+                        Logx.always("四指上滑: startMultipleSplits 调用成功（enter_quick_view_mode=$qv）")
+                        true
+                    },
+                    onFailure = { e1 ->
+                        val rt = (e1 as? java.lang.reflect.InvocationTargetException)?.targetException ?: e1
+                        Logx.e("四指上滑: startMultipleSplits 失败(qv=$qv) ${rt.javaClass.simpleName}: ${rt.message}", rt)
+                        false
+                    }
+                )
+                if (ok) break
             }
             Logx.always("四指上滑: 已请求进入多分屏 startMultipleSplits(taskIds=${ids}) ok=$ok")
         }.onFailure { e ->
@@ -642,8 +675,54 @@ object Gestures {
                             Logx.always("测试入口: 收到请求「$v」")
                             main.post {
                                 when {
+                                    v.startsWith("FIRE:") -> fourFingerAddSplit()
                                     v.startsWith("MAKEPAIR:") -> makeSplitPair(v.removePrefix("MAKEPAIR:"))
+                                    v.startsWith("FW:") -> {
+                                        // 把前台应用打成自由窗双分屏（复现用户"先进双分屏"的基座）
+                                        val fg = topTask()
+                                        if (fg != null) {
+                                            val tid = taskIdOf(fg)
+                                            val pk = pkgOf(fg) ?: "?"
+                                            Logx.always("测试入口: openWindowFromFullscreen(top taskId=$tid pkg=$pk)")
+                                            dragToSplit(tid, pk)
+                                        } else {
+                                            Logx.e("测试入口: FW 取不到前台任务")
+                                        }
+                                    }
                                     v.startsWith("ADDSPLIT:") -> addToSplit(v.removePrefix("ADDSPLIT:"))
+                                    v.startsWith("MULTIQ:") -> {
+                                        // 直接驱动 startMultipleSplits(quickView=false)：绕开选择器遮罩，
+                                        // 用来隔离验证"高层多分屏接口产出的应用是否可触摸"（无选择器干扰）
+                                        val ids = v.removePrefix("MULTIQ:")
+                                            .split('|').mapNotNull { it.toIntOrNull() }.filter { it > 0 }
+                                        Logx.always("测试入口: 直接 startMultipleSplits(ids=$ids, quickView=false)")
+                                        startMultipleSplits(ids, null, quickView = false)
+                                    }
+                                    v.startsWith("MULTI:") -> {
+                                        // 直接驱动 startMultipleSplits（绕开 fourFingerAddSplit 的路由判定），
+                                        // 用来隔离验证"高层多分屏接口"本身通不通：MULTI:idA|idB|idC
+                                        val ids = v.removePrefix("MULTI:")
+                                            .split('|').mapNotNull { it.toIntOrNull() }.filter { it > 0 }
+                                        Logx.always("测试入口: 直接 startMultipleSplits(ids=$ids)")
+                                        startMultipleSplits(ids, null)
+                                    }
+                                    v.startsWith("DRAGADD:") -> {
+                                        // 走"原生拖图标进分屏"路径：DRAGADD:<hotAreaType>|<pkg|HOME>
+                                        val rest = v.removePrefix("DRAGADD:")
+                                        val hot = rest.substringBefore('|').trim().toIntOrNull() ?: 1
+                                        val pk = rest.substringAfter('|', "").trim().ifEmpty { null }
+                                        Logx.always("测试入口: dragAddSplit(hot=$hot target=${pk ?: "HOME"}) SoSc=${soScActive()} 多分屏=${splitActive()} 组内=${splitTaskIds()}")
+                                        dragAddSplit(hot, pk)
+                                    }
+                                    v.startsWith("DOCKADD:") -> {
+                                        // 走**系统自己的**"双分屏→三分屏"路径（Dock 模式）：
+                                        // DOCKADD:<pkg|空=只dock>
+                                        //   → MultipleSplitController.dockMultipleSplitTasks(bundle{"multiple_split_dock_task"=RunningTaskInfo})
+                                        //   → 等 dock 过渡完成 → 启动第 N 个应用 → 系统自行 DOCK_EXIT_SOSC_TO_THREE
+                                        val pk = v.removePrefix("DOCKADD:").trim().ifEmpty { null }
+                                        Logx.always("测试入口: dockAddSplit(target=${pk ?: "(仅dock)"}) SoSc=${soScActive()} 多分屏=${splitActive()} 组内=${splitTaskIds()}")
+                                        dockAddSplit(pk)
+                                    }
                                     else -> addToSplit(v)
                                 }
                             }
@@ -689,6 +768,168 @@ object Gestures {
         }.onFailure { e ->
             val root = (e as? java.lang.reflect.InvocationTargetException)?.targetException ?: e
             Logx.e("测试入口: addSplitPair 失败 ${root.javaClass.name}: ${root.message}", root)
+        }
+    }
+
+    /**
+     * 走系统**自己的**「双分屏 → 三分屏（及以上）」路径：**Dock 模式**。
+     *
+     * 用户真机演示 + 框架日志扒出来的真实链路（`Miui-WindowManager-Shell.jar` 反编译确认）：
+     * ```
+     * MultipleSplitController.dockMultipleSplitTasks(bundle{"multiple_split_dock_task": RunningTaskInfo})
+     *   → MultipleSplitRootTaskOrganizer.dockMultipleSplitTasks(Bundle)
+     *        if (mDockedState != null)                       → "Already in dock mode"（忽略）
+     *        if (getCurrentActiveStageCount() >= MAX_STAGES) → "Above max stages"   （忽略）
+     *        if (isMultipleSplitActive())                    → dockMultipleTasks()  // 3分屏→4分屏
+     *        if (SoScUtils.inSoScFullMode())                 → dockSoScTasks()      // 2分屏→3分屏
+     *   → dockSoScTasks(): buildHomeToFront(wct)（桌面移到最前 = "两个任务收起、出现桌面"）
+     *                      setFocusable(soscRoot,false) / mDockedState = new DockedState(...)
+     *                      wct.setDockedState(stageA, 1) / 把 SoSc 根挪到 Rect(-2294,…)（移出屏外）
+     *   → 【启动第 N 个应用】
+     *   → MultipleSplitTransitionHandler.requestOpenToExitDockMode(mode=6, STAGE_C)
+     *        → MultipleSplitUtilsImpl.handleOpenToExitDockMode
+     *        → MultipleSplitRootTaskOrganizer.prepareDragTaskToMultipleSplit  // 建 STAGE_A/B/C
+     *        → playDockChangeAnimation  extraType=DOCK_EXIT_SOSC_TO_THREE(11288)
+     *        → finishEnterMultipleSplit → 原生多分屏落地
+     * ```
+     * 关键：**全程由系统自己建窗/接输入**，所以不会重演 `startMultipleSplits` 那种
+     * "布局对、输入死"（`FocusedWindows: <none>` / `NO_INPUT_CHANNEL`）。
+     *
+     * @param pkg 第 N 个应用包名；为空则只做 dock（供手工选应用）。
+     */
+    private fun dockAddSplit(pkg: String?) {
+        val info = dockParamTaskInfo()
+        if (info == null) {
+            Logx.e("加分屏(dock): 取不到 RunningTaskInfo —— 需要先进入分屏（真 SoSc 双分屏）")
+            return
+        }
+        Logx.always(
+            "加分屏(dock): 参数任务 taskId=${taskIdOf(info)} pkg=${runCatching { pkgOf(info) }.getOrNull()} " +
+                "SoSc=${soScActive()} 多分屏=${splitActive()} 多分屏层数=${stageTaskIds().size}"
+        )
+        val out = runCatching {
+            val ctl = cls(Constants.CLS_MULTITASKING_CTL).getMethod("getInstance").invoke(null)
+                ?: return@runCatching null
+            val sc = ctl.javaClass.getMethod("getMultipleSplitController").invoke(ctl)
+                ?: return@runCatching null
+            val b = android.os.Bundle()
+            b.putParcelable(DOCK_KEY, info as android.os.Parcelable)
+            sc.javaClass.getMethod("dockMultipleSplitTasks", android.os.Bundle::class.java)
+                .invoke(sc, b)
+        }.onFailure { e ->
+            val root = (e as? java.lang.reflect.InvocationTargetException)?.targetException ?: e
+            Logx.e("加分屏(dock)失败: ${root.javaClass.simpleName}: ${root.message}", root)
+        }.getOrNull()
+        Logx.always("加分屏(dock): dockMultipleSplitTasks → $out")
+
+        if (pkg.isNullOrEmpty()) {
+            Logx.always("加分屏(dock): 已进入 dock 态（桌面应已出现），请手工选应用")
+            return
+        }
+        // dock 过渡 ≈ 1s（真机 DOCK_ENTER 在 18:29:08.875→08.877 finish，但 44ms 后才有
+        // updateDockedState，稳妥给 1.2s），之后再启动目标应用，让系统走 DOCK_EXIT_SOSC_TO_THREE。
+        main.postDelayed({
+            runCatching {
+                val ctx = AppCtx.get() ?: return@runCatching
+                val it0 = ctx.packageManager.getLaunchIntentForPackage(pkg) ?: run {
+                    Logx.e("加分屏(dock): 取不到 $pkg 的启动 Intent")
+                    return@runCatching
+                }
+                it0.addFlags(
+                    android.content.Intent.FLAG_ACTIVITY_NEW_TASK or
+                        android.content.Intent.FLAG_ACTIVITY_MULTIPLE_TASK
+                )
+                ctx.startActivity(it0)
+                Logx.always("加分屏(dock): 已启动 $pkg，等待系统 DOCK_EXIT_SOSC_TO_THREE")
+            }.onFailure { Logx.e("加分屏(dock): 启动 $pkg 失败", it) }
+        }, 1200)
+    }
+
+    /**
+     * 取一个 `ActivityManager.RunningTaskInfo` 塞进 dock bundle。
+     *
+     * 真机日志里 MIUI 传的是**分屏内已有子任务**（`dockMultipleSplitTasks: TaskInfo{taskId=7705}`，
+     * 7705 就是当时分屏里的日历）。这里依次尝试：当前分屏子任务 → SoSc 根任务 → 前台任务。
+     */
+    private fun dockParamTaskInfo(): Any? {
+        runCatching {
+            val repo = taskRepo() ?: return@runCatching
+            val l = repo.javaClass.getMethod("getVisibleSplitChildTaskInfo").invoke(repo) as? List<*>
+            l?.firstOrNull { it != null }?.let { return unwrap(it) }
+        }
+        runCatching {
+            val soc = socUtils() ?: return@runCatching
+            val t = soc.javaClass.getMethod("getSplitRootTaskInfo").invoke(soc)
+            if (t != null) return unwrap(t)
+        }
+        return topTask()
+    }
+
+    /** `MultipleSplitRootTaskOrganizer.dockMultipleSplitTasks` 唯一读取的 Bundle key。 */
+    private const val DOCK_KEY = "multiple_split_dock_task"
+
+    /**
+     * 走系统**原生**「拖图标到分屏热区」入口：
+     * `MulWinSwitchTransition#startIconDragSplitScreen(PendingIntent, hotAreaType, reason)`。
+     *
+     * 这才是 MIUI 自己「在分屏里再加一个」的真实路径（SoSc 2 分屏 → 多分屏），
+     * 由系统自己跑 transition、建 SoSc 状态、接输入通道 —— 避免了直调 startMultipleSplits
+     * 产出的"空壳窗口"（无输入通道 / NOT_TOUCHABLE / PAUSE_DISPATCHING，实测点不动）。
+     *
+     * hotAreaType（MultiTaskingHotAreaController）：0=全屏 1=SPLIT_LEFT_OR_TOP 2=SPLIT_RIGHT_OR_BOTTOM
+     * 3=FREEFORM 4=BAR_OPEN 5=FREEFORM_MINI 6=MULTIPLE_SPLIT 7=SPLIT_QUICK_VIEW_MODE
+     * 8/9/10=TWOSPLIT_INSET_LEFT/MIDDLE/RIGHT 16=MULTIPLE_SPLIT_REPLACE 19=MULTIPLE_SPLIT_ADD。
+     * reason 传 0。
+     */
+    private fun dragAddSplit(hotArea: Int, pkg: String?) {
+        // `startIconDragSplitScreen` 内部会跑 transition，有线程断言
+        //（`HandlerExecutor.assertCurrentThread()`，真机：`IllegalStateException: must be called on Handler`）。
+        // 因此与 dragToSplit 一致，投到 MIUI 自己的 Transitions.mainExecutor 上执行。
+        val body = Runnable { dragAddSplitInternal(hotArea, pkg) }
+        val posted = runCatching {
+            val ctl0 = cls(Constants.CLS_MULTITASKING_CTL).getMethod("getInstance").invoke(null) ?: return@runCatching false
+            val trans0 = ctl0.javaClass.getMethod("getMulWinSwitchTransition").invoke(ctl0) ?: return@runCatching false
+            val tr = declaredField(trans0, "mTransitions") ?: declaredField(ctl0, "mTransitions") ?: return@runCatching false
+            val exec = tr.javaClass.getMethod("getMainExecutor").invoke(tr) as? java.util.concurrent.Executor
+                ?: return@runCatching false
+            exec.execute(body)
+            Logx.always("加分屏(drag): 已投递到 Transitions.mainExecutor（hot=$hotArea target=${pkg ?: "HOME"}）")
+            true
+        }.getOrDefault(false)
+        if (!posted) {
+            Logx.always("加分屏(drag): 取不到 Transitions.mainExecutor，改在主线程执行")
+            main.post(body)
+        }
+    }
+
+    private fun dragAddSplitInternal(hotArea: Int, pkg: String?) {
+        runCatching {
+            val ctx = AppCtx.get() ?: return@runCatching
+            val ctl = cls(Constants.CLS_MULTITASKING_CTL).getMethod("getInstance").invoke(null) ?: return@runCatching
+            val trans = ctl.javaClass.getMethod("getMulWinSwitchTransition").invoke(ctl) ?: return@runCatching
+            val launch: android.content.Intent = if (pkg.isNullOrEmpty()) {
+                android.content.Intent(android.content.Intent.ACTION_MAIN).apply {
+                    addCategory(android.content.Intent.CATEGORY_HOME)
+                }
+            } else {
+                ctx.packageManager.getLaunchIntentForPackage(pkg) ?: run {
+                    Logx.e("加分屏(drag): 取不到 $pkg 的启动 Intent")
+                    return@runCatching
+                }
+            }
+            launch.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+            val pi = android.app.PendingIntent.getActivity(
+                ctx, 0, launch,
+                android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
+            )
+            trans.javaClass.getMethod(
+                "startIconDragSplitScreen",
+                android.app.PendingIntent::class.java, Integer.TYPE, Integer.TYPE
+            ).invoke(trans, pi, Integer.valueOf(hotArea), Integer.valueOf(0))
+            Logx.always("加分屏(drag): startIconDragSplitScreen(hot=$hotArea target=${pkg ?: "HOME"}) 已调用")
+        }.onFailure { e ->
+            val root = (e as? java.lang.reflect.InvocationTargetException)?.targetException ?: e
+            Logx.e("加分屏(drag)失败: ${root.javaClass.simpleName}: ${root.message}", root)
         }
     }
 
@@ -796,12 +1037,15 @@ object Gestures {
             }
 
             if (!splitActive() && soScActive()) {
-                runCatching {
-                    sc.javaClass.getMethod(
-                        "transferSoScToMultipleSplit", java.util.List::class.java, java.util.List::class.java
-                    ).invoke(sc, group, group.map { Integer.valueOf(0) })
-                    Logx.always("加分屏: 已请求 SoSc → 多分屏转换（${group.size} 个）")
-                }.onFailure { Logx.e("加分屏: SoSc→多分屏转换失败，继续试直插", it) }
+                // SoSc 双分屏 → 多分屏：直接用高层 startMultipleSplits 把"现有分组 + 新应用"一起铺成多分屏。
+                // 之前尝试的 transferSoScToMultipleSplit(group, group.map{0}) 第二个参数系统要的是
+                // AbsSplitStageTaskListener 列表（不是 Integer），实测会抛 ClassCastException，
+                // 且该方法依赖系统拖拽上下文，从模块进程直接调不稳。startMultipleSplits 走 AIDL、
+                // 由系统自己铺 stage，更可靠。
+                val combined = ArrayList<Int>(group).apply { if (taskId > 0) add(taskId) }
+                Logx.always("加分屏: SoSc→多分屏 改走 startMultipleSplits(ids=$combined, quickView=false)")
+                startMultipleSplits(combined, null, quickView = false)
+                return@runCatching
             }
 
             // WindowContainerTransaction 是 @hide，编译期看不到 → 运行时取
@@ -911,6 +1155,28 @@ object Gestures {
             l?.let { return it.filterNotNull().map { t -> unwrap(t) } }
         }
         return emptyList()
+    }
+
+    /**
+     * 当前以「自由小窗 / 多窗口」(windowingMode 5/6) 存在的任务 id。
+     *
+     * 模块的"双分屏"首步用 `openWindowFromFullscreen` 把前台应用打成 mode=6 的自由半屏，
+     * 它**不是**原生 SoSc / 多分屏（`soScActive()`/`splitActive()` 都 false），但用户确实处于
+     * "半屏应用 + 另一侧桌面/选择"的二分布局。要把它升级成三分屏，四指上滑必须能识别这种状态、
+     * 把这些自由窗任务当作基础交给 `startMultipleSplits`，再由系统弹选择器补剩下的槽位。
+     */
+    private fun freeformTasks(): List<Int> {
+        val out = ArrayList<Int>()
+        runCatching {
+            for (t in allTasks()) {
+                val id = taskIdOf(t)
+                val mode = modeOf(t)
+                if (id > 0 && (mode == 5 || mode == 6)) out.add(id)
+            }
+        }
+        val seen = LinkedHashSet<Int>(); val res = ArrayList<Int>()
+        for (i in out) if (seen.add(i)) res.add(i)
+        return res
     }
 
     // ---------------- 任务 / 分屏查询 ----------------

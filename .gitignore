@@ -1,9 +1,35 @@
-# 构建产物 / 依赖工具 / 逆向产物 / 签名密钥（都不入库）
+# ── 构建产物 / 签名密钥（不入库）─────────────────────────────
 build/
-dist/*.idsig
-dist/*.apk
-recon/
-keystore/
-tools/
+/dist/*.idsig
+/dist/*.apk
+/dist/*.bundle
+/keystore/
 .env
-dist/*.bundle
+
+# ── 重型逆向产物（体积大，按需本地重生成）────────────────────
+# 反编译出的 dex 反汇编（fw/dex_*.txt 可达 150MB）、框架 jar、原始抓取
+/recon/
+fw/
+tools/tmp/
+*.jar
+!app/libs/*.jar
+cap_demo.txt
+trace_all.txt
+
+# ── 设备侧大日志与截图（不入库）─────────────────────────────
+# 原始 logcat 抓取 64MB+；截图数百 KB~MB 级
+/logs/
+*.png
+*.jpg
+*.jpeg
+anr*.txt
+mod_clean.log
+module_readable.log
+*_decoded.log
+
+# ── 测试运行时输出（脚本产物，非源码）───────────────────────
+/_out/
+t17_*.png
+t17_*.txt
+small_*.png
+frame*.txt

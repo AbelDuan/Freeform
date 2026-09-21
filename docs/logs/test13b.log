@@ -1,0 +1,99 @@
+[17:58:00] === TEST13 START ===
+[17:58:21] ids cal=7568 coolapk=7575 calc=7570
+[17:58:22] --- MAKEPAIR:7568|7575 ---
+[17:58:33]   fwin:   FocusedWindows:     displayId=0, name='15fb981 com.miui.calculator/com.miui.calculator.cal.CalculatorActivity'   FocusRequests: --   FocusedWindows: <none>   FocusRequests:     displayId=0, name='e4695fd com.abel.os4freeformx/com.abel.os4freeformx.SettingsActivity' result='NO_WINDOW' 
+[17:58:36]   appcfg:       17: name=e877f com.android.calendar/com.android.calendar.homepage.AllInOneActivity, id=67572, displayId=0, inputConfig=NO_INPUT_CHANNEL | NOT_FO       25: name=2909074 com.android.deskclock/com.android.deskclock.DeskClockTabActivity, id=67508, displayId=0, inputConfig=NO_INPUT_CHANNEL | NOT_FOC 
+[17:58:37] --- DRAGADD:1|com.miui.calculator ---
+[17:58:47]   fwin:   FocusedWindows:     displayId=0, name='15fb981 com.miui.calculator/com.miui.calculator.cal.CalculatorActivity'   FocusRequests: --   FocusedWindows: <none>   FocusRequests:     displayId=0, name='e4695fd com.abel.os4freeformx/com.abel.os4freeformx.SettingsActivity' result='NO_WINDOW' 
+[17:58:50]   appcfg:       17: name=e877f com.android.calendar/com.android.calendar.homepage.AllInOneActivity, id=67572, displayId=0, inputConfig=NO_INPUT_CHANNEL | NOT_FO       25: name=2909074 com.android.deskclock/com.android.deskclock.DeskClockTabActivity, id=67508, displayId=0, inputConfig=NO_INPUT_CHANNEL | NOT_FOC 
+[17:58:58] --- DRAGADD:9|com.miui.calculator ---
+[17:59:09]   fwin:   FocusedWindows:     displayId=0, name='c40f465 com.miui.home/com.miui.home.launcher.Launcher'   FocusRequests: --   FocusedWindows: <none>   FocusRequests:     displayId=0, name='e4695fd com.abel.os4freeformx/com.abel.os4freeformx.SettingsActivity' result='NO_WINDOW' 
+[17:59:12]   appcfg:       17: name=e877f com.android.calendar/com.android.calendar.homepage.AllInOneActivity, id=67572, displayId=0, inputConfig=NO_INPUT_CHANNEL | NOT_FO       25: name=2909074 com.android.deskclock/com.android.deskclock.DeskClockTabActivity, id=67508, displayId=0, inputConfig=NO_INPUT_CHANNEL | NOT_FOC 
+[17:59:20] --- DRAGADD:7|com.miui.calculator ---
+[17:59:31]   fwin:   FocusedWindows:     displayId=0, name='c40f465 com.miui.home/com.miui.home.launcher.Launcher'   FocusRequests: --   FocusedWindows: <none>   FocusRequests:     displayId=0, name='e4695fd com.abel.os4freeformx/com.abel.os4freeformx.SettingsActivity' result='NO_WINDOW' 
+[17:59:34]   appcfg:       17: name=e877f com.android.calendar/com.android.calendar.homepage.AllInOneActivity, id=67572, displayId=0, inputConfig=NO_INPUT_CHANNEL | NOT_FO       25: name=2909074 com.android.deskclock/com.android.deskclock.DeskClockTabActivity, id=67508, displayId=0, inputConfig=NO_INPUT_CHANNEL | NOT_FOC 
+[17:59:42] --- DRAGADD:19|com.miui.calculator ---
+[17:59:54]   fwin:   FocusedWindows:     displayId=0, name='c40f465 com.miui.home/com.miui.home.launcher.Launcher'   FocusRequests: --   FocusedWindows: <none>   FocusRequests:     displayId=0, name='e4695fd com.abel.os4freeformx/com.abel.os4freeformx.SettingsActivity' result='NO_WINDOW' 
+[17:59:56]   appcfg:       17: name=e877f com.android.calendar/com.android.calendar.homepage.AllInOneActivity, id=67572, displayId=0, inputConfig=NO_INPUT_CHANNEL | NOT_FO       25: name=2909074 com.android.deskclock/com.android.deskclock.DeskClockTabActivity, id=67508, displayId=0, inputConfig=NO_INPUT_CHANNEL | NOT_FOC 
+----- MODLOG -----
+09-21 17:58:50.412 I/OS4FreeFromX(  911): 沉浸: task=7570 栏隐藏=true (MiuiDotView#24212492)
+09-21 17:58:51.265 I/OS4FreeFromX(  911): 关闭时兜底记录: task=7570 pkg=com.miui.calculator bounds=Rect(0, 0 - 2364, 1672)
+09-21 17:58:53.049 I/OS4FreeFromX(  911): 测试入口: 收到请求「MAKEPAIR:7568|7575」
+09-21 17:58:53.049 I/OS4FreeFromX(  911): 测试入口: addSplitPair(7568, 7575) 之前 SoSc=true 多分屏=false
+09-21 17:58:53.051 I/OS4FreeFromX(  911): 测试入口: addSplitPair 已调用
+09-21 17:58:59.060 I/OS4FreeFromX(  911): 测试入口: 收到请求「DRAGADD:9|com.miui.calculator」
+09-21 17:58:59.063 I/OS4FreeFromX(  911): 测试入口: dragAddSplit(hot=9 target=com.miui.calculator) SoSc=true 多分屏=false 组内=[]
+09-21 17:58:59.076 E/OS4FreeFromX(  911): 加分屏(drag)失败: IllegalStateException: must be called on Handler (android.os.Handler) {caa4b63}
+09-21 17:58:59.076 E/OS4FreeFromX(  911): java.lang.IllegalStateException: must be called on Handler (android.os.Handler) {caa4b63}
+09-21 17:58:59.076 E/OS4FreeFromX(  911): 	at com.android.wm.shell.common.HandlerExecutor.assertCurrentThread(go/retraceme 56a62e231b6a9b8f4b7c830da878a208e3d78e9b7dcaebeb7041ec26c1b0b959:31)
+09-21 17:58:59.076 E/OS4FreeFromX(  911): 	at com.android.wm.shell.transition.Transitions.startTransition(go/retraceme 56a62e231b6a9b8f4b7c830da878a208e3d78e9b7dcaebeb7041ec26c1b0b959:2)
+09-21 17:58:59.076 E/OS4FreeFromX(  911): 	at com.android.wm.shell.multitasking.miuimultiwinswitch.MulWinSwitchTransition.startTransition(go/retraceme 56a62e231b6a9b8f4b7c830da878a208e3d78e9b7dcaebeb7041ec26c1b0b959:100)
+09-21 17:58:59.076 E/OS4FreeFromX(  911): 	at com.android.wm.shell.multitasking.miuimultiwinswitch.MulWinSwitchTransition.startIconDragSplitScreen(go/retraceme 56a62e231b6a9b8f4b7c830da878a208e3d78e9b7dcaebeb7041ec26c1b0b959:104)
+09-21 17:58:59.076 E/OS4FreeFromX(  911): 	at java.lang.reflect.Method.invoke(Native Method)
+09-21 17:58:59.076 E/OS4FreeFromX(  911): 	at com.abel.os4freeformx.Gestures.dragAddSplit(Gestures.kt:801)
+09-21 17:58:59.076 E/OS4FreeFromX(  911): 	at com.abel.os4freeformx.Gestures.watchTestHook$lambda$58$lambda$57$lambda$55(Gestures.kt:715)
+09-21 17:58:59.076 E/OS4FreeFromX(  911): 	at com.abel.os4freeformx.Gestures.$r8$lambda$K5BMq_aItI129ewlJi9T18nniAw(Gestures.kt:0)
+09-21 17:58:59.076 E/OS4FreeFromX(  911): 	at com.abel.os4freeformx.Gestures$$ExternalSyntheticLambda5.run(D8$$SyntheticClass:0)
+09-21 17:58:59.076 E/OS4FreeFromX(  911): 	at android.os.Handler.handleCallback(Handler.java:1129)
+09-21 17:58:59.076 E/OS4FreeFromX(  911): 	at android.os.Handler.dispatchMessageImpl(Handler.java:139)
+09-21 17:58:59.076 E/OS4FreeFromX(  911): 	at android.os.Handler.dispatchMessage(Handler.java:129)
+09-21 17:58:59.076 E/OS4FreeFromX(  911): 	at android.os.Looper.loopOnce(Looper.java:315)
+09-21 17:58:59.076 E/OS4FreeFromX(  911): 	at android.os.Looper.loop(Looper.java:419)
+09-21 17:58:59.076 E/OS4FreeFromX(  911): 	at android.app.ActivityThread.main(ActivityThread.java:10832)
+09-21 17:58:59.076 E/OS4FreeFromX(  911): 	at java.lang.reflect.Method.invoke(Native Method)
+09-21 17:58:59.076 E/OS4FreeFromX(  911): 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:598)
+09-21 17:58:59.076 E/OS4FreeFromX(  911): 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:1150)
+09-21 17:59:15.597 I/OS4FreeFromX(  911): 测试入口: 收到请求「MAKEPAIR:7568|7575」
+09-21 17:59:15.598 I/OS4FreeFromX(  911): 测试入口: addSplitPair(7568, 7575) 之前 SoSc=true 多分屏=false
+09-21 17:59:15.601 I/OS4FreeFromX(  911): 测试入口: addSplitPair 已调用
+09-21 17:59:21.617 I/OS4FreeFromX(  911): 测试入口: 收到请求「DRAGADD:7|com.miui.calculator」
+09-21 17:59:21.619 I/OS4FreeFromX(  911): 测试入口: dragAddSplit(hot=7 target=com.miui.calculator) SoSc=true 多分屏=false 组内=[]
+09-21 17:59:21.629 E/OS4FreeFromX(  911): 加分屏(drag)失败: IllegalStateException: must be called on Handler (android.os.Handler) {caa4b63}
+09-21 17:59:21.629 E/OS4FreeFromX(  911): java.lang.IllegalStateException: must be called on Handler (android.os.Handler) {caa4b63}
+09-21 17:59:21.629 E/OS4FreeFromX(  911): 	at com.android.wm.shell.common.HandlerExecutor.assertCurrentThread(go/retraceme 56a62e231b6a9b8f4b7c830da878a208e3d78e9b7dcaebeb7041ec26c1b0b959:31)
+09-21 17:59:21.629 E/OS4FreeFromX(  911): 	at com.android.wm.shell.transition.Transitions.startTransition(go/retraceme 56a62e231b6a9b8f4b7c830da878a208e3d78e9b7dcaebeb7041ec26c1b0b959:2)
+09-21 17:59:21.629 E/OS4FreeFromX(  911): 	at com.android.wm.shell.multitasking.miuimultiwinswitch.MulWinSwitchTransition.startTransition(go/retraceme 56a62e231b6a9b8f4b7c830da878a208e3d78e9b7dcaebeb7041ec26c1b0b959:100)
+09-21 17:59:21.629 E/OS4FreeFromX(  911): 	at com.android.wm.shell.multitasking.miuimultiwinswitch.MulWinSwitchTransition.startIconDragSplitScreen(go/retraceme 56a62e231b6a9b8f4b7c830da878a208e3d78e9b7dcaebeb7041ec26c1b0b959:104)
+09-21 17:59:21.629 E/OS4FreeFromX(  911): 	at java.lang.reflect.Method.invoke(Native Method)
+09-21 17:59:21.629 E/OS4FreeFromX(  911): 	at com.abel.os4freeformx.Gestures.dragAddSplit(Gestures.kt:801)
+09-21 17:59:21.629 E/OS4FreeFromX(  911): 	at com.abel.os4freeformx.Gestures.watchTestHook$lambda$58$lambda$57$lambda$55(Gestures.kt:715)
+09-21 17:59:21.629 E/OS4FreeFromX(  911): 	at com.abel.os4freeformx.Gestures.$r8$lambda$K5BMq_aItI129ewlJi9T18nniAw(Gestures.kt:0)
+09-21 17:59:21.629 E/OS4FreeFromX(  911): 	at com.abel.os4freeformx.Gestures$$ExternalSyntheticLambda5.run(D8$$SyntheticClass:0)
+09-21 17:59:21.629 E/OS4FreeFromX(  911): 	at android.os.Handler.handleCallback(Handler.java:1129)
+09-21 17:59:21.629 E/OS4FreeFromX(  911): 	at android.os.Handler.dispatchMessageImpl(Handler.java:139)
+09-21 17:59:21.629 E/OS4FreeFromX(  911): 	at android.os.Handler.dispatchMessage(Handler.java:129)
+09-21 17:59:21.629 E/OS4FreeFromX(  911): 	at android.os.Looper.loopOnce(Looper.java:315)
+09-21 17:59:21.629 E/OS4FreeFromX(  911): 	at android.os.Looper.loop(Looper.java:419)
+09-21 17:59:21.629 E/OS4FreeFromX(  911): 	at android.app.ActivityThread.main(ActivityThread.java:10832)
+09-21 17:59:21.629 E/OS4FreeFromX(  911): 	at java.lang.reflect.Method.invoke(Native Method)
+09-21 17:59:21.629 E/OS4FreeFromX(  911): 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:598)
+09-21 17:59:21.629 E/OS4FreeFromX(  911): 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:1150)
+09-21 17:59:38.160 I/OS4FreeFromX(  911): 测试入口: 收到请求「MAKEPAIR:7568|7575」
+09-21 17:59:38.163 I/OS4FreeFromX(  911): 测试入口: addSplitPair(7568, 7575) 之前 SoSc=true 多分屏=false
+09-21 17:59:38.166 I/OS4FreeFromX(  911): 测试入口: addSplitPair 已调用
+09-21 17:59:44.177 I/OS4FreeFromX(  911): 测试入口: 收到请求「DRAGADD:19|com.miui.calculator」
+09-21 17:59:44.178 I/OS4FreeFromX(  911): 测试入口: dragAddSplit(hot=19 target=com.miui.calculator) SoSc=true 多分屏=false 组内=[]
+09-21 17:59:44.186 E/OS4FreeFromX(  911): 加分屏(drag)失败: IllegalStateException: must be called on Handler (android.os.Handler) {caa4b63}
+09-21 17:59:44.186 E/OS4FreeFromX(  911): java.lang.IllegalStateException: must be called on Handler (android.os.Handler) {caa4b63}
+09-21 17:59:44.186 E/OS4FreeFromX(  911): 	at com.android.wm.shell.common.HandlerExecutor.assertCurrentThread(go/retraceme 56a62e231b6a9b8f4b7c830da878a208e3d78e9b7dcaebeb7041ec26c1b0b959:31)
+09-21 17:59:44.186 E/OS4FreeFromX(  911): 	at com.android.wm.shell.transition.Transitions.startTransition(go/retraceme 56a62e231b6a9b8f4b7c830da878a208e3d78e9b7dcaebeb7041ec26c1b0b959:2)
+09-21 17:59:44.186 E/OS4FreeFromX(  911): 	at com.android.wm.shell.multitasking.miuimultiwinswitch.MulWinSwitchTransition.startTransition(go/retraceme 56a62e231b6a9b8f4b7c830da878a208e3d78e9b7dcaebeb7041ec26c1b0b959:100)
+09-21 17:59:44.186 E/OS4FreeFromX(  911): 	at com.android.wm.shell.multitasking.miuimultiwinswitch.MulWinSwitchTransition.startIconDragSplitScreen(go/retraceme 56a62e231b6a9b8f4b7c830da878a208e3d78e9b7dcaebeb7041ec26c1b0b959:104)
+09-21 17:59:44.186 E/OS4FreeFromX(  911): 	at java.lang.reflect.Method.invoke(Native Method)
+09-21 17:59:44.186 E/OS4FreeFromX(  911): 	at com.abel.os4freeformx.Gestures.dragAddSplit(Gestures.kt:801)
+09-21 17:59:44.186 E/OS4FreeFromX(  911): 	at com.abel.os4freeformx.Gestures.watchTestHook$lambda$58$lambda$57$lambda$55(Gestures.kt:715)
+09-21 17:59:44.186 E/OS4FreeFromX(  911): 	at com.abel.os4freeformx.Gestures.$r8$lambda$K5BMq_aItI129ewlJi9T18nniAw(Gestures.kt:0)
+09-21 17:59:44.186 E/OS4FreeFromX(  911): 	at com.abel.os4freeformx.Gestures$$ExternalSyntheticLambda5.run(D8$$SyntheticClass:0)
+09-21 17:59:44.186 E/OS4FreeFromX(  911): 	at android.os.Handler.handleCallback(Handler.java:1129)
+09-21 17:59:44.186 E/OS4FreeFromX(  911): 	at android.os.Handler.dispatchMessageImpl(Handler.java:139)
+09-21 17:59:44.186 E/OS4FreeFromX(  911): 	at android.os.Handler.dispatchMessage(Handler.java:129)
+09-21 17:59:44.186 E/OS4FreeFromX(  911): 	at android.os.Looper.loopOnce(Looper.java:315)
+09-21 17:59:44.186 E/OS4FreeFromX(  911): 	at android.os.Looper.loop(Looper.java:419)
+09-21 17:59:44.186 E/OS4FreeFromX(  911): 	at android.app.ActivityThread.main(ActivityThread.java:10832)
+09-21 17:59:44.186 E/OS4FreeFromX(  911): 	at java.lang.reflect.Method.invoke(Native Method)
+09-21 17:59:44.186 E/OS4FreeFromX(  911): 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:598)
+09-21 17:59:44.186 E/OS4FreeFromX(  911): 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:1150)
+09-21 18:00:00.718 I/OS4FreeFromX(  911): 测试入口: 收到请求「MAKEPAIR:7568|7575」
+09-21 18:00:00.719 I/OS4FreeFromX(  911): 测试入口: addSplitPair(7568, 7575) 之前 SoSc=true 多分屏=false
+09-21 18:00:00.728 I/OS4FreeFromX(  911): 测试入口: addSplitPair 已调用
+[18:00:05] === TEST13 END ===

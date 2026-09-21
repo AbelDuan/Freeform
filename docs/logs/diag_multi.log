@@ -1,0 +1,80 @@
+﻿
+[15:38:51] === DIAG START ===
+[15:38:51] BASELINE SystemUI pid=30702
+[15:38:54] --- FIRE#1 (single->double) ---
+[15:38:59] after-fire1 : SystemUI pid=30702 (stable)
+--------- beginning of main
+09-21 15:38:52.271 I/OS4FreeFromX(30702): 娌夋蹈: task=7437 鏍忛殣钘?true (MiuiDotView#246002631)
+09-21 15:38:52.280 I/OS4FreeFromX(30702): 灏忕獥甯冨眬: task=7440 mode=1 pkg=com.android.settings bounds=Rect(0, 0 - 2364, 1672)
+09-21 15:38:53.039 I/OS4FreeFromX(30702): 娌夋蹈: task=7440 鏍忛殣钘?true (MiuiDotView#230588987)
+09-21 15:38:53.118 I/OS4FreeFromX(30702): 娌夋蹈: task=7440 鏍忛殣钘?true (MiuiDotView#230588987)
+09-21 15:38:54.448 I/OS4FreeFromX(30702): 娌夋蹈: task=7437 鏍忛殣钘?true (MiuiDotView#223150834)
+09-21 15:38:54.462 I/OS4FreeFromX(30702): 娌夋蹈: task=7437 鏍忛殣钘?true (MiuiDotView#223150834)
+09-21 15:38:54.754 I/OS4FreeFromX(30702): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:38:54.757 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: SoSc=false(-1) 澶氬垎灞?false 缁勫唴=[] shell宸茬煡=20 鍓嶅彴=com.microsoft.emmx/7437/mode=1
+09-21 15:38:54.757 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=false 褰撳墠灞傛暟=1 缁勫唴=[]
+09-21 15:38:54.757 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 鍗曚换鍔?鈫?璋?*鍙屽垎灞?*鎺ュ彛锛堝墠鍙?pkg=com.microsoft.emmx task=7437锛?
+09-21 15:38:54.758 I/OS4FreeFromX(30702): 杩涘垎灞? 宸叉姇閫掑埌 Transitions.mainExecutor锛坱ask=7437 pkg=com.microsoft.emmx锛?
+09-21 15:38:54.798 I/OS4FreeFromX(30702): 杩涘垎灞? 宸茶姹?openWindowFromFullscreen(task=7437 pkg=com.microsoft.emmx)
+09-21 15:38:54.809 I/OS4FreeFromX(30702): 灏忕獥甯冨眬: task=7437 mode=6 pkg=com.microsoft.emmx bounds=Rect(1194, 0 - 2364, 1672)
+09-21 15:38:54.809 I/OS4FreeFromX(30702): 娌夋蹈: task=7437 鏍忛殣钘?true (MiuiDotView#223150834)
+09-21 15:38:54.814 I/OS4FreeFromX(30702): 灏忕獥甯冨眬: task=7393 mode=1 pkg=com.microsoft.emmx bounds=Rect(0, 0 - 2364, 1672)
+09-21 15:38:54.888 I/OS4FreeFromX(30702): 娌夋蹈: task=7437 鏍忛殣钘?true (MiuiDotView#223150834)
+09-21 15:38:54.889 I/OS4FreeFromX(30702): 娌夋蹈: task=7437 鏍忛殣钘?true (MiuiBottomBarView#114753751)
+[15:38:59] module log dumped [fire1]
+[15:38:59] --- FIRE#2 (double->triple) ---
+[15:39:05] after-fire2 : SystemUI pid=30702 (stable)
+--------- beginning of main
+09-21 15:38:52.271 I/OS4FreeFromX(30702): 娌夋蹈: task=7437 鏍忛殣钘?true (MiuiDotView#246002631)
+09-21 15:38:52.280 I/OS4FreeFromX(30702): 灏忕獥甯冨眬: task=7440 mode=1 pkg=com.android.settings bounds=Rect(0, 0 - 2364, 1672)
+09-21 15:38:53.039 I/OS4FreeFromX(30702): 娌夋蹈: task=7440 鏍忛殣钘?true (MiuiDotView#230588987)
+09-21 15:38:53.118 I/OS4FreeFromX(30702): 娌夋蹈: task=7440 鏍忛殣钘?true (MiuiDotView#230588987)
+09-21 15:38:54.448 I/OS4FreeFromX(30702): 娌夋蹈: task=7437 鏍忛殣钘?true (MiuiDotView#223150834)
+09-21 15:38:54.462 I/OS4FreeFromX(30702): 娌夋蹈: task=7437 鏍忛殣钘?true (MiuiDotView#223150834)
+09-21 15:38:54.754 I/OS4FreeFromX(30702): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:38:54.757 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: SoSc=false(-1) 澶氬垎灞?false 缁勫唴=[] shell宸茬煡=20 鍓嶅彴=com.microsoft.emmx/7437/mode=1
+09-21 15:38:54.757 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=false 褰撳墠灞傛暟=1 缁勫唴=[]
+09-21 15:38:54.757 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 鍗曚换鍔?鈫?璋?*鍙屽垎灞?*鎺ュ彛锛堝墠鍙?pkg=com.microsoft.emmx task=7437锛?
+09-21 15:38:54.758 I/OS4FreeFromX(30702): 杩涘垎灞? 宸叉姇閫掑埌 Transitions.mainExecutor锛坱ask=7437 pkg=com.microsoft.emmx锛?
+09-21 15:38:54.798 I/OS4FreeFromX(30702): 杩涘垎灞? 宸茶姹?openWindowFromFullscreen(task=7437 pkg=com.microsoft.emmx)
+09-21 15:38:54.809 I/OS4FreeFromX(30702): 灏忕獥甯冨眬: task=7437 mode=6 pkg=com.microsoft.emmx bounds=Rect(1194, 0 - 2364, 1672)
+09-21 15:38:54.809 I/OS4FreeFromX(30702): 娌夋蹈: task=7437 鏍忛殣钘?true (MiuiDotView#223150834)
+09-21 15:38:54.814 I/OS4FreeFromX(30702): 灏忕獥甯冨眬: task=7393 mode=1 pkg=com.microsoft.emmx bounds=Rect(0, 0 - 2364, 1672)
+09-21 15:38:54.888 I/OS4FreeFromX(30702): 娌夋蹈: task=7437 鏍忛殣钘?true (MiuiDotView#223150834)
+09-21 15:38:54.889 I/OS4FreeFromX(30702): 娌夋蹈: task=7437 鏍忛殣钘?true (MiuiBottomBarView#114753751)
+09-21 15:39:00.770 I/OS4FreeFromX(30702): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:39:00.775 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: SoSc=false(-1) 澶氬垎灞?false 缁勫唴=[] shell宸茬煡=19 鍓嶅彴=null/-1/mode=-1
+09-21 15:39:00.776 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=false 褰撳墠灞傛暟=1 缁勫唴=[]
+09-21 15:39:00.776 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 鍙栦笉鍒板墠鍙颁换鍔★紝鏀惧純
+[15:39:05] module log dumped [fire2]
+[15:39:05] --- FIRE#3 (triple->quad) ---
+[15:39:10] after-fire3 : SystemUI pid=30702 (stable)
+--------- beginning of main
+09-21 15:38:52.271 I/OS4FreeFromX(30702): 娌夋蹈: task=7437 鏍忛殣钘?true (MiuiDotView#246002631)
+09-21 15:38:52.280 I/OS4FreeFromX(30702): 灏忕獥甯冨眬: task=7440 mode=1 pkg=com.android.settings bounds=Rect(0, 0 - 2364, 1672)
+09-21 15:38:53.039 I/OS4FreeFromX(30702): 娌夋蹈: task=7440 鏍忛殣钘?true (MiuiDotView#230588987)
+09-21 15:38:53.118 I/OS4FreeFromX(30702): 娌夋蹈: task=7440 鏍忛殣钘?true (MiuiDotView#230588987)
+09-21 15:38:54.448 I/OS4FreeFromX(30702): 娌夋蹈: task=7437 鏍忛殣钘?true (MiuiDotView#223150834)
+09-21 15:38:54.462 I/OS4FreeFromX(30702): 娌夋蹈: task=7437 鏍忛殣钘?true (MiuiDotView#223150834)
+09-21 15:38:54.754 I/OS4FreeFromX(30702): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:38:54.757 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: SoSc=false(-1) 澶氬垎灞?false 缁勫唴=[] shell宸茬煡=20 鍓嶅彴=com.microsoft.emmx/7437/mode=1
+09-21 15:38:54.757 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=false 褰撳墠灞傛暟=1 缁勫唴=[]
+09-21 15:38:54.757 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 鍗曚换鍔?鈫?璋?*鍙屽垎灞?*鎺ュ彛锛堝墠鍙?pkg=com.microsoft.emmx task=7437锛?
+09-21 15:38:54.758 I/OS4FreeFromX(30702): 杩涘垎灞? 宸叉姇閫掑埌 Transitions.mainExecutor锛坱ask=7437 pkg=com.microsoft.emmx锛?
+09-21 15:38:54.798 I/OS4FreeFromX(30702): 杩涘垎灞? 宸茶姹?openWindowFromFullscreen(task=7437 pkg=com.microsoft.emmx)
+09-21 15:38:54.809 I/OS4FreeFromX(30702): 灏忕獥甯冨眬: task=7437 mode=6 pkg=com.microsoft.emmx bounds=Rect(1194, 0 - 2364, 1672)
+09-21 15:38:54.809 I/OS4FreeFromX(30702): 娌夋蹈: task=7437 鏍忛殣钘?true (MiuiDotView#223150834)
+09-21 15:38:54.814 I/OS4FreeFromX(30702): 灏忕獥甯冨眬: task=7393 mode=1 pkg=com.microsoft.emmx bounds=Rect(0, 0 - 2364, 1672)
+09-21 15:38:54.888 I/OS4FreeFromX(30702): 娌夋蹈: task=7437 鏍忛殣钘?true (MiuiDotView#223150834)
+09-21 15:38:54.889 I/OS4FreeFromX(30702): 娌夋蹈: task=7437 鏍忛殣钘?true (MiuiBottomBarView#114753751)
+09-21 15:39:00.770 I/OS4FreeFromX(30702): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:39:00.775 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: SoSc=false(-1) 澶氬垎灞?false 缁勫唴=[] shell宸茬煡=19 鍓嶅彴=null/-1/mode=-1
+09-21 15:39:00.776 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=false 褰撳墠灞傛暟=1 缁勫唴=[]
+09-21 15:39:00.776 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 鍙栦笉鍒板墠鍙颁换鍔★紝鏀惧純
+09-21 15:39:05.283 I/OS4FreeFromX(30702): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:39:05.286 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: SoSc=false(-1) 澶氬垎灞?false 缁勫唴=[] shell宸茬煡=19 鍓嶅彴=null/-1/mode=-1
+09-21 15:39:05.287 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=false 褰撳墠灞傛暟=1 缁勫唴=[]
+09-21 15:39:05.287 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 鍙栦笉鍒板墠鍙颁换鍔★紝鏀惧純
+[15:39:10] module log dumped [fire3]
+[15:39:12] after-home : SystemUI pid=30702 (stable)
+[15:39:12] === DIAG END restarts=0 ===

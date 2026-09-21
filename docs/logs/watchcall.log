@@ -1,0 +1,14 @@
+﻿AppPrefs.kt:13: object AppPrefs {
+Cfg.kt:25: @Volatile var testHook = Constants.DEF_TEST_HOOK
+Cfg.kt:64: testHook = p.getBoolean(Constants.K_TEST_HOOK, Constants.DEF_TEST_HOOK)
+Cfg.kt:127: testHook = b.getBoolean(Constants.K_TEST_HOOK, Constants.DEF_TEST_HOOK)
+Constants.kt:29: const val K_TEST_HOOK = "test_hook"
+Constants.kt:43: const val DEF_TEST_HOOK = false
+Gestures.kt:125: // remote prefs（真机踩过：provider 里 test_hook=true，钩子却按默认 false 跳过）
+Gestures.kt:126: main.post { if (runCatching { Cfg.reload() }.isSuccess && Cfg.testHook) watchTestHook() }
+Gestures.kt:631: private fun watchTestHook() {
+PickActivity.kt:27: AppPrefs.putString(this, Constants.K_TEST_ADDSPLIT, sel)
+PickActivity.kt:54: AppPrefs.putString(this, Constants.K_PICK, "$token|${pkgs[pos]}")
+SettingsActivity.kt:119: AppPrefs.putBoolean(this@SettingsActivity, key, v)
+SettingsActivity.kt:142: AppPrefs.putInt(this@SettingsActivity, key, v)
+StoreProvider.kt:40: putBoolean(Constants.K_TEST_HOOK, c?.getBoolean(Constants.K_TEST_HOOK, Constants.DEF_TEST_HOOK) ?: Constants.DEF_TEST_HOOK)

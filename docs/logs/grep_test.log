@@ -1,0 +1,29 @@
+﻿AppCtx.kt:48: * 于是 `ContentResolver.call` 与 `registerReceiver` 全部被 SecurityException 拒掉。
+Constants.kt:31: const val K_FOUR_FINGER_INDOOR = "four_finger_split_indoor"
+Constants.kt:35: const val K_TEST_ADDSPLIT = "pending_test_addsplit"
+Constants.kt:45: const val DEF_FOUR_FINGER_MULTI = false   // 永久锁死：任何 startMultipleSplits 路径都会黑屏/SystemUI 重启（NOTES 36/37/39）
+Gestures.kt:420: * - `addSplitPair(int, int)` —— 把两个任务配成一组 SoSc 分屏；
+Gestures.kt:435: //  单任务        → 双分屏接口（openWindowFromFullscreen）
+Gestures.kt:436: //  双分屏(SoSc)  → 三分屏接口（startMultipleSplits 起多分屏模式）
+Gestures.kt:437: //  三/四/五/六分屏 → 同一个"加层"接口（startMultipleSplits 扩一层）
+Gestures.kt:457: startMultipleSplits(cur, null)
+Gestures.kt:496: // ✅ 用 `openWindowFromFullscreen(taskId, intent)` —— 真机验证过**能真正起分屏**，
+Gestures.kt:501: "openWindowFromFullscreen", Integer.TYPE, android.app.PendingIntent::class.java
+Gestures.kt:503: Logx.always("进分屏: 已请求 openWindowFromFullscreen(task=$taskId pkg=$pkg)")
+Gestures.kt:513: * Bundle 键照抄官方（`MultipleSplitRootTaskOrganizer#startMultipleSplits` 读的就是这几个）：
+Gestures.kt:518: private fun startMultipleSplits(group: List<Int>, cand: Any?) {
+Gestures.kt:544: // ✅ **只调官方接口**：桌面用的就是 `IMultiTaskingStateManager#startMultipleSplits(Bundle)`
+Gestures.kt:555: iface.getMethod("startMultipleSplits", android.os.Bundle::class.java).invoke(impl, b)
+Gestures.kt:556: Logx.always("四指上滑: 经官方接口 IMultiTaskingStateManager.startMultipleSplits 调用成功")
+Gestures.kt:567: Logx.always("四指上滑: 已请求进入多分屏 startMultipleSplits(taskIds=${ids}) ok=$ok")
+Gestures.kt:625: * 测试入口：轮询 `StoreProvider` 的 `pending_test_addsplit`。
+Gestures.kt:640: val v = b?.getString(Constants.K_TEST_ADDSPLIT)
+Gestures.kt:653: "clearCfgKey", Constants.K_TEST_ADDSPLIT, null
+Gestures.kt:670: * （`SoScUtils#addSplitPair(int, int)` —— 系统自己配对分屏用的就是它）。
+Gestures.kt:685: Logx.always("测试入口: addSplitPair($a, $b) 之前 SoSc=${soScActive()} 多分屏=${splitActive()}")
+Gestures.kt:686: soc.javaClass.getMethod("addSplitPair", Integer.TYPE, Integer.TYPE)
+Gestures.kt:688: Logx.always("测试入口: addSplitPair 已调用")
+Gestures.kt:691: Logx.e("测试入口: addSplitPair 失败 ${root.javaClass.name}: ${root.message}", root)
+Gestures.kt:870: //  于是 startMultipleSplits 拿到一堆过期 id → ok=true 但屏幕上没反应）。
+PickActivity.kt:27: AppPrefs.putString(this, Constants.K_TEST_ADDSPLIT, sel)
+StoreProvider.kt:41: c?.getString(Constants.K_TEST_ADDSPLIT, null)?.let { putString(Constants.K_TEST_ADDSPLIT, it) }

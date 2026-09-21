@@ -1,0 +1,962 @@
+﻿
+--------- beginning of main
+09-21 15:17:40.107 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7369 mode=1 pkg=com.android.settings bounds=Rect(0, 0 - 1672, 2364)
+09-21 15:17:40.228 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:42.479 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:42.551 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:43.998 I/OS4FreeFromX(10892): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:17:44.006 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: SoSc=false(-1) 澶氬垎灞?false 缁勫唴=[] shell宸茬煡=19 鍓嶅彴=com.android.settings/7369/mode=1
+09-21 15:17:44.006 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=false 褰撳墠灞傛暟=1 缁勫唴=[]
+09-21 15:17:44.007 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 鍗曚换鍔?鈫?璋?*鍙屽垎灞?*鎺ュ彛锛堝墠鍙?pkg=com.android.settings task=7369锛?
+09-21 15:17:44.007 I/OS4FreeFromX(10892): 杩涘垎灞? 宸叉姇閫掑埌 Transitions.mainExecutor锛坱ask=7369 pkg=com.android.settings锛?
+09-21 15:17:44.067 I/OS4FreeFromX(10892): 杩涘垎灞? 宸茶姹?openWindowFromFullscreen(task=7369 pkg=com.android.settings)
+09-21 15:17:44.073 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7369 mode=6 pkg=com.android.settings bounds=Rect(0, 1194 - 1672, 2364)
+09-21 15:17:44.073 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:44.075 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7350 mode=1 pkg=com.android.settings bounds=Rect(0, 0 - 1672, 2364)
+09-21 15:17:44.379 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:44.416 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:44.433 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:44.568 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+--------- beginning of main
+09-21 15:17:40.107 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7369 mode=1 pkg=com.android.settings bounds=Rect(0, 0 - 1672, 2364)
+09-21 15:17:40.228 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:42.479 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:42.551 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:43.998 I/OS4FreeFromX(10892): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:17:44.006 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: SoSc=false(-1) 澶氬垎灞?false 缁勫唴=[] shell宸茬煡=19 鍓嶅彴=com.android.settings/7369/mode=1
+09-21 15:17:44.006 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=false 褰撳墠灞傛暟=1 缁勫唴=[]
+09-21 15:17:44.007 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 鍗曚换鍔?鈫?璋?*鍙屽垎灞?*鎺ュ彛锛堝墠鍙?pkg=com.android.settings task=7369锛?
+09-21 15:17:44.007 I/OS4FreeFromX(10892): 杩涘垎灞? 宸叉姇閫掑埌 Transitions.mainExecutor锛坱ask=7369 pkg=com.android.settings锛?
+09-21 15:17:44.067 I/OS4FreeFromX(10892): 杩涘垎灞? 宸茶姹?openWindowFromFullscreen(task=7369 pkg=com.android.settings)
+09-21 15:17:44.073 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7369 mode=6 pkg=com.android.settings bounds=Rect(0, 1194 - 1672, 2364)
+09-21 15:17:44.073 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:44.075 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7350 mode=1 pkg=com.android.settings bounds=Rect(0, 0 - 1672, 2364)
+09-21 15:17:44.379 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:44.416 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:44.433 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:44.568 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:47.859 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:47.911 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:48.769 I/OS4FreeFromX(10892): 鍏抽棴鏃跺厹搴曡褰? task=7369 pkg=com.android.settings bounds=Rect(0, 0 - 1672, 2364)
+--------- beginning of main
+09-21 15:17:40.107 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7369 mode=1 pkg=com.android.settings bounds=Rect(0, 0 - 1672, 2364)
+09-21 15:17:40.228 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:42.479 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:42.551 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:43.998 I/OS4FreeFromX(10892): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:17:44.006 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: SoSc=false(-1) 澶氬垎灞?false 缁勫唴=[] shell宸茬煡=19 鍓嶅彴=com.android.settings/7369/mode=1
+09-21 15:17:44.006 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=false 褰撳墠灞傛暟=1 缁勫唴=[]
+09-21 15:17:44.007 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 鍗曚换鍔?鈫?璋?*鍙屽垎灞?*鎺ュ彛锛堝墠鍙?pkg=com.android.settings task=7369锛?
+09-21 15:17:44.007 I/OS4FreeFromX(10892): 杩涘垎灞? 宸叉姇閫掑埌 Transitions.mainExecutor锛坱ask=7369 pkg=com.android.settings锛?
+09-21 15:17:44.067 I/OS4FreeFromX(10892): 杩涘垎灞? 宸茶姹?openWindowFromFullscreen(task=7369 pkg=com.android.settings)
+09-21 15:17:44.073 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7369 mode=6 pkg=com.android.settings bounds=Rect(0, 1194 - 1672, 2364)
+09-21 15:17:44.073 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:44.075 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7350 mode=1 pkg=com.android.settings bounds=Rect(0, 0 - 1672, 2364)
+09-21 15:17:44.379 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:44.416 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:44.433 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:44.568 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:47.859 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:47.911 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:48.769 I/OS4FreeFromX(10892): 鍏抽棴鏃跺厹搴曡褰? task=7369 pkg=com.android.settings bounds=Rect(0, 0 - 1672, 2364)
+09-21 15:17:50.679 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7371 mode=1 pkg=com.android.deskclock bounds=Rect(0, 0 - 1672, 2364)
+09-21 15:17:50.887 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:17:52.949 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:17:52.964 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:17:53.017 I/OS4FreeFromX(10892): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:17:53.018 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: SoSc=false(-1) 澶氬垎灞?false 缁勫唴=[] shell宸茬煡=20 鍓嶅彴=com.android.deskclock/7371/mode=1
+09-21 15:17:53.018 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=false 褰撳墠灞傛暟=1 缁勫唴=[]
+09-21 15:17:53.018 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 鍗曚换鍔?鈫?璋?*鍙屽垎灞?*鎺ュ彛锛堝墠鍙?pkg=com.android.deskclock task=7371锛?
+09-21 15:17:53.019 I/OS4FreeFromX(10892): 杩涘垎灞? 宸叉姇閫掑埌 Transitions.mainExecutor锛坱ask=7371 pkg=com.android.deskclock锛?
+09-21 15:17:53.050 I/OS4FreeFromX(10892): 杩涘垎灞? 宸茶姹?openWindowFromFullscreen(task=7371 pkg=com.android.deskclock)
+09-21 15:17:53.055 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7371 mode=6 pkg=com.android.deskclock bounds=Rect(0, 1194 - 1672, 2364)
+09-21 15:17:53.055 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:17:53.175 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:17:54.545 I/OS4FreeFromX(10892): 鍒嗗睆姣斾緥鎭㈠: 鍙栦笉鍒板簲鐢ㄧ粍鍚堬紙璺宠繃锛?
+--------- beginning of main
+09-21 15:17:40.107 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7369 mode=1 pkg=com.android.settings bounds=Rect(0, 0 - 1672, 2364)
+09-21 15:17:40.228 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:42.479 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:42.551 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:43.998 I/OS4FreeFromX(10892): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:17:44.006 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: SoSc=false(-1) 澶氬垎灞?false 缁勫唴=[] shell宸茬煡=19 鍓嶅彴=com.android.settings/7369/mode=1
+09-21 15:17:44.006 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=false 褰撳墠灞傛暟=1 缁勫唴=[]
+09-21 15:17:44.007 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 鍗曚换鍔?鈫?璋?*鍙屽垎灞?*鎺ュ彛锛堝墠鍙?pkg=com.android.settings task=7369锛?
+09-21 15:17:44.007 I/OS4FreeFromX(10892): 杩涘垎灞? 宸叉姇閫掑埌 Transitions.mainExecutor锛坱ask=7369 pkg=com.android.settings锛?
+09-21 15:17:44.067 I/OS4FreeFromX(10892): 杩涘垎灞? 宸茶姹?openWindowFromFullscreen(task=7369 pkg=com.android.settings)
+09-21 15:17:44.073 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7369 mode=6 pkg=com.android.settings bounds=Rect(0, 1194 - 1672, 2364)
+09-21 15:17:44.073 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:44.075 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7350 mode=1 pkg=com.android.settings bounds=Rect(0, 0 - 1672, 2364)
+09-21 15:17:44.379 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:44.416 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:44.433 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:44.568 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:47.859 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:47.911 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:48.769 I/OS4FreeFromX(10892): 鍏抽棴鏃跺厹搴曡褰? task=7369 pkg=com.android.settings bounds=Rect(0, 0 - 1672, 2364)
+09-21 15:17:50.679 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7371 mode=1 pkg=com.android.deskclock bounds=Rect(0, 0 - 1672, 2364)
+09-21 15:17:50.887 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:17:52.949 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:17:52.964 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:17:53.017 I/OS4FreeFromX(10892): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:17:53.018 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: SoSc=false(-1) 澶氬垎灞?false 缁勫唴=[] shell宸茬煡=20 鍓嶅彴=com.android.deskclock/7371/mode=1
+09-21 15:17:53.018 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=false 褰撳墠灞傛暟=1 缁勫唴=[]
+09-21 15:17:53.018 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 鍗曚换鍔?鈫?璋?*鍙屽垎灞?*鎺ュ彛锛堝墠鍙?pkg=com.android.deskclock task=7371锛?
+09-21 15:17:53.019 I/OS4FreeFromX(10892): 杩涘垎灞? 宸叉姇閫掑埌 Transitions.mainExecutor锛坱ask=7371 pkg=com.android.deskclock锛?
+09-21 15:17:53.050 I/OS4FreeFromX(10892): 杩涘垎灞? 宸茶姹?openWindowFromFullscreen(task=7371 pkg=com.android.deskclock)
+09-21 15:17:53.055 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7371 mode=6 pkg=com.android.deskclock bounds=Rect(0, 1194 - 1672, 2364)
+09-21 15:17:53.055 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:17:53.175 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:17:54.545 I/OS4FreeFromX(10892): 鍒嗗睆姣斾緥鎭㈠: 鍙栦笉鍒板簲鐢ㄧ粍鍚堬紙璺宠繃锛?
+09-21 15:17:59.276 I/OS4FreeFromX(10892): 鍒嗗睆姣斾緥璁板繂: 鍙栦笉鍒板簲鐢ㄧ粍鍚堬紙璺宠繃璁板綍锛?
+09-21 15:17:59.276 I/OS4FreeFromX(10892): 鍒嗗睆鍚搁檮: 1004 -> 鑷畾涔夋。 position=1004
+09-21 15:17:59.297 I/OS4FreeFromX(10892): 鍒嗗睆鍚搁檮: 853 -> 鑷畾涔夋。 position=857
+09-21 15:17:59.331 I/OS4FreeFromX(10892): 鍒嗗睆鍚搁檮: 651 -> 鑷畾涔夋。 position=224
+09-21 15:17:59.757 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:17:59.807 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:17:59.846 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:17:59.862 E/OS4FreeFromX(10892): 澶氬垎灞忓崰浣? 椤舵爮 77 / 搴曟爮 44 -> 0
+09-21 15:17:59.862 E/OS4FreeFromX(10892): 澶氬垎灞忔弧灞? mDividerInsets 142 -> 0
+09-21 15:17:59.863 E/OS4FreeFromX(10892): 澶氬垎灞忔弧灞? mRootBounds Rect(0, 0 - 1672, 2364) -> Rect(0, 0 - 1672, 2364)
+09-21 15:18:00.335 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+--------- beginning of main
+09-21 15:17:40.107 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7369 mode=1 pkg=com.android.settings bounds=Rect(0, 0 - 1672, 2364)
+09-21 15:17:40.228 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:42.479 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:42.551 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:43.998 I/OS4FreeFromX(10892): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:17:44.006 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: SoSc=false(-1) 澶氬垎灞?false 缁勫唴=[] shell宸茬煡=19 鍓嶅彴=com.android.settings/7369/mode=1
+09-21 15:17:44.006 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=false 褰撳墠灞傛暟=1 缁勫唴=[]
+09-21 15:17:44.007 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 鍗曚换鍔?鈫?璋?*鍙屽垎灞?*鎺ュ彛锛堝墠鍙?pkg=com.android.settings task=7369锛?
+09-21 15:17:44.007 I/OS4FreeFromX(10892): 杩涘垎灞? 宸叉姇閫掑埌 Transitions.mainExecutor锛坱ask=7369 pkg=com.android.settings锛?
+09-21 15:17:44.067 I/OS4FreeFromX(10892): 杩涘垎灞? 宸茶姹?openWindowFromFullscreen(task=7369 pkg=com.android.settings)
+09-21 15:17:44.073 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7369 mode=6 pkg=com.android.settings bounds=Rect(0, 1194 - 1672, 2364)
+09-21 15:17:44.073 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:44.075 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7350 mode=1 pkg=com.android.settings bounds=Rect(0, 0 - 1672, 2364)
+09-21 15:17:44.379 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:44.416 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:44.433 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:44.568 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:47.859 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:47.911 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:48.769 I/OS4FreeFromX(10892): 鍏抽棴鏃跺厹搴曡褰? task=7369 pkg=com.android.settings bounds=Rect(0, 0 - 1672, 2364)
+09-21 15:17:50.679 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7371 mode=1 pkg=com.android.deskclock bounds=Rect(0, 0 - 1672, 2364)
+09-21 15:17:50.887 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:17:52.949 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:17:52.964 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:17:53.017 I/OS4FreeFromX(10892): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:17:53.018 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: SoSc=false(-1) 澶氬垎灞?false 缁勫唴=[] shell宸茬煡=20 鍓嶅彴=com.android.deskclock/7371/mode=1
+09-21 15:17:53.018 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=false 褰撳墠灞傛暟=1 缁勫唴=[]
+09-21 15:17:53.018 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 鍗曚换鍔?鈫?璋?*鍙屽垎灞?*鎺ュ彛锛堝墠鍙?pkg=com.android.deskclock task=7371锛?
+09-21 15:17:53.019 I/OS4FreeFromX(10892): 杩涘垎灞? 宸叉姇閫掑埌 Transitions.mainExecutor锛坱ask=7371 pkg=com.android.deskclock锛?
+09-21 15:17:53.050 I/OS4FreeFromX(10892): 杩涘垎灞? 宸茶姹?openWindowFromFullscreen(task=7371 pkg=com.android.deskclock)
+09-21 15:17:53.055 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7371 mode=6 pkg=com.android.deskclock bounds=Rect(0, 1194 - 1672, 2364)
+09-21 15:17:53.055 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:17:53.175 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:17:54.545 I/OS4FreeFromX(10892): 鍒嗗睆姣斾緥鎭㈠: 鍙栦笉鍒板簲鐢ㄧ粍鍚堬紙璺宠繃锛?
+09-21 15:17:59.276 I/OS4FreeFromX(10892): 鍒嗗睆姣斾緥璁板繂: 鍙栦笉鍒板簲鐢ㄧ粍鍚堬紙璺宠繃璁板綍锛?
+09-21 15:17:59.276 I/OS4FreeFromX(10892): 鍒嗗睆鍚搁檮: 1004 -> 鑷畾涔夋。 position=1004
+09-21 15:17:59.297 I/OS4FreeFromX(10892): 鍒嗗睆鍚搁檮: 853 -> 鑷畾涔夋。 position=857
+09-21 15:17:59.331 I/OS4FreeFromX(10892): 鍒嗗睆鍚搁檮: 651 -> 鑷畾涔夋。 position=224
+09-21 15:17:59.757 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:17:59.807 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:17:59.846 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:17:59.862 E/OS4FreeFromX(10892): 澶氬垎灞忓崰浣? 椤舵爮 77 / 搴曟爮 44 -> 0
+09-21 15:17:59.862 E/OS4FreeFromX(10892): 澶氬垎灞忔弧灞? mDividerInsets 142 -> 0
+09-21 15:17:59.863 E/OS4FreeFromX(10892): 澶氬垎灞忔弧灞? mRootBounds Rect(0, 0 - 1672, 2364) -> Rect(0, 0 - 1672, 2364)
+09-21 15:18:00.335 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:18:01.151 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:18:01.159 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7373 mode=1 pkg=com.android.calendar bounds=Rect(0, 0 - 2364, 1672)
+09-21 15:18:01.266 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:18:01.269 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#27289311)
+09-21 15:18:01.823 I/OS4FreeFromX(10892): 鍏抽棴鏃跺厹搴曡褰? task=7371 pkg=com.android.deskclock bounds=Rect(0, 0 - 2364, 1672)
+09-21 15:18:03.430 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#27289311)
+09-21 15:18:03.444 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#27289311)
+09-21 15:18:03.537 I/OS4FreeFromX(10892): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:18:03.538 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: SoSc=false(-1) 澶氬垎灞?false 缁勫唴=[] shell宸茬煡=21 鍓嶅彴=com.android.calendar/7373/mode=1
+09-21 15:18:03.538 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=false 褰撳墠灞傛暟=1 缁勫唴=[]
+09-21 15:18:03.539 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 鍗曚换鍔?鈫?璋?*鍙屽垎灞?*鎺ュ彛锛堝墠鍙?pkg=com.android.calendar task=7373锛?
+09-21 15:18:03.539 I/OS4FreeFromX(10892): 杩涘垎灞? 宸叉姇閫掑埌 Transitions.mainExecutor锛坱ask=7373 pkg=com.android.calendar锛?
+09-21 15:18:03.570 I/OS4FreeFromX(10892): 杩涘垎灞? 宸茶姹?openWindowFromFullscreen(task=7373 pkg=com.android.calendar)
+09-21 15:18:03.575 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7373 mode=6 pkg=com.android.calendar bounds=Rect(1194, 0 - 2364, 1672)
+09-21 15:18:03.576 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#27289311)
+09-21 15:18:03.770 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#27289311)
+09-21 15:18:03.771 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#190142890)
+09-21 15:18:08.412 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#27289311)
+09-21 15:18:08.413 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#190142890)
+09-21 15:18:08.475 I/OS4FreeFromX(10892): bounds 杞藉叆 30 鏉?
+09-21 15:18:08.476 I/OS4FreeFromX(10892): 璁颁綇 split:com.android.calendar+com.tencent.mm|1672x2364 = 463,0,464,1
+09-21 15:18:08.476 E/OS4FreeFromX(10892): 鍒嗗睆姣斾緥璁板繂: com.android.calendar+com.tencent.mm -> 46.3%锛?672x2364锛?
+09-21 15:18:08.629 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7118 mode=6 pkg=com.tencent.mm bounds=Rect(0, 0 - 1170, 1672)
+09-21 15:18:09.167 I/OS4FreeFromX(10892): bounds 杞藉叆 31 鏉?
+09-21 15:18:09.544 I/OS4FreeFromX(10892): bounds 杞藉叆 31 鏉?
+09-21 15:18:09.546 I/OS4FreeFromX(10892): 娌夋蹈: task=7118 鏍忛殣钘?true (MiuiDotView#175506141)
+09-21 15:18:09.547 I/OS4FreeFromX(10892): 娌夋蹈: task=7118 鏍忛殣钘?true (MiuiBottomBarView#139373843)
+09-21 15:18:09.548 I/OS4FreeFromX(10892): 鎵嬪娍: 鍥涙寚璧锋墜 pointers=4 @1375,1179
+09-21 15:18:09.550 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#27289311)
+09-21 15:18:09.551 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#190142890)
+09-21 15:18:09.554 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#27289311)
+09-21 15:18:09.555 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#190142890)
+09-21 15:18:09.668 I/OS4FreeFromX(10892): 鎵嬪娍: 鍥涙寚涓婃粦鍛戒腑(MOVE) 琛岀▼=130px 鐢ㄦ椂=124ms 鎵嬫寚鏁?4
+09-21 15:18:09.669 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: SoSc=true(2) 澶氬垎灞?false 缁勫唴=[7373, 7118] shell宸茬煡=21 鍓嶅彴=null/-1/mode=-1
+09-21 15:18:09.669 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=true 褰撳墠灞傛暟=2 缁勫唴=[7373, 7118]
+09-21 15:18:09.669 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 宸插湪鍒嗗睆锛? 灞傦級鈫?璋?*鍔犲眰/澶氬垎灞?*鎺ュ彛
+09-21 15:18:09.670 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 澶氬垎灞?taskIds=[7373, 7118]锛堝幓閲嶅悗 2 涓紝涓嶈ˉ浣嶏級
+09-21 15:18:09.670 E/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 鍙栦笉鍒?MultiTaskingStateManager 瀹炵幇锛屾斁寮冿紙涓嶉€€鍥炰笅灞?controller锛?
+09-21 15:18:09.670 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 宸茶姹傝繘鍏ュ鍒嗗睆 startMultipleSplits(taskIds=[7373, 7118]) ok=false
+--------- beginning of main
+09-21 15:17:40.107 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7369 mode=1 pkg=com.android.settings bounds=Rect(0, 0 - 1672, 2364)
+09-21 15:17:40.228 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:42.479 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:42.551 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:43.998 I/OS4FreeFromX(10892): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:17:44.006 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: SoSc=false(-1) 澶氬垎灞?false 缁勫唴=[] shell宸茬煡=19 鍓嶅彴=com.android.settings/7369/mode=1
+09-21 15:17:44.006 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=false 褰撳墠灞傛暟=1 缁勫唴=[]
+09-21 15:17:44.007 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 鍗曚换鍔?鈫?璋?*鍙屽垎灞?*鎺ュ彛锛堝墠鍙?pkg=com.android.settings task=7369锛?
+09-21 15:17:44.007 I/OS4FreeFromX(10892): 杩涘垎灞? 宸叉姇閫掑埌 Transitions.mainExecutor锛坱ask=7369 pkg=com.android.settings锛?
+09-21 15:17:44.067 I/OS4FreeFromX(10892): 杩涘垎灞? 宸茶姹?openWindowFromFullscreen(task=7369 pkg=com.android.settings)
+09-21 15:17:44.073 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7369 mode=6 pkg=com.android.settings bounds=Rect(0, 1194 - 1672, 2364)
+09-21 15:17:44.073 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:44.075 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7350 mode=1 pkg=com.android.settings bounds=Rect(0, 0 - 1672, 2364)
+09-21 15:17:44.379 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:44.416 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:44.433 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:44.568 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:47.859 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:47.911 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:48.769 I/OS4FreeFromX(10892): 鍏抽棴鏃跺厹搴曡褰? task=7369 pkg=com.android.settings bounds=Rect(0, 0 - 1672, 2364)
+09-21 15:17:50.679 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7371 mode=1 pkg=com.android.deskclock bounds=Rect(0, 0 - 1672, 2364)
+09-21 15:17:50.887 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:17:52.949 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:17:52.964 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:17:53.017 I/OS4FreeFromX(10892): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:17:53.018 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: SoSc=false(-1) 澶氬垎灞?false 缁勫唴=[] shell宸茬煡=20 鍓嶅彴=com.android.deskclock/7371/mode=1
+09-21 15:17:53.018 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=false 褰撳墠灞傛暟=1 缁勫唴=[]
+09-21 15:17:53.018 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 鍗曚换鍔?鈫?璋?*鍙屽垎灞?*鎺ュ彛锛堝墠鍙?pkg=com.android.deskclock task=7371锛?
+09-21 15:17:53.019 I/OS4FreeFromX(10892): 杩涘垎灞? 宸叉姇閫掑埌 Transitions.mainExecutor锛坱ask=7371 pkg=com.android.deskclock锛?
+09-21 15:17:53.050 I/OS4FreeFromX(10892): 杩涘垎灞? 宸茶姹?openWindowFromFullscreen(task=7371 pkg=com.android.deskclock)
+09-21 15:17:53.055 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7371 mode=6 pkg=com.android.deskclock bounds=Rect(0, 1194 - 1672, 2364)
+09-21 15:17:53.055 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:17:53.175 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:17:54.545 I/OS4FreeFromX(10892): 鍒嗗睆姣斾緥鎭㈠: 鍙栦笉鍒板簲鐢ㄧ粍鍚堬紙璺宠繃锛?
+09-21 15:17:59.276 I/OS4FreeFromX(10892): 鍒嗗睆姣斾緥璁板繂: 鍙栦笉鍒板簲鐢ㄧ粍鍚堬紙璺宠繃璁板綍锛?
+09-21 15:17:59.276 I/OS4FreeFromX(10892): 鍒嗗睆鍚搁檮: 1004 -> 鑷畾涔夋。 position=1004
+09-21 15:17:59.297 I/OS4FreeFromX(10892): 鍒嗗睆鍚搁檮: 853 -> 鑷畾涔夋。 position=857
+09-21 15:17:59.331 I/OS4FreeFromX(10892): 鍒嗗睆鍚搁檮: 651 -> 鑷畾涔夋。 position=224
+09-21 15:17:59.757 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:17:59.807 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:17:59.846 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:17:59.862 E/OS4FreeFromX(10892): 澶氬垎灞忓崰浣? 椤舵爮 77 / 搴曟爮 44 -> 0
+09-21 15:17:59.862 E/OS4FreeFromX(10892): 澶氬垎灞忔弧灞? mDividerInsets 142 -> 0
+09-21 15:17:59.863 E/OS4FreeFromX(10892): 澶氬垎灞忔弧灞? mRootBounds Rect(0, 0 - 1672, 2364) -> Rect(0, 0 - 1672, 2364)
+09-21 15:18:00.335 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:18:01.151 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:18:01.159 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7373 mode=1 pkg=com.android.calendar bounds=Rect(0, 0 - 2364, 1672)
+09-21 15:18:01.266 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:18:01.269 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#27289311)
+09-21 15:18:01.823 I/OS4FreeFromX(10892): 鍏抽棴鏃跺厹搴曡褰? task=7371 pkg=com.android.deskclock bounds=Rect(0, 0 - 2364, 1672)
+09-21 15:18:03.430 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#27289311)
+09-21 15:18:03.444 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#27289311)
+09-21 15:18:03.537 I/OS4FreeFromX(10892): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:18:03.538 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: SoSc=false(-1) 澶氬垎灞?false 缁勫唴=[] shell宸茬煡=21 鍓嶅彴=com.android.calendar/7373/mode=1
+09-21 15:18:03.538 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=false 褰撳墠灞傛暟=1 缁勫唴=[]
+09-21 15:18:03.539 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 鍗曚换鍔?鈫?璋?*鍙屽垎灞?*鎺ュ彛锛堝墠鍙?pkg=com.android.calendar task=7373锛?
+09-21 15:18:03.539 I/OS4FreeFromX(10892): 杩涘垎灞? 宸叉姇閫掑埌 Transitions.mainExecutor锛坱ask=7373 pkg=com.android.calendar锛?
+09-21 15:18:03.570 I/OS4FreeFromX(10892): 杩涘垎灞? 宸茶姹?openWindowFromFullscreen(task=7373 pkg=com.android.calendar)
+09-21 15:18:03.575 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7373 mode=6 pkg=com.android.calendar bounds=Rect(1194, 0 - 2364, 1672)
+09-21 15:18:03.576 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#27289311)
+09-21 15:18:03.770 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#27289311)
+09-21 15:18:03.771 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#190142890)
+09-21 15:18:08.412 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#27289311)
+09-21 15:18:08.413 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#190142890)
+09-21 15:18:08.475 I/OS4FreeFromX(10892): bounds 杞藉叆 30 鏉?
+09-21 15:18:08.476 I/OS4FreeFromX(10892): 璁颁綇 split:com.android.calendar+com.tencent.mm|1672x2364 = 463,0,464,1
+09-21 15:18:08.476 E/OS4FreeFromX(10892): 鍒嗗睆姣斾緥璁板繂: com.android.calendar+com.tencent.mm -> 46.3%锛?672x2364锛?
+09-21 15:18:08.629 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7118 mode=6 pkg=com.tencent.mm bounds=Rect(0, 0 - 1170, 1672)
+09-21 15:18:09.167 I/OS4FreeFromX(10892): bounds 杞藉叆 31 鏉?
+09-21 15:18:09.544 I/OS4FreeFromX(10892): bounds 杞藉叆 31 鏉?
+09-21 15:18:09.546 I/OS4FreeFromX(10892): 娌夋蹈: task=7118 鏍忛殣钘?true (MiuiDotView#175506141)
+09-21 15:18:09.547 I/OS4FreeFromX(10892): 娌夋蹈: task=7118 鏍忛殣钘?true (MiuiBottomBarView#139373843)
+09-21 15:18:09.548 I/OS4FreeFromX(10892): 鎵嬪娍: 鍥涙寚璧锋墜 pointers=4 @1375,1179
+09-21 15:18:09.550 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#27289311)
+09-21 15:18:09.551 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#190142890)
+09-21 15:18:09.554 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#27289311)
+09-21 15:18:09.555 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#190142890)
+09-21 15:18:09.668 I/OS4FreeFromX(10892): 鎵嬪娍: 鍥涙寚涓婃粦鍛戒腑(MOVE) 琛岀▼=130px 鐢ㄦ椂=124ms 鎵嬫寚鏁?4
+09-21 15:18:09.669 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: SoSc=true(2) 澶氬垎灞?false 缁勫唴=[7373, 7118] shell宸茬煡=21 鍓嶅彴=null/-1/mode=-1
+09-21 15:18:09.669 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=true 褰撳墠灞傛暟=2 缁勫唴=[7373, 7118]
+09-21 15:18:09.669 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 宸插湪鍒嗗睆锛? 灞傦級鈫?璋?*鍔犲眰/澶氬垎灞?*鎺ュ彛
+09-21 15:18:09.670 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 澶氬垎灞?taskIds=[7373, 7118]锛堝幓閲嶅悗 2 涓紝涓嶈ˉ浣嶏級
+09-21 15:18:09.670 E/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 鍙栦笉鍒?MultiTaskingStateManager 瀹炵幇锛屾斁寮冿紙涓嶉€€鍥炰笅灞?controller锛?
+09-21 15:18:09.670 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 宸茶姹傝繘鍏ュ鍒嗗睆 startMultipleSplits(taskIds=[7373, 7118]) ok=false
+09-21 15:18:10.010 I/OS4FreeFromX(10892): bounds 杞藉叆 31 鏉?
+09-21 15:18:10.011 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#27289311)
+09-21 15:18:10.012 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#190142890)
+09-21 15:18:10.112 I/OS4FreeFromX(10892): 娌夋蹈: task=7118 鏍忛殣钘?true (MiuiDotView#175506141)
+09-21 15:18:10.113 I/OS4FreeFromX(10892): 娌夋蹈: task=7118 鏍忛殣钘?true (MiuiBottomBarView#139373843)
+09-21 15:18:10.114 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#27289311)
+09-21 15:18:10.114 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#190142890)
+09-21 15:18:10.977 I/OS4FreeFromX(10892): bounds 杞藉叆 31 鏉?
+09-21 15:18:11.003 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#27289311)
+09-21 15:18:11.007 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7118 mode=1 pkg=com.tencent.mm bounds=Rect(0, 0 - 2364, 1672)
+09-21 15:18:11.007 I/OS4FreeFromX(10892): 娌夋蹈: task=7118 鏍忛殣钘?true (MiuiDotView#175506141)
+09-21 15:18:11.009 I/OS4FreeFromX(10892): 鍏抽棴鏃跺厹搴曡褰? task=7373 pkg=com.android.calendar bounds=Rect(0, 0 - 2364, 1672)
+09-21 15:18:11.011 I/OS4FreeFromX(10892): 鍏抽棴鏃跺厹搴曡褰? task=7118 pkg=com.tencent.mm bounds=Rect(0, 0 - 2364, 1672)
+09-21 15:18:11.854 I/OS4FreeFromX(10892): bounds 杞藉叆 31 鏉?
+09-21 15:18:12.384 I/OS4FreeFromX(10892): bounds 杞藉叆 31 鏉?
+09-21 15:18:12.857 I/OS4FreeFromX(10892): bounds 杞藉叆 31 鏉?
+09-21 15:18:12.859 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#209877160)
+09-21 15:18:12.860 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#247291116)
+09-21 15:18:12.861 I/OS4FreeFromX(10892): 鎵嬪娍: 鍥涙寚璧锋墜 pointers=4 @794,1364
+09-21 15:18:12.864 I/OS4FreeFromX(10892): 娌夋蹈: task=7118 鏍忛殣钘?true (MiuiDotView#195677423)
+09-21 15:18:12.864 I/OS4FreeFromX(10892): 娌夋蹈: task=7118 鏍忛殣钘?true (MiuiBottomBarView#118498011)
+09-21 15:18:12.869 I/OS4FreeFromX(10892): 娌夋蹈: task=7118 鏍忛殣钘?true (MiuiDotView#195677423)
+09-21 15:18:12.870 I/OS4FreeFromX(10892): 娌夋蹈: task=7118 鏍忛殣钘?true (MiuiBottomBarView#118498011)
+09-21 15:18:12.876 I/OS4FreeFromX(10892): 鎵嬪娍: 鍥涙寚绉诲姩 pc=4 dy=-7 used=17ms
+09-21 15:18:12.950 I/OS4FreeFromX(10892): 鎵嬪娍: 鍥涙寚涓婃粦鍛戒腑(MOVE) 琛岀▼=137px 鐢ㄦ椂=92ms 鎵嬫寚鏁?4
+09-21 15:18:12.950 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: SoSc=true(2) 澶氬垎灞?false 缁勫唴=[7118, 7373] shell宸茬煡=21 鍓嶅彴=null/-1/mode=-1
+09-21 15:18:12.950 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=true 褰撳墠灞傛暟=2 缁勫唴=[7118, 7373]
+09-21 15:18:12.950 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 宸插湪鍒嗗睆锛? 灞傦級鈫?璋?*鍔犲眰/澶氬垎灞?*鎺ュ彛
+09-21 15:18:12.951 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 澶氬垎灞?taskIds=[7118, 7373]锛堝幓閲嶅悗 2 涓紝涓嶈ˉ浣嶏級
+09-21 15:18:12.951 E/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 鍙栦笉鍒?MultiTaskingStateManager 瀹炵幇锛屾斁寮冿紙涓嶉€€鍥炰笅灞?controller锛?
+09-21 15:18:12.951 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 宸茶姹傝繘鍏ュ鍒嗗睆 startMultipleSplits(taskIds=[7118, 7373]) ok=false
+--------- beginning of main
+09-21 15:17:40.107 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7369 mode=1 pkg=com.android.settings bounds=Rect(0, 0 - 1672, 2364)
+09-21 15:17:40.228 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:42.479 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:42.551 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:43.998 I/OS4FreeFromX(10892): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:17:44.006 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: SoSc=false(-1) 澶氬垎灞?false 缁勫唴=[] shell宸茬煡=19 鍓嶅彴=com.android.settings/7369/mode=1
+09-21 15:17:44.006 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=false 褰撳墠灞傛暟=1 缁勫唴=[]
+09-21 15:17:44.007 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 鍗曚换鍔?鈫?璋?*鍙屽垎灞?*鎺ュ彛锛堝墠鍙?pkg=com.android.settings task=7369锛?
+09-21 15:17:44.007 I/OS4FreeFromX(10892): 杩涘垎灞? 宸叉姇閫掑埌 Transitions.mainExecutor锛坱ask=7369 pkg=com.android.settings锛?
+09-21 15:17:44.067 I/OS4FreeFromX(10892): 杩涘垎灞? 宸茶姹?openWindowFromFullscreen(task=7369 pkg=com.android.settings)
+09-21 15:17:44.073 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7369 mode=6 pkg=com.android.settings bounds=Rect(0, 1194 - 1672, 2364)
+09-21 15:17:44.073 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:44.075 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7350 mode=1 pkg=com.android.settings bounds=Rect(0, 0 - 1672, 2364)
+09-21 15:17:44.379 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:44.416 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:44.433 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:44.568 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:47.859 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:47.911 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:48.769 I/OS4FreeFromX(10892): 鍏抽棴鏃跺厹搴曡褰? task=7369 pkg=com.android.settings bounds=Rect(0, 0 - 1672, 2364)
+09-21 15:17:50.679 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7371 mode=1 pkg=com.android.deskclock bounds=Rect(0, 0 - 1672, 2364)
+09-21 15:17:50.887 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:17:52.949 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:17:52.964 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:17:53.017 I/OS4FreeFromX(10892): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:17:53.018 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: SoSc=false(-1) 澶氬垎灞?false 缁勫唴=[] shell宸茬煡=20 鍓嶅彴=com.android.deskclock/7371/mode=1
+09-21 15:17:53.018 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=false 褰撳墠灞傛暟=1 缁勫唴=[]
+09-21 15:17:53.018 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 鍗曚换鍔?鈫?璋?*鍙屽垎灞?*鎺ュ彛锛堝墠鍙?pkg=com.android.deskclock task=7371锛?
+09-21 15:17:53.019 I/OS4FreeFromX(10892): 杩涘垎灞? 宸叉姇閫掑埌 Transitions.mainExecutor锛坱ask=7371 pkg=com.android.deskclock锛?
+09-21 15:17:53.050 I/OS4FreeFromX(10892): 杩涘垎灞? 宸茶姹?openWindowFromFullscreen(task=7371 pkg=com.android.deskclock)
+09-21 15:17:53.055 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7371 mode=6 pkg=com.android.deskclock bounds=Rect(0, 1194 - 1672, 2364)
+09-21 15:17:53.055 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:17:53.175 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:17:54.545 I/OS4FreeFromX(10892): 鍒嗗睆姣斾緥鎭㈠: 鍙栦笉鍒板簲鐢ㄧ粍鍚堬紙璺宠繃锛?
+09-21 15:17:59.276 I/OS4FreeFromX(10892): 鍒嗗睆姣斾緥璁板繂: 鍙栦笉鍒板簲鐢ㄧ粍鍚堬紙璺宠繃璁板綍锛?
+09-21 15:17:59.276 I/OS4FreeFromX(10892): 鍒嗗睆鍚搁檮: 1004 -> 鑷畾涔夋。 position=1004
+09-21 15:17:59.297 I/OS4FreeFromX(10892): 鍒嗗睆鍚搁檮: 853 -> 鑷畾涔夋。 position=857
+09-21 15:17:59.331 I/OS4FreeFromX(10892): 鍒嗗睆鍚搁檮: 651 -> 鑷畾涔夋。 position=224
+09-21 15:17:59.757 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:17:59.807 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:17:59.846 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:17:59.862 E/OS4FreeFromX(10892): 澶氬垎灞忓崰浣? 椤舵爮 77 / 搴曟爮 44 -> 0
+09-21 15:17:59.862 E/OS4FreeFromX(10892): 澶氬垎灞忔弧灞? mDividerInsets 142 -> 0
+09-21 15:17:59.863 E/OS4FreeFromX(10892): 澶氬垎灞忔弧灞? mRootBounds Rect(0, 0 - 1672, 2364) -> Rect(0, 0 - 1672, 2364)
+09-21 15:18:00.335 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:18:01.151 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:18:01.159 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7373 mode=1 pkg=com.android.calendar bounds=Rect(0, 0 - 2364, 1672)
+09-21 15:18:01.266 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:18:01.269 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#27289311)
+09-21 15:18:01.823 I/OS4FreeFromX(10892): 鍏抽棴鏃跺厹搴曡褰? task=7371 pkg=com.android.deskclock bounds=Rect(0, 0 - 2364, 1672)
+09-21 15:18:03.430 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#27289311)
+09-21 15:18:03.444 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#27289311)
+09-21 15:18:03.537 I/OS4FreeFromX(10892): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:18:03.538 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: SoSc=false(-1) 澶氬垎灞?false 缁勫唴=[] shell宸茬煡=21 鍓嶅彴=com.android.calendar/7373/mode=1
+09-21 15:18:03.538 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=false 褰撳墠灞傛暟=1 缁勫唴=[]
+09-21 15:18:03.539 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 鍗曚换鍔?鈫?璋?*鍙屽垎灞?*鎺ュ彛锛堝墠鍙?pkg=com.android.calendar task=7373锛?
+09-21 15:18:03.539 I/OS4FreeFromX(10892): 杩涘垎灞? 宸叉姇閫掑埌 Transitions.mainExecutor锛坱ask=7373 pkg=com.android.calendar锛?
+09-21 15:18:03.570 I/OS4FreeFromX(10892): 杩涘垎灞? 宸茶姹?openWindowFromFullscreen(task=7373 pkg=com.android.calendar)
+09-21 15:18:03.575 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7373 mode=6 pkg=com.android.calendar bounds=Rect(1194, 0 - 2364, 1672)
+09-21 15:18:03.576 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#27289311)
+09-21 15:18:03.770 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#27289311)
+09-21 15:18:03.771 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#190142890)
+09-21 15:18:08.412 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#27289311)
+09-21 15:18:08.413 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#190142890)
+09-21 15:18:08.475 I/OS4FreeFromX(10892): bounds 杞藉叆 30 鏉?
+09-21 15:18:08.476 I/OS4FreeFromX(10892): 璁颁綇 split:com.android.calendar+com.tencent.mm|1672x2364 = 463,0,464,1
+09-21 15:18:08.476 E/OS4FreeFromX(10892): 鍒嗗睆姣斾緥璁板繂: com.android.calendar+com.tencent.mm -> 46.3%锛?672x2364锛?
+09-21 15:18:08.629 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7118 mode=6 pkg=com.tencent.mm bounds=Rect(0, 0 - 1170, 1672)
+09-21 15:18:09.167 I/OS4FreeFromX(10892): bounds 杞藉叆 31 鏉?
+09-21 15:18:09.544 I/OS4FreeFromX(10892): bounds 杞藉叆 31 鏉?
+09-21 15:18:09.546 I/OS4FreeFromX(10892): 娌夋蹈: task=7118 鏍忛殣钘?true (MiuiDotView#175506141)
+09-21 15:18:09.547 I/OS4FreeFromX(10892): 娌夋蹈: task=7118 鏍忛殣钘?true (MiuiBottomBarView#139373843)
+09-21 15:18:09.548 I/OS4FreeFromX(10892): 鎵嬪娍: 鍥涙寚璧锋墜 pointers=4 @1375,1179
+09-21 15:18:09.550 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#27289311)
+09-21 15:18:09.551 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#190142890)
+09-21 15:18:09.554 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#27289311)
+09-21 15:18:09.555 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#190142890)
+09-21 15:18:09.668 I/OS4FreeFromX(10892): 鎵嬪娍: 鍥涙寚涓婃粦鍛戒腑(MOVE) 琛岀▼=130px 鐢ㄦ椂=124ms 鎵嬫寚鏁?4
+09-21 15:18:09.669 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: SoSc=true(2) 澶氬垎灞?false 缁勫唴=[7373, 7118] shell宸茬煡=21 鍓嶅彴=null/-1/mode=-1
+09-21 15:18:09.669 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=true 褰撳墠灞傛暟=2 缁勫唴=[7373, 7118]
+09-21 15:18:09.669 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 宸插湪鍒嗗睆锛? 灞傦級鈫?璋?*鍔犲眰/澶氬垎灞?*鎺ュ彛
+09-21 15:18:09.670 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 澶氬垎灞?taskIds=[7373, 7118]锛堝幓閲嶅悗 2 涓紝涓嶈ˉ浣嶏級
+09-21 15:18:09.670 E/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 鍙栦笉鍒?MultiTaskingStateManager 瀹炵幇锛屾斁寮冿紙涓嶉€€鍥炰笅灞?controller锛?
+09-21 15:18:09.670 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 宸茶姹傝繘鍏ュ鍒嗗睆 startMultipleSplits(taskIds=[7373, 7118]) ok=false
+09-21 15:18:10.010 I/OS4FreeFromX(10892): bounds 杞藉叆 31 鏉?
+09-21 15:18:10.011 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#27289311)
+09-21 15:18:10.012 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#190142890)
+09-21 15:18:10.112 I/OS4FreeFromX(10892): 娌夋蹈: task=7118 鏍忛殣钘?true (MiuiDotView#175506141)
+09-21 15:18:10.113 I/OS4FreeFromX(10892): 娌夋蹈: task=7118 鏍忛殣钘?true (MiuiBottomBarView#139373843)
+09-21 15:18:10.114 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#27289311)
+09-21 15:18:10.114 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#190142890)
+09-21 15:18:10.977 I/OS4FreeFromX(10892): bounds 杞藉叆 31 鏉?
+09-21 15:18:11.003 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#27289311)
+09-21 15:18:11.007 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7118 mode=1 pkg=com.tencent.mm bounds=Rect(0, 0 - 2364, 1672)
+09-21 15:18:11.007 I/OS4FreeFromX(10892): 娌夋蹈: task=7118 鏍忛殣钘?true (MiuiDotView#175506141)
+09-21 15:18:11.009 I/OS4FreeFromX(10892): 鍏抽棴鏃跺厹搴曡褰? task=7373 pkg=com.android.calendar bounds=Rect(0, 0 - 2364, 1672)
+09-21 15:18:11.011 I/OS4FreeFromX(10892): 鍏抽棴鏃跺厹搴曡褰? task=7118 pkg=com.tencent.mm bounds=Rect(0, 0 - 2364, 1672)
+09-21 15:18:11.854 I/OS4FreeFromX(10892): bounds 杞藉叆 31 鏉?
+09-21 15:18:12.384 I/OS4FreeFromX(10892): bounds 杞藉叆 31 鏉?
+09-21 15:18:12.857 I/OS4FreeFromX(10892): bounds 杞藉叆 31 鏉?
+09-21 15:18:12.859 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#209877160)
+09-21 15:18:12.860 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#247291116)
+09-21 15:18:12.861 I/OS4FreeFromX(10892): 鎵嬪娍: 鍥涙寚璧锋墜 pointers=4 @794,1364
+09-21 15:18:12.864 I/OS4FreeFromX(10892): 娌夋蹈: task=7118 鏍忛殣钘?true (MiuiDotView#195677423)
+09-21 15:18:12.864 I/OS4FreeFromX(10892): 娌夋蹈: task=7118 鏍忛殣钘?true (MiuiBottomBarView#118498011)
+09-21 15:18:12.869 I/OS4FreeFromX(10892): 娌夋蹈: task=7118 鏍忛殣钘?true (MiuiDotView#195677423)
+09-21 15:18:12.870 I/OS4FreeFromX(10892): 娌夋蹈: task=7118 鏍忛殣钘?true (MiuiBottomBarView#118498011)
+09-21 15:18:12.876 I/OS4FreeFromX(10892): 鎵嬪娍: 鍥涙寚绉诲姩 pc=4 dy=-7 used=17ms
+09-21 15:18:12.950 I/OS4FreeFromX(10892): 鎵嬪娍: 鍥涙寚涓婃粦鍛戒腑(MOVE) 琛岀▼=137px 鐢ㄦ椂=92ms 鎵嬫寚鏁?4
+09-21 15:18:12.950 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: SoSc=true(2) 澶氬垎灞?false 缁勫唴=[7118, 7373] shell宸茬煡=21 鍓嶅彴=null/-1/mode=-1
+09-21 15:18:12.950 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=true 褰撳墠灞傛暟=2 缁勫唴=[7118, 7373]
+09-21 15:18:12.950 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 宸插湪鍒嗗睆锛? 灞傦級鈫?璋?*鍔犲眰/澶氬垎灞?*鎺ュ彛
+09-21 15:18:12.951 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 澶氬垎灞?taskIds=[7118, 7373]锛堝幓閲嶅悗 2 涓紝涓嶈ˉ浣嶏級
+09-21 15:18:12.951 E/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 鍙栦笉鍒?MultiTaskingStateManager 瀹炵幇锛屾斁寮冿紙涓嶉€€鍥炰笅灞?controller锛?
+09-21 15:18:12.951 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 宸茶姹傝繘鍏ュ鍒嗗睆 startMultipleSplits(taskIds=[7118, 7373]) ok=false
+09-21 15:18:13.815 I/OS4FreeFromX(10892): bounds 杞藉叆 31 鏉?
+09-21 15:18:13.816 I/OS4FreeFromX(10892): 娌夋蹈: task=7118 鏍忛殣钘?true (MiuiDotView#195677423)
+09-21 15:18:13.816 I/OS4FreeFromX(10892): 娌夋蹈: task=7118 鏍忛殣钘?true (MiuiBottomBarView#118498011)
+09-21 15:18:13.923 I/OS4FreeFromX(10892): 鎵嬪娍: 鍥涙寚璧锋墜 pointers=4 @818,1256
+09-21 15:18:13.928 I/OS4FreeFromX(10892): 鎵嬪娍: 鍥涙寚绉诲姩 pc=4 dy=-8 used=8ms
+09-21 15:18:13.945 I/OS4FreeFromX(10892): 鎵嬪娍: 鍥涙寚绉诲姩 pc=4 dy=-38 used=25ms
+09-21 15:18:13.987 I/OS4FreeFromX(10892): 鎵嬪娍: 鍥涙寚涓婃粦鍛戒腑(MOVE) 琛岀▼=128px 鐢ㄦ椂=66ms 鎵嬫寚鏁?4
+09-21 15:18:13.987 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: SoSc=true(2) 澶氬垎灞?false 缁勫唴=[7373] shell宸茬煡=21 鍓嶅彴=null/-1/mode=-1
+09-21 15:18:13.988 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=true 褰撳墠灞傛暟=1 缁勫唴=[7373]
+09-21 15:18:13.988 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 宸插湪鍒嗗睆锛? 灞傦級鈫?璋?*鍔犲眰/澶氬垎灞?*鎺ュ彛
+09-21 15:18:13.988 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 澶氬垎灞?taskIds=[7373]锛堝幓閲嶅悗 1 涓紝涓嶈ˉ浣嶏級
+09-21 15:18:13.988 E/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 鍙栦笉鍒?MultiTaskingStateManager 瀹炵幇锛屾斁寮冿紙涓嶉€€鍥炰笅灞?controller锛?
+09-21 15:18:13.988 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 宸茶姹傝繘鍏ュ鍒嗗睆 startMultipleSplits(taskIds=[7373]) ok=false
+09-21 15:18:13.996 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#209877160)
+09-21 15:18:13.997 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#247291116)
+09-21 15:18:13.999 I/OS4FreeFromX(10892): 娌夋蹈: task=7118 鏍忛殣钘?true (MiuiDotView#195677423)
+09-21 15:18:14.000 I/OS4FreeFromX(10892): 娌夋蹈: task=7118 鏍忛殣钘?true (MiuiBottomBarView#118498011)
+09-21 15:18:14.864 I/OS4FreeFromX(10892): bounds 杞藉叆 31 鏉?
+09-21 15:18:14.892 I/OS4FreeFromX(10892): 鍏抽棴鏃跺厹搴曡褰? task=7350 pkg=com.tencent.mm bounds=Rect(0, 0 - 2364, 1672)
+09-21 15:18:15.989 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#88321815)
+09-21 15:18:16.014 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#88321815)
+09-21 15:18:17.084 I/OS4FreeFromX(10892): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:18:17.091 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: SoSc=false(-1) 澶氬垎灞?false 缁勫唴=[] shell宸茬煡=21 鍓嶅彴=com.android.settings/7369/mode=1
+09-21 15:18:17.091 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=false 褰撳墠灞傛暟=1 缁勫唴=[]
+09-21 15:18:17.092 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 鍗曚换鍔?鈫?璋?*鍙屽垎灞?*鎺ュ彛锛堝墠鍙?pkg=com.android.settings task=7369锛?
+09-21 15:18:17.092 I/OS4FreeFromX(10892): 杩涘垎灞? 宸叉姇閫掑埌 Transitions.mainExecutor锛坱ask=7369 pkg=com.android.settings锛?
+09-21 15:18:17.138 I/OS4FreeFromX(10892): 杩涘垎灞? 宸茶姹?openWindowFromFullscreen(task=7369 pkg=com.android.settings)
+09-21 15:18:17.146 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#88321815)
+09-21 15:18:17.290 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#88321815)
+09-21 15:18:17.291 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiBottomBarView#238279529)
+--------- beginning of main
+09-21 15:17:40.107 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7369 mode=1 pkg=com.android.settings bounds=Rect(0, 0 - 1672, 2364)
+09-21 15:17:40.228 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:42.479 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:42.551 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:43.998 I/OS4FreeFromX(10892): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:17:44.006 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: SoSc=false(-1) 澶氬垎灞?false 缁勫唴=[] shell宸茬煡=19 鍓嶅彴=com.android.settings/7369/mode=1
+09-21 15:17:44.006 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=false 褰撳墠灞傛暟=1 缁勫唴=[]
+09-21 15:17:44.007 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 鍗曚换鍔?鈫?璋?*鍙屽垎灞?*鎺ュ彛锛堝墠鍙?pkg=com.android.settings task=7369锛?
+09-21 15:17:44.007 I/OS4FreeFromX(10892): 杩涘垎灞? 宸叉姇閫掑埌 Transitions.mainExecutor锛坱ask=7369 pkg=com.android.settings锛?
+09-21 15:17:44.067 I/OS4FreeFromX(10892): 杩涘垎灞? 宸茶姹?openWindowFromFullscreen(task=7369 pkg=com.android.settings)
+09-21 15:17:44.073 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7369 mode=6 pkg=com.android.settings bounds=Rect(0, 1194 - 1672, 2364)
+09-21 15:17:44.073 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:44.075 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7350 mode=1 pkg=com.android.settings bounds=Rect(0, 0 - 1672, 2364)
+09-21 15:17:44.379 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:44.416 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:44.433 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:44.568 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:47.859 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:47.911 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:48.769 I/OS4FreeFromX(10892): 鍏抽棴鏃跺厹搴曡褰? task=7369 pkg=com.android.settings bounds=Rect(0, 0 - 1672, 2364)
+09-21 15:17:50.679 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7371 mode=1 pkg=com.android.deskclock bounds=Rect(0, 0 - 1672, 2364)
+09-21 15:17:50.887 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:17:52.949 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:17:52.964 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:17:53.017 I/OS4FreeFromX(10892): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:17:53.018 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: SoSc=false(-1) 澶氬垎灞?false 缁勫唴=[] shell宸茬煡=20 鍓嶅彴=com.android.deskclock/7371/mode=1
+09-21 15:17:53.018 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=false 褰撳墠灞傛暟=1 缁勫唴=[]
+09-21 15:17:53.018 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 鍗曚换鍔?鈫?璋?*鍙屽垎灞?*鎺ュ彛锛堝墠鍙?pkg=com.android.deskclock task=7371锛?
+09-21 15:17:53.019 I/OS4FreeFromX(10892): 杩涘垎灞? 宸叉姇閫掑埌 Transitions.mainExecutor锛坱ask=7371 pkg=com.android.deskclock锛?
+09-21 15:17:53.050 I/OS4FreeFromX(10892): 杩涘垎灞? 宸茶姹?openWindowFromFullscreen(task=7371 pkg=com.android.deskclock)
+09-21 15:17:53.055 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7371 mode=6 pkg=com.android.deskclock bounds=Rect(0, 1194 - 1672, 2364)
+09-21 15:17:53.055 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:17:53.175 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:17:54.545 I/OS4FreeFromX(10892): 鍒嗗睆姣斾緥鎭㈠: 鍙栦笉鍒板簲鐢ㄧ粍鍚堬紙璺宠繃锛?
+09-21 15:17:59.276 I/OS4FreeFromX(10892): 鍒嗗睆姣斾緥璁板繂: 鍙栦笉鍒板簲鐢ㄧ粍鍚堬紙璺宠繃璁板綍锛?
+09-21 15:17:59.276 I/OS4FreeFromX(10892): 鍒嗗睆鍚搁檮: 1004 -> 鑷畾涔夋。 position=1004
+09-21 15:17:59.297 I/OS4FreeFromX(10892): 鍒嗗睆鍚搁檮: 853 -> 鑷畾涔夋。 position=857
+09-21 15:17:59.331 I/OS4FreeFromX(10892): 鍒嗗睆鍚搁檮: 651 -> 鑷畾涔夋。 position=224
+09-21 15:17:59.757 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:17:59.807 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:17:59.846 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:17:59.862 E/OS4FreeFromX(10892): 澶氬垎灞忓崰浣? 椤舵爮 77 / 搴曟爮 44 -> 0
+09-21 15:17:59.862 E/OS4FreeFromX(10892): 澶氬垎灞忔弧灞? mDividerInsets 142 -> 0
+09-21 15:17:59.863 E/OS4FreeFromX(10892): 澶氬垎灞忔弧灞? mRootBounds Rect(0, 0 - 1672, 2364) -> Rect(0, 0 - 1672, 2364)
+09-21 15:18:00.335 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:18:01.151 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:18:01.159 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7373 mode=1 pkg=com.android.calendar bounds=Rect(0, 0 - 2364, 1672)
+09-21 15:18:01.266 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:18:01.269 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#27289311)
+09-21 15:18:01.823 I/OS4FreeFromX(10892): 鍏抽棴鏃跺厹搴曡褰? task=7371 pkg=com.android.deskclock bounds=Rect(0, 0 - 2364, 1672)
+09-21 15:18:03.430 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#27289311)
+09-21 15:18:03.444 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#27289311)
+09-21 15:18:03.537 I/OS4FreeFromX(10892): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:18:03.538 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: SoSc=false(-1) 澶氬垎灞?false 缁勫唴=[] shell宸茬煡=21 鍓嶅彴=com.android.calendar/7373/mode=1
+09-21 15:18:03.538 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=false 褰撳墠灞傛暟=1 缁勫唴=[]
+09-21 15:18:03.539 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 鍗曚换鍔?鈫?璋?*鍙屽垎灞?*鎺ュ彛锛堝墠鍙?pkg=com.android.calendar task=7373锛?
+09-21 15:18:03.539 I/OS4FreeFromX(10892): 杩涘垎灞? 宸叉姇閫掑埌 Transitions.mainExecutor锛坱ask=7373 pkg=com.android.calendar锛?
+09-21 15:18:03.570 I/OS4FreeFromX(10892): 杩涘垎灞? 宸茶姹?openWindowFromFullscreen(task=7373 pkg=com.android.calendar)
+09-21 15:18:03.575 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7373 mode=6 pkg=com.android.calendar bounds=Rect(1194, 0 - 2364, 1672)
+09-21 15:18:03.576 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#27289311)
+09-21 15:18:03.770 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#27289311)
+09-21 15:18:03.771 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#190142890)
+09-21 15:18:08.412 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#27289311)
+09-21 15:18:08.413 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#190142890)
+09-21 15:18:08.475 I/OS4FreeFromX(10892): bounds 杞藉叆 30 鏉?
+09-21 15:18:08.476 I/OS4FreeFromX(10892): 璁颁綇 split:com.android.calendar+com.tencent.mm|1672x2364 = 463,0,464,1
+09-21 15:18:08.476 E/OS4FreeFromX(10892): 鍒嗗睆姣斾緥璁板繂: com.android.calendar+com.tencent.mm -> 46.3%锛?672x2364锛?
+09-21 15:18:08.629 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7118 mode=6 pkg=com.tencent.mm bounds=Rect(0, 0 - 1170, 1672)
+09-21 15:18:09.167 I/OS4FreeFromX(10892): bounds 杞藉叆 31 鏉?
+09-21 15:18:09.544 I/OS4FreeFromX(10892): bounds 杞藉叆 31 鏉?
+09-21 15:18:09.546 I/OS4FreeFromX(10892): 娌夋蹈: task=7118 鏍忛殣钘?true (MiuiDotView#175506141)
+09-21 15:18:09.547 I/OS4FreeFromX(10892): 娌夋蹈: task=7118 鏍忛殣钘?true (MiuiBottomBarView#139373843)
+09-21 15:18:09.548 I/OS4FreeFromX(10892): 鎵嬪娍: 鍥涙寚璧锋墜 pointers=4 @1375,1179
+09-21 15:18:09.550 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#27289311)
+09-21 15:18:09.551 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#190142890)
+09-21 15:18:09.554 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#27289311)
+09-21 15:18:09.555 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#190142890)
+09-21 15:18:09.668 I/OS4FreeFromX(10892): 鎵嬪娍: 鍥涙寚涓婃粦鍛戒腑(MOVE) 琛岀▼=130px 鐢ㄦ椂=124ms 鎵嬫寚鏁?4
+09-21 15:18:09.669 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: SoSc=true(2) 澶氬垎灞?false 缁勫唴=[7373, 7118] shell宸茬煡=21 鍓嶅彴=null/-1/mode=-1
+09-21 15:18:09.669 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=true 褰撳墠灞傛暟=2 缁勫唴=[7373, 7118]
+09-21 15:18:09.669 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 宸插湪鍒嗗睆锛? 灞傦級鈫?璋?*鍔犲眰/澶氬垎灞?*鎺ュ彛
+09-21 15:18:09.670 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 澶氬垎灞?taskIds=[7373, 7118]锛堝幓閲嶅悗 2 涓紝涓嶈ˉ浣嶏級
+09-21 15:18:09.670 E/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 鍙栦笉鍒?MultiTaskingStateManager 瀹炵幇锛屾斁寮冿紙涓嶉€€鍥炰笅灞?controller锛?
+09-21 15:18:09.670 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 宸茶姹傝繘鍏ュ鍒嗗睆 startMultipleSplits(taskIds=[7373, 7118]) ok=false
+09-21 15:18:10.010 I/OS4FreeFromX(10892): bounds 杞藉叆 31 鏉?
+09-21 15:18:10.011 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#27289311)
+09-21 15:18:10.012 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#190142890)
+09-21 15:18:10.112 I/OS4FreeFromX(10892): 娌夋蹈: task=7118 鏍忛殣钘?true (MiuiDotView#175506141)
+09-21 15:18:10.113 I/OS4FreeFromX(10892): 娌夋蹈: task=7118 鏍忛殣钘?true (MiuiBottomBarView#139373843)
+09-21 15:18:10.114 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#27289311)
+09-21 15:18:10.114 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#190142890)
+09-21 15:18:10.977 I/OS4FreeFromX(10892): bounds 杞藉叆 31 鏉?
+09-21 15:18:11.003 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#27289311)
+09-21 15:18:11.007 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7118 mode=1 pkg=com.tencent.mm bounds=Rect(0, 0 - 2364, 1672)
+09-21 15:18:11.007 I/OS4FreeFromX(10892): 娌夋蹈: task=7118 鏍忛殣钘?true (MiuiDotView#175506141)
+09-21 15:18:11.009 I/OS4FreeFromX(10892): 鍏抽棴鏃跺厹搴曡褰? task=7373 pkg=com.android.calendar bounds=Rect(0, 0 - 2364, 1672)
+09-21 15:18:11.011 I/OS4FreeFromX(10892): 鍏抽棴鏃跺厹搴曡褰? task=7118 pkg=com.tencent.mm bounds=Rect(0, 0 - 2364, 1672)
+09-21 15:18:11.854 I/OS4FreeFromX(10892): bounds 杞藉叆 31 鏉?
+09-21 15:18:12.384 I/OS4FreeFromX(10892): bounds 杞藉叆 31 鏉?
+09-21 15:18:12.857 I/OS4FreeFromX(10892): bounds 杞藉叆 31 鏉?
+09-21 15:18:12.859 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#209877160)
+09-21 15:18:12.860 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#247291116)
+09-21 15:18:12.861 I/OS4FreeFromX(10892): 鎵嬪娍: 鍥涙寚璧锋墜 pointers=4 @794,1364
+09-21 15:18:12.864 I/OS4FreeFromX(10892): 娌夋蹈: task=7118 鏍忛殣钘?true (MiuiDotView#195677423)
+09-21 15:18:12.864 I/OS4FreeFromX(10892): 娌夋蹈: task=7118 鏍忛殣钘?true (MiuiBottomBarView#118498011)
+09-21 15:18:12.869 I/OS4FreeFromX(10892): 娌夋蹈: task=7118 鏍忛殣钘?true (MiuiDotView#195677423)
+09-21 15:18:12.870 I/OS4FreeFromX(10892): 娌夋蹈: task=7118 鏍忛殣钘?true (MiuiBottomBarView#118498011)
+09-21 15:18:12.876 I/OS4FreeFromX(10892): 鎵嬪娍: 鍥涙寚绉诲姩 pc=4 dy=-7 used=17ms
+09-21 15:18:12.950 I/OS4FreeFromX(10892): 鎵嬪娍: 鍥涙寚涓婃粦鍛戒腑(MOVE) 琛岀▼=137px 鐢ㄦ椂=92ms 鎵嬫寚鏁?4
+09-21 15:18:12.950 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: SoSc=true(2) 澶氬垎灞?false 缁勫唴=[7118, 7373] shell宸茬煡=21 鍓嶅彴=null/-1/mode=-1
+09-21 15:18:12.950 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=true 褰撳墠灞傛暟=2 缁勫唴=[7118, 7373]
+09-21 15:18:12.950 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 宸插湪鍒嗗睆锛? 灞傦級鈫?璋?*鍔犲眰/澶氬垎灞?*鎺ュ彛
+09-21 15:18:12.951 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 澶氬垎灞?taskIds=[7118, 7373]锛堝幓閲嶅悗 2 涓紝涓嶈ˉ浣嶏級
+09-21 15:18:12.951 E/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 鍙栦笉鍒?MultiTaskingStateManager 瀹炵幇锛屾斁寮冿紙涓嶉€€鍥炰笅灞?controller锛?
+09-21 15:18:12.951 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 宸茶姹傝繘鍏ュ鍒嗗睆 startMultipleSplits(taskIds=[7118, 7373]) ok=false
+09-21 15:18:13.815 I/OS4FreeFromX(10892): bounds 杞藉叆 31 鏉?
+09-21 15:18:13.816 I/OS4FreeFromX(10892): 娌夋蹈: task=7118 鏍忛殣钘?true (MiuiDotView#195677423)
+09-21 15:18:13.816 I/OS4FreeFromX(10892): 娌夋蹈: task=7118 鏍忛殣钘?true (MiuiBottomBarView#118498011)
+09-21 15:18:13.923 I/OS4FreeFromX(10892): 鎵嬪娍: 鍥涙寚璧锋墜 pointers=4 @818,1256
+09-21 15:18:13.928 I/OS4FreeFromX(10892): 鎵嬪娍: 鍥涙寚绉诲姩 pc=4 dy=-8 used=8ms
+09-21 15:18:13.945 I/OS4FreeFromX(10892): 鎵嬪娍: 鍥涙寚绉诲姩 pc=4 dy=-38 used=25ms
+09-21 15:18:13.987 I/OS4FreeFromX(10892): 鎵嬪娍: 鍥涙寚涓婃粦鍛戒腑(MOVE) 琛岀▼=128px 鐢ㄦ椂=66ms 鎵嬫寚鏁?4
+09-21 15:18:13.987 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: SoSc=true(2) 澶氬垎灞?false 缁勫唴=[7373] shell宸茬煡=21 鍓嶅彴=null/-1/mode=-1
+09-21 15:18:13.988 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=true 褰撳墠灞傛暟=1 缁勫唴=[7373]
+09-21 15:18:13.988 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 宸插湪鍒嗗睆锛? 灞傦級鈫?璋?*鍔犲眰/澶氬垎灞?*鎺ュ彛
+09-21 15:18:13.988 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 澶氬垎灞?taskIds=[7373]锛堝幓閲嶅悗 1 涓紝涓嶈ˉ浣嶏級
+09-21 15:18:13.988 E/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 鍙栦笉鍒?MultiTaskingStateManager 瀹炵幇锛屾斁寮冿紙涓嶉€€鍥炰笅灞?controller锛?
+09-21 15:18:13.988 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 宸茶姹傝繘鍏ュ鍒嗗睆 startMultipleSplits(taskIds=[7373]) ok=false
+09-21 15:18:13.996 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#209877160)
+09-21 15:18:13.997 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#247291116)
+09-21 15:18:13.999 I/OS4FreeFromX(10892): 娌夋蹈: task=7118 鏍忛殣钘?true (MiuiDotView#195677423)
+09-21 15:18:14.000 I/OS4FreeFromX(10892): 娌夋蹈: task=7118 鏍忛殣钘?true (MiuiBottomBarView#118498011)
+09-21 15:18:14.864 I/OS4FreeFromX(10892): bounds 杞藉叆 31 鏉?
+09-21 15:18:14.892 I/OS4FreeFromX(10892): 鍏抽棴鏃跺厹搴曡褰? task=7350 pkg=com.tencent.mm bounds=Rect(0, 0 - 2364, 1672)
+09-21 15:18:15.989 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#88321815)
+09-21 15:18:16.014 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#88321815)
+09-21 15:18:17.084 I/OS4FreeFromX(10892): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:18:17.091 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: SoSc=false(-1) 澶氬垎灞?false 缁勫唴=[] shell宸茬煡=21 鍓嶅彴=com.android.settings/7369/mode=1
+09-21 15:18:17.091 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=false 褰撳墠灞傛暟=1 缁勫唴=[]
+09-21 15:18:17.092 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 鍗曚换鍔?鈫?璋?*鍙屽垎灞?*鎺ュ彛锛堝墠鍙?pkg=com.android.settings task=7369锛?
+09-21 15:18:17.092 I/OS4FreeFromX(10892): 杩涘垎灞? 宸叉姇閫掑埌 Transitions.mainExecutor锛坱ask=7369 pkg=com.android.settings锛?
+09-21 15:18:17.138 I/OS4FreeFromX(10892): 杩涘垎灞? 宸茶姹?openWindowFromFullscreen(task=7369 pkg=com.android.settings)
+09-21 15:18:17.146 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#88321815)
+09-21 15:18:17.290 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#88321815)
+09-21 15:18:17.291 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiBottomBarView#238279529)
+09-21 15:18:22.086 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#88321815)
+09-21 15:18:22.314 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#88321815)
+09-21 15:18:23.100 I/OS4FreeFromX(10892): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:18:23.103 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: SoSc=false(-1) 澶氬垎灞?false 缁勫唴=[] shell宸茬煡=21 鍓嶅彴=com.android.settings/7369/mode=1
+09-21 15:18:23.104 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=false 褰撳墠灞傛暟=1 缁勫唴=[]
+09-21 15:18:23.104 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 鍗曚换鍔?鈫?璋?*鍙屽垎灞?*鎺ュ彛锛堝墠鍙?pkg=com.android.settings task=7369锛?
+09-21 15:18:23.106 I/OS4FreeFromX(10892): 杩涘垎灞? 宸叉姇閫掑埌 Transitions.mainExecutor锛坱ask=7369 pkg=com.android.settings锛?
+09-21 15:18:23.158 I/OS4FreeFromX(10892): 杩涘垎灞? 宸茶姹?openWindowFromFullscreen(task=7369 pkg=com.android.settings)
+09-21 15:18:23.164 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#88321815)
+09-21 15:18:23.385 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#88321815)
+09-21 15:18:23.386 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiBottomBarView#153665965)
+--------- beginning of main
+09-21 15:17:40.107 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7369 mode=1 pkg=com.android.settings bounds=Rect(0, 0 - 1672, 2364)
+09-21 15:17:40.228 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:42.479 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:42.551 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:43.998 I/OS4FreeFromX(10892): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:17:44.006 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: SoSc=false(-1) 澶氬垎灞?false 缁勫唴=[] shell宸茬煡=19 鍓嶅彴=com.android.settings/7369/mode=1
+09-21 15:17:44.006 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=false 褰撳墠灞傛暟=1 缁勫唴=[]
+09-21 15:17:44.007 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 鍗曚换鍔?鈫?璋?*鍙屽垎灞?*鎺ュ彛锛堝墠鍙?pkg=com.android.settings task=7369锛?
+09-21 15:17:44.007 I/OS4FreeFromX(10892): 杩涘垎灞? 宸叉姇閫掑埌 Transitions.mainExecutor锛坱ask=7369 pkg=com.android.settings锛?
+09-21 15:17:44.067 I/OS4FreeFromX(10892): 杩涘垎灞? 宸茶姹?openWindowFromFullscreen(task=7369 pkg=com.android.settings)
+09-21 15:17:44.073 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7369 mode=6 pkg=com.android.settings bounds=Rect(0, 1194 - 1672, 2364)
+09-21 15:17:44.073 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:44.075 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7350 mode=1 pkg=com.android.settings bounds=Rect(0, 0 - 1672, 2364)
+09-21 15:17:44.379 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:44.416 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:44.433 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:44.568 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:47.859 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:47.911 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:48.769 I/OS4FreeFromX(10892): 鍏抽棴鏃跺厹搴曡褰? task=7369 pkg=com.android.settings bounds=Rect(0, 0 - 1672, 2364)
+09-21 15:17:50.679 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7371 mode=1 pkg=com.android.deskclock bounds=Rect(0, 0 - 1672, 2364)
+09-21 15:17:50.887 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:17:52.949 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:17:52.964 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:17:53.017 I/OS4FreeFromX(10892): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:17:53.018 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: SoSc=false(-1) 澶氬垎灞?false 缁勫唴=[] shell宸茬煡=20 鍓嶅彴=com.android.deskclock/7371/mode=1
+09-21 15:17:53.018 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=false 褰撳墠灞傛暟=1 缁勫唴=[]
+09-21 15:17:53.018 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 鍗曚换鍔?鈫?璋?*鍙屽垎灞?*鎺ュ彛锛堝墠鍙?pkg=com.android.deskclock task=7371锛?
+09-21 15:17:53.019 I/OS4FreeFromX(10892): 杩涘垎灞? 宸叉姇閫掑埌 Transitions.mainExecutor锛坱ask=7371 pkg=com.android.deskclock锛?
+09-21 15:17:53.050 I/OS4FreeFromX(10892): 杩涘垎灞? 宸茶姹?openWindowFromFullscreen(task=7371 pkg=com.android.deskclock)
+09-21 15:17:53.055 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7371 mode=6 pkg=com.android.deskclock bounds=Rect(0, 1194 - 1672, 2364)
+09-21 15:17:53.055 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:17:53.175 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:17:54.545 I/OS4FreeFromX(10892): 鍒嗗睆姣斾緥鎭㈠: 鍙栦笉鍒板簲鐢ㄧ粍鍚堬紙璺宠繃锛?
+09-21 15:17:59.276 I/OS4FreeFromX(10892): 鍒嗗睆姣斾緥璁板繂: 鍙栦笉鍒板簲鐢ㄧ粍鍚堬紙璺宠繃璁板綍锛?
+09-21 15:17:59.276 I/OS4FreeFromX(10892): 鍒嗗睆鍚搁檮: 1004 -> 鑷畾涔夋。 position=1004
+09-21 15:17:59.297 I/OS4FreeFromX(10892): 鍒嗗睆鍚搁檮: 853 -> 鑷畾涔夋。 position=857
+09-21 15:17:59.331 I/OS4FreeFromX(10892): 鍒嗗睆鍚搁檮: 651 -> 鑷畾涔夋。 position=224
+09-21 15:17:59.757 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:17:59.807 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:17:59.846 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:17:59.862 E/OS4FreeFromX(10892): 澶氬垎灞忓崰浣? 椤舵爮 77 / 搴曟爮 44 -> 0
+09-21 15:17:59.862 E/OS4FreeFromX(10892): 澶氬垎灞忔弧灞? mDividerInsets 142 -> 0
+09-21 15:17:59.863 E/OS4FreeFromX(10892): 澶氬垎灞忔弧灞? mRootBounds Rect(0, 0 - 1672, 2364) -> Rect(0, 0 - 1672, 2364)
+09-21 15:18:00.335 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:18:01.151 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:18:01.159 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7373 mode=1 pkg=com.android.calendar bounds=Rect(0, 0 - 2364, 1672)
+09-21 15:18:01.266 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:18:01.269 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#27289311)
+09-21 15:18:01.823 I/OS4FreeFromX(10892): 鍏抽棴鏃跺厹搴曡褰? task=7371 pkg=com.android.deskclock bounds=Rect(0, 0 - 2364, 1672)
+09-21 15:18:03.430 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#27289311)
+09-21 15:18:03.444 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#27289311)
+09-21 15:18:03.537 I/OS4FreeFromX(10892): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:18:03.538 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: SoSc=false(-1) 澶氬垎灞?false 缁勫唴=[] shell宸茬煡=21 鍓嶅彴=com.android.calendar/7373/mode=1
+09-21 15:18:03.538 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=false 褰撳墠灞傛暟=1 缁勫唴=[]
+09-21 15:18:03.539 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 鍗曚换鍔?鈫?璋?*鍙屽垎灞?*鎺ュ彛锛堝墠鍙?pkg=com.android.calendar task=7373锛?
+09-21 15:18:03.539 I/OS4FreeFromX(10892): 杩涘垎灞? 宸叉姇閫掑埌 Transitions.mainExecutor锛坱ask=7373 pkg=com.android.calendar锛?
+09-21 15:18:03.570 I/OS4FreeFromX(10892): 杩涘垎灞? 宸茶姹?openWindowFromFullscreen(task=7373 pkg=com.android.calendar)
+09-21 15:18:03.575 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7373 mode=6 pkg=com.android.calendar bounds=Rect(1194, 0 - 2364, 1672)
+09-21 15:18:03.576 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#27289311)
+09-21 15:18:03.770 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#27289311)
+09-21 15:18:03.771 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#190142890)
+09-21 15:18:08.412 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#27289311)
+09-21 15:18:08.413 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#190142890)
+09-21 15:18:08.475 I/OS4FreeFromX(10892): bounds 杞藉叆 30 鏉?
+09-21 15:18:08.476 I/OS4FreeFromX(10892): 璁颁綇 split:com.android.calendar+com.tencent.mm|1672x2364 = 463,0,464,1
+09-21 15:18:08.476 E/OS4FreeFromX(10892): 鍒嗗睆姣斾緥璁板繂: com.android.calendar+com.tencent.mm -> 46.3%锛?672x2364锛?
+09-21 15:18:08.629 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7118 mode=6 pkg=com.tencent.mm bounds=Rect(0, 0 - 1170, 1672)
+09-21 15:18:09.167 I/OS4FreeFromX(10892): bounds 杞藉叆 31 鏉?
+09-21 15:18:09.544 I/OS4FreeFromX(10892): bounds 杞藉叆 31 鏉?
+09-21 15:18:09.546 I/OS4FreeFromX(10892): 娌夋蹈: task=7118 鏍忛殣钘?true (MiuiDotView#175506141)
+09-21 15:18:09.547 I/OS4FreeFromX(10892): 娌夋蹈: task=7118 鏍忛殣钘?true (MiuiBottomBarView#139373843)
+09-21 15:18:09.548 I/OS4FreeFromX(10892): 鎵嬪娍: 鍥涙寚璧锋墜 pointers=4 @1375,1179
+09-21 15:18:09.550 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#27289311)
+09-21 15:18:09.551 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#190142890)
+09-21 15:18:09.554 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#27289311)
+09-21 15:18:09.555 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#190142890)
+09-21 15:18:09.668 I/OS4FreeFromX(10892): 鎵嬪娍: 鍥涙寚涓婃粦鍛戒腑(MOVE) 琛岀▼=130px 鐢ㄦ椂=124ms 鎵嬫寚鏁?4
+09-21 15:18:09.669 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: SoSc=true(2) 澶氬垎灞?false 缁勫唴=[7373, 7118] shell宸茬煡=21 鍓嶅彴=null/-1/mode=-1
+09-21 15:18:09.669 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=true 褰撳墠灞傛暟=2 缁勫唴=[7373, 7118]
+09-21 15:18:09.669 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 宸插湪鍒嗗睆锛? 灞傦級鈫?璋?*鍔犲眰/澶氬垎灞?*鎺ュ彛
+09-21 15:18:09.670 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 澶氬垎灞?taskIds=[7373, 7118]锛堝幓閲嶅悗 2 涓紝涓嶈ˉ浣嶏級
+09-21 15:18:09.670 E/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 鍙栦笉鍒?MultiTaskingStateManager 瀹炵幇锛屾斁寮冿紙涓嶉€€鍥炰笅灞?controller锛?
+09-21 15:18:09.670 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 宸茶姹傝繘鍏ュ鍒嗗睆 startMultipleSplits(taskIds=[7373, 7118]) ok=false
+09-21 15:18:10.010 I/OS4FreeFromX(10892): bounds 杞藉叆 31 鏉?
+09-21 15:18:10.011 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#27289311)
+09-21 15:18:10.012 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#190142890)
+09-21 15:18:10.112 I/OS4FreeFromX(10892): 娌夋蹈: task=7118 鏍忛殣钘?true (MiuiDotView#175506141)
+09-21 15:18:10.113 I/OS4FreeFromX(10892): 娌夋蹈: task=7118 鏍忛殣钘?true (MiuiBottomBarView#139373843)
+09-21 15:18:10.114 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#27289311)
+09-21 15:18:10.114 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#190142890)
+09-21 15:18:10.977 I/OS4FreeFromX(10892): bounds 杞藉叆 31 鏉?
+09-21 15:18:11.003 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#27289311)
+09-21 15:18:11.007 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7118 mode=1 pkg=com.tencent.mm bounds=Rect(0, 0 - 2364, 1672)
+09-21 15:18:11.007 I/OS4FreeFromX(10892): 娌夋蹈: task=7118 鏍忛殣钘?true (MiuiDotView#175506141)
+09-21 15:18:11.009 I/OS4FreeFromX(10892): 鍏抽棴鏃跺厹搴曡褰? task=7373 pkg=com.android.calendar bounds=Rect(0, 0 - 2364, 1672)
+09-21 15:18:11.011 I/OS4FreeFromX(10892): 鍏抽棴鏃跺厹搴曡褰? task=7118 pkg=com.tencent.mm bounds=Rect(0, 0 - 2364, 1672)
+09-21 15:18:11.854 I/OS4FreeFromX(10892): bounds 杞藉叆 31 鏉?
+09-21 15:18:12.384 I/OS4FreeFromX(10892): bounds 杞藉叆 31 鏉?
+09-21 15:18:12.857 I/OS4FreeFromX(10892): bounds 杞藉叆 31 鏉?
+09-21 15:18:12.859 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#209877160)
+09-21 15:18:12.860 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#247291116)
+09-21 15:18:12.861 I/OS4FreeFromX(10892): 鎵嬪娍: 鍥涙寚璧锋墜 pointers=4 @794,1364
+09-21 15:18:12.864 I/OS4FreeFromX(10892): 娌夋蹈: task=7118 鏍忛殣钘?true (MiuiDotView#195677423)
+09-21 15:18:12.864 I/OS4FreeFromX(10892): 娌夋蹈: task=7118 鏍忛殣钘?true (MiuiBottomBarView#118498011)
+09-21 15:18:12.869 I/OS4FreeFromX(10892): 娌夋蹈: task=7118 鏍忛殣钘?true (MiuiDotView#195677423)
+09-21 15:18:12.870 I/OS4FreeFromX(10892): 娌夋蹈: task=7118 鏍忛殣钘?true (MiuiBottomBarView#118498011)
+09-21 15:18:12.876 I/OS4FreeFromX(10892): 鎵嬪娍: 鍥涙寚绉诲姩 pc=4 dy=-7 used=17ms
+09-21 15:18:12.950 I/OS4FreeFromX(10892): 鎵嬪娍: 鍥涙寚涓婃粦鍛戒腑(MOVE) 琛岀▼=137px 鐢ㄦ椂=92ms 鎵嬫寚鏁?4
+09-21 15:18:12.950 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: SoSc=true(2) 澶氬垎灞?false 缁勫唴=[7118, 7373] shell宸茬煡=21 鍓嶅彴=null/-1/mode=-1
+09-21 15:18:12.950 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=true 褰撳墠灞傛暟=2 缁勫唴=[7118, 7373]
+09-21 15:18:12.950 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 宸插湪鍒嗗睆锛? 灞傦級鈫?璋?*鍔犲眰/澶氬垎灞?*鎺ュ彛
+09-21 15:18:12.951 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 澶氬垎灞?taskIds=[7118, 7373]锛堝幓閲嶅悗 2 涓紝涓嶈ˉ浣嶏級
+09-21 15:18:12.951 E/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 鍙栦笉鍒?MultiTaskingStateManager 瀹炵幇锛屾斁寮冿紙涓嶉€€鍥炰笅灞?controller锛?
+09-21 15:18:12.951 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 宸茶姹傝繘鍏ュ鍒嗗睆 startMultipleSplits(taskIds=[7118, 7373]) ok=false
+09-21 15:18:13.815 I/OS4FreeFromX(10892): bounds 杞藉叆 31 鏉?
+09-21 15:18:13.816 I/OS4FreeFromX(10892): 娌夋蹈: task=7118 鏍忛殣钘?true (MiuiDotView#195677423)
+09-21 15:18:13.816 I/OS4FreeFromX(10892): 娌夋蹈: task=7118 鏍忛殣钘?true (MiuiBottomBarView#118498011)
+09-21 15:18:13.923 I/OS4FreeFromX(10892): 鎵嬪娍: 鍥涙寚璧锋墜 pointers=4 @818,1256
+09-21 15:18:13.928 I/OS4FreeFromX(10892): 鎵嬪娍: 鍥涙寚绉诲姩 pc=4 dy=-8 used=8ms
+09-21 15:18:13.945 I/OS4FreeFromX(10892): 鎵嬪娍: 鍥涙寚绉诲姩 pc=4 dy=-38 used=25ms
+09-21 15:18:13.987 I/OS4FreeFromX(10892): 鎵嬪娍: 鍥涙寚涓婃粦鍛戒腑(MOVE) 琛岀▼=128px 鐢ㄦ椂=66ms 鎵嬫寚鏁?4
+09-21 15:18:13.987 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: SoSc=true(2) 澶氬垎灞?false 缁勫唴=[7373] shell宸茬煡=21 鍓嶅彴=null/-1/mode=-1
+09-21 15:18:13.988 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=true 褰撳墠灞傛暟=1 缁勫唴=[7373]
+09-21 15:18:13.988 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 宸插湪鍒嗗睆锛? 灞傦級鈫?璋?*鍔犲眰/澶氬垎灞?*鎺ュ彛
+09-21 15:18:13.988 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 澶氬垎灞?taskIds=[7373]锛堝幓閲嶅悗 1 涓紝涓嶈ˉ浣嶏級
+09-21 15:18:13.988 E/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 鍙栦笉鍒?MultiTaskingStateManager 瀹炵幇锛屾斁寮冿紙涓嶉€€鍥炰笅灞?controller锛?
+09-21 15:18:13.988 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 宸茶姹傝繘鍏ュ鍒嗗睆 startMultipleSplits(taskIds=[7373]) ok=false
+09-21 15:18:13.996 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#209877160)
+09-21 15:18:13.997 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#247291116)
+09-21 15:18:13.999 I/OS4FreeFromX(10892): 娌夋蹈: task=7118 鏍忛殣钘?true (MiuiDotView#195677423)
+09-21 15:18:14.000 I/OS4FreeFromX(10892): 娌夋蹈: task=7118 鏍忛殣钘?true (MiuiBottomBarView#118498011)
+09-21 15:18:14.864 I/OS4FreeFromX(10892): bounds 杞藉叆 31 鏉?
+09-21 15:18:14.892 I/OS4FreeFromX(10892): 鍏抽棴鏃跺厹搴曡褰? task=7350 pkg=com.tencent.mm bounds=Rect(0, 0 - 2364, 1672)
+09-21 15:18:15.989 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#88321815)
+09-21 15:18:16.014 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#88321815)
+09-21 15:18:17.084 I/OS4FreeFromX(10892): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:18:17.091 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: SoSc=false(-1) 澶氬垎灞?false 缁勫唴=[] shell宸茬煡=21 鍓嶅彴=com.android.settings/7369/mode=1
+09-21 15:18:17.091 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=false 褰撳墠灞傛暟=1 缁勫唴=[]
+09-21 15:18:17.092 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 鍗曚换鍔?鈫?璋?*鍙屽垎灞?*鎺ュ彛锛堝墠鍙?pkg=com.android.settings task=7369锛?
+09-21 15:18:17.092 I/OS4FreeFromX(10892): 杩涘垎灞? 宸叉姇閫掑埌 Transitions.mainExecutor锛坱ask=7369 pkg=com.android.settings锛?
+09-21 15:18:17.138 I/OS4FreeFromX(10892): 杩涘垎灞? 宸茶姹?openWindowFromFullscreen(task=7369 pkg=com.android.settings)
+09-21 15:18:17.146 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#88321815)
+09-21 15:18:17.290 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#88321815)
+09-21 15:18:17.291 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiBottomBarView#238279529)
+09-21 15:18:22.086 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#88321815)
+09-21 15:18:22.314 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#88321815)
+09-21 15:18:23.100 I/OS4FreeFromX(10892): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:18:23.103 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: SoSc=false(-1) 澶氬垎灞?false 缁勫唴=[] shell宸茬煡=21 鍓嶅彴=com.android.settings/7369/mode=1
+09-21 15:18:23.104 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=false 褰撳墠灞傛暟=1 缁勫唴=[]
+09-21 15:18:23.104 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 鍗曚换鍔?鈫?璋?*鍙屽垎灞?*鎺ュ彛锛堝墠鍙?pkg=com.android.settings task=7369锛?
+09-21 15:18:23.106 I/OS4FreeFromX(10892): 杩涘垎灞? 宸叉姇閫掑埌 Transitions.mainExecutor锛坱ask=7369 pkg=com.android.settings锛?
+09-21 15:18:23.158 I/OS4FreeFromX(10892): 杩涘垎灞? 宸茶姹?openWindowFromFullscreen(task=7369 pkg=com.android.settings)
+09-21 15:18:23.164 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#88321815)
+09-21 15:18:23.385 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#88321815)
+09-21 15:18:23.386 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiBottomBarView#153665965)
+09-21 15:18:27.621 I/OS4FreeFromX(10892): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:18:27.655 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#88321815)
+09-21 15:18:27.702 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: SoSc=false(1) 澶氬垎灞?false 缁勫唴=[] shell宸茬煡=21 鍓嶅彴=com.android.settings/7369/mode=1
+09-21 15:18:27.702 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=false 褰撳墠灞傛暟=1 缁勫唴=[]
+09-21 15:18:27.702 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 鍗曚换鍔?鈫?璋?*鍙屽垎灞?*鎺ュ彛锛堝墠鍙?pkg=com.android.settings task=7369锛?
+09-21 15:18:27.702 I/OS4FreeFromX(10892): 杩涘垎灞? 宸叉姇閫掑埌 Transitions.mainExecutor锛坱ask=7369 pkg=com.android.settings锛?
+09-21 15:18:27.721 I/OS4FreeFromX(10892): 杩涘垎灞? 宸茶姹?openWindowFromFullscreen(task=7369 pkg=com.android.settings)
+09-21 15:18:27.851 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#88321815)
+09-21 15:18:27.891 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#88321815)
+09-21 15:18:28.182 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#88321815)
+09-21 15:18:28.183 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiBottomBarView#157011484)
+--------- beginning of main
+09-21 15:17:40.107 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7369 mode=1 pkg=com.android.settings bounds=Rect(0, 0 - 1672, 2364)
+09-21 15:17:40.228 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:42.479 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:42.551 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:43.998 I/OS4FreeFromX(10892): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:17:44.006 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: SoSc=false(-1) 澶氬垎灞?false 缁勫唴=[] shell宸茬煡=19 鍓嶅彴=com.android.settings/7369/mode=1
+09-21 15:17:44.006 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=false 褰撳墠灞傛暟=1 缁勫唴=[]
+09-21 15:17:44.007 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 鍗曚换鍔?鈫?璋?*鍙屽垎灞?*鎺ュ彛锛堝墠鍙?pkg=com.android.settings task=7369锛?
+09-21 15:17:44.007 I/OS4FreeFromX(10892): 杩涘垎灞? 宸叉姇閫掑埌 Transitions.mainExecutor锛坱ask=7369 pkg=com.android.settings锛?
+09-21 15:17:44.067 I/OS4FreeFromX(10892): 杩涘垎灞? 宸茶姹?openWindowFromFullscreen(task=7369 pkg=com.android.settings)
+09-21 15:17:44.073 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7369 mode=6 pkg=com.android.settings bounds=Rect(0, 1194 - 1672, 2364)
+09-21 15:17:44.073 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:44.075 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7350 mode=1 pkg=com.android.settings bounds=Rect(0, 0 - 1672, 2364)
+09-21 15:17:44.379 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:44.416 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:44.433 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:44.568 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:47.859 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:47.911 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#255978978)
+09-21 15:17:48.769 I/OS4FreeFromX(10892): 鍏抽棴鏃跺厹搴曡褰? task=7369 pkg=com.android.settings bounds=Rect(0, 0 - 1672, 2364)
+09-21 15:17:50.679 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7371 mode=1 pkg=com.android.deskclock bounds=Rect(0, 0 - 1672, 2364)
+09-21 15:17:50.887 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:17:52.949 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:17:52.964 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:17:53.017 I/OS4FreeFromX(10892): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:17:53.018 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: SoSc=false(-1) 澶氬垎灞?false 缁勫唴=[] shell宸茬煡=20 鍓嶅彴=com.android.deskclock/7371/mode=1
+09-21 15:17:53.018 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=false 褰撳墠灞傛暟=1 缁勫唴=[]
+09-21 15:17:53.018 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 鍗曚换鍔?鈫?璋?*鍙屽垎灞?*鎺ュ彛锛堝墠鍙?pkg=com.android.deskclock task=7371锛?
+09-21 15:17:53.019 I/OS4FreeFromX(10892): 杩涘垎灞? 宸叉姇閫掑埌 Transitions.mainExecutor锛坱ask=7371 pkg=com.android.deskclock锛?
+09-21 15:17:53.050 I/OS4FreeFromX(10892): 杩涘垎灞? 宸茶姹?openWindowFromFullscreen(task=7371 pkg=com.android.deskclock)
+09-21 15:17:53.055 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7371 mode=6 pkg=com.android.deskclock bounds=Rect(0, 1194 - 1672, 2364)
+09-21 15:17:53.055 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:17:53.175 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:17:54.545 I/OS4FreeFromX(10892): 鍒嗗睆姣斾緥鎭㈠: 鍙栦笉鍒板簲鐢ㄧ粍鍚堬紙璺宠繃锛?
+09-21 15:17:59.276 I/OS4FreeFromX(10892): 鍒嗗睆姣斾緥璁板繂: 鍙栦笉鍒板簲鐢ㄧ粍鍚堬紙璺宠繃璁板綍锛?
+09-21 15:17:59.276 I/OS4FreeFromX(10892): 鍒嗗睆鍚搁檮: 1004 -> 鑷畾涔夋。 position=1004
+09-21 15:17:59.297 I/OS4FreeFromX(10892): 鍒嗗睆鍚搁檮: 853 -> 鑷畾涔夋。 position=857
+09-21 15:17:59.331 I/OS4FreeFromX(10892): 鍒嗗睆鍚搁檮: 651 -> 鑷畾涔夋。 position=224
+09-21 15:17:59.757 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:17:59.807 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:17:59.846 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:17:59.862 E/OS4FreeFromX(10892): 澶氬垎灞忓崰浣? 椤舵爮 77 / 搴曟爮 44 -> 0
+09-21 15:17:59.862 E/OS4FreeFromX(10892): 澶氬垎灞忔弧灞? mDividerInsets 142 -> 0
+09-21 15:17:59.863 E/OS4FreeFromX(10892): 澶氬垎灞忔弧灞? mRootBounds Rect(0, 0 - 1672, 2364) -> Rect(0, 0 - 1672, 2364)
+09-21 15:18:00.335 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:18:01.151 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:18:01.159 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7373 mode=1 pkg=com.android.calendar bounds=Rect(0, 0 - 2364, 1672)
+09-21 15:18:01.266 I/OS4FreeFromX(10892): 娌夋蹈: task=7371 鏍忛殣钘?true (MiuiDotView#54382815)
+09-21 15:18:01.269 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#27289311)
+09-21 15:18:01.823 I/OS4FreeFromX(10892): 鍏抽棴鏃跺厹搴曡褰? task=7371 pkg=com.android.deskclock bounds=Rect(0, 0 - 2364, 1672)
+09-21 15:18:03.430 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#27289311)
+09-21 15:18:03.444 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#27289311)
+09-21 15:18:03.537 I/OS4FreeFromX(10892): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:18:03.538 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: SoSc=false(-1) 澶氬垎灞?false 缁勫唴=[] shell宸茬煡=21 鍓嶅彴=com.android.calendar/7373/mode=1
+09-21 15:18:03.538 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=false 褰撳墠灞傛暟=1 缁勫唴=[]
+09-21 15:18:03.539 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 鍗曚换鍔?鈫?璋?*鍙屽垎灞?*鎺ュ彛锛堝墠鍙?pkg=com.android.calendar task=7373锛?
+09-21 15:18:03.539 I/OS4FreeFromX(10892): 杩涘垎灞? 宸叉姇閫掑埌 Transitions.mainExecutor锛坱ask=7373 pkg=com.android.calendar锛?
+09-21 15:18:03.570 I/OS4FreeFromX(10892): 杩涘垎灞? 宸茶姹?openWindowFromFullscreen(task=7373 pkg=com.android.calendar)
+09-21 15:18:03.575 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7373 mode=6 pkg=com.android.calendar bounds=Rect(1194, 0 - 2364, 1672)
+09-21 15:18:03.576 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#27289311)
+09-21 15:18:03.770 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#27289311)
+09-21 15:18:03.771 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#190142890)
+09-21 15:18:08.412 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#27289311)
+09-21 15:18:08.413 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#190142890)
+09-21 15:18:08.475 I/OS4FreeFromX(10892): bounds 杞藉叆 30 鏉?
+09-21 15:18:08.476 I/OS4FreeFromX(10892): 璁颁綇 split:com.android.calendar+com.tencent.mm|1672x2364 = 463,0,464,1
+09-21 15:18:08.476 E/OS4FreeFromX(10892): 鍒嗗睆姣斾緥璁板繂: com.android.calendar+com.tencent.mm -> 46.3%锛?672x2364锛?
+09-21 15:18:08.629 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7118 mode=6 pkg=com.tencent.mm bounds=Rect(0, 0 - 1170, 1672)
+09-21 15:18:09.167 I/OS4FreeFromX(10892): bounds 杞藉叆 31 鏉?
+09-21 15:18:09.544 I/OS4FreeFromX(10892): bounds 杞藉叆 31 鏉?
+09-21 15:18:09.546 I/OS4FreeFromX(10892): 娌夋蹈: task=7118 鏍忛殣钘?true (MiuiDotView#175506141)
+09-21 15:18:09.547 I/OS4FreeFromX(10892): 娌夋蹈: task=7118 鏍忛殣钘?true (MiuiBottomBarView#139373843)
+09-21 15:18:09.548 I/OS4FreeFromX(10892): 鎵嬪娍: 鍥涙寚璧锋墜 pointers=4 @1375,1179
+09-21 15:18:09.550 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#27289311)
+09-21 15:18:09.551 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#190142890)
+09-21 15:18:09.554 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#27289311)
+09-21 15:18:09.555 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#190142890)
+09-21 15:18:09.668 I/OS4FreeFromX(10892): 鎵嬪娍: 鍥涙寚涓婃粦鍛戒腑(MOVE) 琛岀▼=130px 鐢ㄦ椂=124ms 鎵嬫寚鏁?4
+09-21 15:18:09.669 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: SoSc=true(2) 澶氬垎灞?false 缁勫唴=[7373, 7118] shell宸茬煡=21 鍓嶅彴=null/-1/mode=-1
+09-21 15:18:09.669 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=true 褰撳墠灞傛暟=2 缁勫唴=[7373, 7118]
+09-21 15:18:09.669 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 宸插湪鍒嗗睆锛? 灞傦級鈫?璋?*鍔犲眰/澶氬垎灞?*鎺ュ彛
+09-21 15:18:09.670 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 澶氬垎灞?taskIds=[7373, 7118]锛堝幓閲嶅悗 2 涓紝涓嶈ˉ浣嶏級
+09-21 15:18:09.670 E/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 鍙栦笉鍒?MultiTaskingStateManager 瀹炵幇锛屾斁寮冿紙涓嶉€€鍥炰笅灞?controller锛?
+09-21 15:18:09.670 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 宸茶姹傝繘鍏ュ鍒嗗睆 startMultipleSplits(taskIds=[7373, 7118]) ok=false
+09-21 15:18:10.010 I/OS4FreeFromX(10892): bounds 杞藉叆 31 鏉?
+09-21 15:18:10.011 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#27289311)
+09-21 15:18:10.012 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#190142890)
+09-21 15:18:10.112 I/OS4FreeFromX(10892): 娌夋蹈: task=7118 鏍忛殣钘?true (MiuiDotView#175506141)
+09-21 15:18:10.113 I/OS4FreeFromX(10892): 娌夋蹈: task=7118 鏍忛殣钘?true (MiuiBottomBarView#139373843)
+09-21 15:18:10.114 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#27289311)
+09-21 15:18:10.114 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#190142890)
+09-21 15:18:10.977 I/OS4FreeFromX(10892): bounds 杞藉叆 31 鏉?
+09-21 15:18:11.003 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#27289311)
+09-21 15:18:11.007 I/OS4FreeFromX(10892): 灏忕獥甯冨眬: task=7118 mode=1 pkg=com.tencent.mm bounds=Rect(0, 0 - 2364, 1672)
+09-21 15:18:11.007 I/OS4FreeFromX(10892): 娌夋蹈: task=7118 鏍忛殣钘?true (MiuiDotView#175506141)
+09-21 15:18:11.009 I/OS4FreeFromX(10892): 鍏抽棴鏃跺厹搴曡褰? task=7373 pkg=com.android.calendar bounds=Rect(0, 0 - 2364, 1672)
+09-21 15:18:11.011 I/OS4FreeFromX(10892): 鍏抽棴鏃跺厹搴曡褰? task=7118 pkg=com.tencent.mm bounds=Rect(0, 0 - 2364, 1672)
+09-21 15:18:11.854 I/OS4FreeFromX(10892): bounds 杞藉叆 31 鏉?
+09-21 15:18:12.384 I/OS4FreeFromX(10892): bounds 杞藉叆 31 鏉?
+09-21 15:18:12.857 I/OS4FreeFromX(10892): bounds 杞藉叆 31 鏉?
+09-21 15:18:12.859 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#209877160)
+09-21 15:18:12.860 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#247291116)
+09-21 15:18:12.861 I/OS4FreeFromX(10892): 鎵嬪娍: 鍥涙寚璧锋墜 pointers=4 @794,1364
+09-21 15:18:12.864 I/OS4FreeFromX(10892): 娌夋蹈: task=7118 鏍忛殣钘?true (MiuiDotView#195677423)
+09-21 15:18:12.864 I/OS4FreeFromX(10892): 娌夋蹈: task=7118 鏍忛殣钘?true (MiuiBottomBarView#118498011)
+09-21 15:18:12.869 I/OS4FreeFromX(10892): 娌夋蹈: task=7118 鏍忛殣钘?true (MiuiDotView#195677423)
+09-21 15:18:12.870 I/OS4FreeFromX(10892): 娌夋蹈: task=7118 鏍忛殣钘?true (MiuiBottomBarView#118498011)
+09-21 15:18:12.876 I/OS4FreeFromX(10892): 鎵嬪娍: 鍥涙寚绉诲姩 pc=4 dy=-7 used=17ms
+09-21 15:18:12.950 I/OS4FreeFromX(10892): 鎵嬪娍: 鍥涙寚涓婃粦鍛戒腑(MOVE) 琛岀▼=137px 鐢ㄦ椂=92ms 鎵嬫寚鏁?4
+09-21 15:18:12.950 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: SoSc=true(2) 澶氬垎灞?false 缁勫唴=[7118, 7373] shell宸茬煡=21 鍓嶅彴=null/-1/mode=-1
+09-21 15:18:12.950 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=true 褰撳墠灞傛暟=2 缁勫唴=[7118, 7373]
+09-21 15:18:12.950 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 宸插湪鍒嗗睆锛? 灞傦級鈫?璋?*鍔犲眰/澶氬垎灞?*鎺ュ彛
+09-21 15:18:12.951 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 澶氬垎灞?taskIds=[7118, 7373]锛堝幓閲嶅悗 2 涓紝涓嶈ˉ浣嶏級
+09-21 15:18:12.951 E/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 鍙栦笉鍒?MultiTaskingStateManager 瀹炵幇锛屾斁寮冿紙涓嶉€€鍥炰笅灞?controller锛?
+09-21 15:18:12.951 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 宸茶姹傝繘鍏ュ鍒嗗睆 startMultipleSplits(taskIds=[7118, 7373]) ok=false
+09-21 15:18:13.815 I/OS4FreeFromX(10892): bounds 杞藉叆 31 鏉?
+09-21 15:18:13.816 I/OS4FreeFromX(10892): 娌夋蹈: task=7118 鏍忛殣钘?true (MiuiDotView#195677423)
+09-21 15:18:13.816 I/OS4FreeFromX(10892): 娌夋蹈: task=7118 鏍忛殣钘?true (MiuiBottomBarView#118498011)
+09-21 15:18:13.923 I/OS4FreeFromX(10892): 鎵嬪娍: 鍥涙寚璧锋墜 pointers=4 @818,1256
+09-21 15:18:13.928 I/OS4FreeFromX(10892): 鎵嬪娍: 鍥涙寚绉诲姩 pc=4 dy=-8 used=8ms
+09-21 15:18:13.945 I/OS4FreeFromX(10892): 鎵嬪娍: 鍥涙寚绉诲姩 pc=4 dy=-38 used=25ms
+09-21 15:18:13.987 I/OS4FreeFromX(10892): 鎵嬪娍: 鍥涙寚涓婃粦鍛戒腑(MOVE) 琛岀▼=128px 鐢ㄦ椂=66ms 鎵嬫寚鏁?4
+09-21 15:18:13.987 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: SoSc=true(2) 澶氬垎灞?false 缁勫唴=[7373] shell宸茬煡=21 鍓嶅彴=null/-1/mode=-1
+09-21 15:18:13.988 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=true 褰撳墠灞傛暟=1 缁勫唴=[7373]
+09-21 15:18:13.988 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 宸插湪鍒嗗睆锛? 灞傦級鈫?璋?*鍔犲眰/澶氬垎灞?*鎺ュ彛
+09-21 15:18:13.988 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 澶氬垎灞?taskIds=[7373]锛堝幓閲嶅悗 1 涓紝涓嶈ˉ浣嶏級
+09-21 15:18:13.988 E/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 鍙栦笉鍒?MultiTaskingStateManager 瀹炵幇锛屾斁寮冿紙涓嶉€€鍥炰笅灞?controller锛?
+09-21 15:18:13.988 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 宸茶姹傝繘鍏ュ鍒嗗睆 startMultipleSplits(taskIds=[7373]) ok=false
+09-21 15:18:13.996 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#209877160)
+09-21 15:18:13.997 I/OS4FreeFromX(10892): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#247291116)
+09-21 15:18:13.999 I/OS4FreeFromX(10892): 娌夋蹈: task=7118 鏍忛殣钘?true (MiuiDotView#195677423)
+09-21 15:18:14.000 I/OS4FreeFromX(10892): 娌夋蹈: task=7118 鏍忛殣钘?true (MiuiBottomBarView#118498011)
+09-21 15:18:14.864 I/OS4FreeFromX(10892): bounds 杞藉叆 31 鏉?
+09-21 15:18:14.892 I/OS4FreeFromX(10892): 鍏抽棴鏃跺厹搴曡褰? task=7350 pkg=com.tencent.mm bounds=Rect(0, 0 - 2364, 1672)
+09-21 15:18:15.989 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#88321815)
+09-21 15:18:16.014 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#88321815)
+09-21 15:18:17.084 I/OS4FreeFromX(10892): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:18:17.091 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: SoSc=false(-1) 澶氬垎灞?false 缁勫唴=[] shell宸茬煡=21 鍓嶅彴=com.android.settings/7369/mode=1
+09-21 15:18:17.091 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=false 褰撳墠灞傛暟=1 缁勫唴=[]
+09-21 15:18:17.092 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 鍗曚换鍔?鈫?璋?*鍙屽垎灞?*鎺ュ彛锛堝墠鍙?pkg=com.android.settings task=7369锛?
+09-21 15:18:17.092 I/OS4FreeFromX(10892): 杩涘垎灞? 宸叉姇閫掑埌 Transitions.mainExecutor锛坱ask=7369 pkg=com.android.settings锛?
+09-21 15:18:17.138 I/OS4FreeFromX(10892): 杩涘垎灞? 宸茶姹?openWindowFromFullscreen(task=7369 pkg=com.android.settings)
+09-21 15:18:17.146 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#88321815)
+09-21 15:18:17.290 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#88321815)
+09-21 15:18:17.291 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiBottomBarView#238279529)
+09-21 15:18:22.086 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#88321815)
+09-21 15:18:22.314 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#88321815)
+09-21 15:18:23.100 I/OS4FreeFromX(10892): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:18:23.103 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: SoSc=false(-1) 澶氬垎灞?false 缁勫唴=[] shell宸茬煡=21 鍓嶅彴=com.android.settings/7369/mode=1
+09-21 15:18:23.104 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=false 褰撳墠灞傛暟=1 缁勫唴=[]
+09-21 15:18:23.104 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 鍗曚换鍔?鈫?璋?*鍙屽垎灞?*鎺ュ彛锛堝墠鍙?pkg=com.android.settings task=7369锛?
+09-21 15:18:23.106 I/OS4FreeFromX(10892): 杩涘垎灞? 宸叉姇閫掑埌 Transitions.mainExecutor锛坱ask=7369 pkg=com.android.settings锛?
+09-21 15:18:23.158 I/OS4FreeFromX(10892): 杩涘垎灞? 宸茶姹?openWindowFromFullscreen(task=7369 pkg=com.android.settings)
+09-21 15:18:23.164 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#88321815)
+09-21 15:18:23.385 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#88321815)
+09-21 15:18:23.386 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiBottomBarView#153665965)
+09-21 15:18:27.621 I/OS4FreeFromX(10892): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:18:27.655 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#88321815)
+09-21 15:18:27.702 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: SoSc=false(1) 澶氬垎灞?false 缁勫唴=[] shell宸茬煡=21 鍓嶅彴=com.android.settings/7369/mode=1
+09-21 15:18:27.702 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=false 褰撳墠灞傛暟=1 缁勫唴=[]
+09-21 15:18:27.702 I/OS4FreeFromX(10892): 鍥涙寚涓婃粦: 鍗曚换鍔?鈫?璋?*鍙屽垎灞?*鎺ュ彛锛堝墠鍙?pkg=com.android.settings task=7369锛?
+09-21 15:18:27.702 I/OS4FreeFromX(10892): 杩涘垎灞? 宸叉姇閫掑埌 Transitions.mainExecutor锛坱ask=7369 pkg=com.android.settings锛?
+09-21 15:18:27.721 I/OS4FreeFromX(10892): 杩涘垎灞? 宸茶姹?openWindowFromFullscreen(task=7369 pkg=com.android.settings)
+09-21 15:18:27.851 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#88321815)
+09-21 15:18:27.891 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#88321815)
+09-21 15:18:28.182 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiDotView#88321815)
+09-21 15:18:28.183 I/OS4FreeFromX(10892): 娌夋蹈: task=7369 鏍忛殣钘?true (MiuiBottomBarView#157011484)
+09-21 15:18:35.514 I/OS4FreeFromX(26322): 妯″潡宸插姞杞?v0.1.1锛圓PI 102锛岃繘绋?com.android.systemui锛宻ystemServer=false锛?

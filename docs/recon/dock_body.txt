@@ -1,0 +1,181 @@
+============================== MultipleSplitRootTaskOrganizer.dockMultipleSplitTasks (L1001175~1001260)
+1001175:       type          : '(Landroid/os/Bundle;)Landroid/os/Bundle;'
+1001176:       access        : 0x0001 (PUBLIC)
+1001177:       code          -
+1001178:       registers     : 5
+1001179:       ins           : 2
+1001180:       outs          : 2
+1001181:       insns size    : 87 16-bit code units
+1001182: 37b1c8:                                        |[37b1c8] com.android.wm.shell.multiplesplit.MultipleSplitRootTaskOrganizer.dockMultipleSplitTasks:(Landroid/os/Bundle;)Landroid/os/Bundle;
+1001183: 37b1d8: 1a00 93e2                              |0000: const-string v0, "multiple_split_dock_task" // string@e293
+1001184: 37b1dc: 6e20 d705 0400                         |0002: invoke-virtual {v4, v0}, Landroid/os/Bundle;.getParcelable:(Ljava/lang/String;)Landroid/os/Parcelable; // method@05d7
+1001185: 37b1e2: 0c04                                   |0005: move-result-object v4
+1001186: 37b1e4: 1f04 1e00                              |0006: check-cast v4, Landroid/app/ActivityManager$RunningTaskInfo; // type@001e
+1001187: 37b1e8: 2200 0d22                              |0008: new-instance v0, Ljava/lang/StringBuilder; // type@220d
+1001188: 37b1ec: 1a01 c192                              |000a: const-string v1, "dockMultipleSplitTasks: " // string@92c1
+1001189: 37b1f0: 7020 a9c0 1000                         |000c: invoke-direct {v0, v1}, Ljava/lang/StringBuilder;.<init>:(Ljava/lang/String;)V // method@c0a9
+1001190: 37b1f6: 6e20 b3c0 4000                         |000f: invoke-virtual {v0, v4}, Ljava/lang/StringBuilder;.append:(Ljava/lang/Object;)Ljava/lang/StringBuilder; // method@c0b3
+1001191: 37b1fc: 6e10 c0c0 0000                         |0012: invoke-virtual {v0}, Ljava/lang/StringBuilder;.toString:()Ljava/lang/String; // method@c0c0
+1001192: 37b202: 0c00                                   |0015: move-result-object v0
+1001193: 37b204: 1a01 655d                              |0016: const-string v1, "MultipleSplitRootTaskOrganizer" // string@5d65
+1001194: 37b208: 7120 8c6e 0100                         |0018: invoke-static {v1, v0}, Lcom/android/wm/shell/multiplesplit/MultipleSplitOrganizer$Slog;.d:(Ljava/lang/String;Ljava/lang/String;)I // me
+1001195: 37b20e: 1200                                   |001b: const/4 v0, #int 0 // #0
+1001196: 37b210: 3904 0800                              |001c: if-nez v4, 0024 // +0008
+1001197: 37b214: 1a03 ee2a                              |001e: const-string v3, "Dock task param error." // string@2aee
+1001198: 37b218: 7120 8c6e 3100                         |0020: invoke-static {v1, v3}, Lcom/android/wm/shell/multiplesplit/MultipleSplitOrganizer$Slog;.d:(Ljava/lang/String;Ljava/lang/String;)I // me
+1001199: 37b21e: 1100                                   |0023: return-object v0
+1001200: 37b220: 5434 b270                              |0024: iget-object v4, v3, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer;.mDockedState:Lcom/android/wm/shell/multiplesplit
+1001201: 37b224: 3804 0800                              |0026: if-eqz v4, 002e // +0008
+1001202: 37b228: 1a03 611f                              |0028: const-string v3, "Already in dock mode, can't dock anything." // string@1f61
+1001203: 37b22c: 7120 8c6e 3100                         |002a: invoke-static {v1, v3}, Lcom/android/wm/shell/multiplesplit/MultipleSplitOrganizer$Slog;.d:(Ljava/lang/String;Ljava/lang/String;)I // me
+1001204: 37b232: 1100                                   |002d: return-object v0
+1001205: 37b234: 6e10 1970 0300                         |002e: invoke-virtual {v3}, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer;.getCurrentActiveStageCount:()I // method@7019
+1001206: 37b23a: 0a04                                   |0031: move-result v4
+1001207: 37b23c: 6002 b16f                              |0032: sget v2, Lcom/android/wm/shell/multiplesplit/MultipleSplitOrganizer;.MAX_STAGES:I // field@6fb1
+1001208: 37b240: 3424 0800                              |0034: if-lt v4, v2, 003c // +0008
+1001209: 37b244: 1a03 dc1e                              |0036: const-string v3, "Above max stages, can't dock anything." // string@1edc
+1001210: 37b248: 7120 8c6e 3100                         |0038: invoke-static {v1, v3}, Lcom/android/wm/shell/multiplesplit/MultipleSplitOrganizer$Slog;.d:(Ljava/lang/String;Ljava/lang/String;)I // me
+1001211: 37b24e: 1100                                   |003b: return-object v0
+1001212: 37b250: 6e10 6870 0300                         |003c: invoke-virtual {v3}, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer;.isMultipleSplitActive:()Z // method@7068
+1001213: 37b256: 0a04                                   |003f: move-result v4
+1001214: 37b258: 3804 0700                              |0040: if-eqz v4, 0047 // +0007
+1001215: 37b25c: 7010 f66f 0300                         |0042: invoke-direct {v3}, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer;.dockMultipleTasks:()Landroid/os/Bundle; // metho
+1001216: 37b262: 0c03                                   |0045: move-result-object v3
+1001217: 37b264: 1103                                   |0046: return-object v3
+1001218: 37b266: 7100 f4aa 0000                         |0047: invoke-static {}, Lcom/android/wm/shell/sosc/SoScUtils;.getInstance:()Lcom/android/wm/shell/sosc/SoScUtils; // method@aaf4
+1001219: 37b26c: 0c04                                   |004a: move-result-object v4
+1001220: 37b26e: 6e10 17ab 0400                         |004b: invoke-virtual {v4}, Lcom/android/wm/shell/sosc/SoScUtils;.inSoScFullMode:()Z // method@ab17
+1001221: 37b274: 0a04                                   |004e: move-result v4
+1001222: 37b276: 3804 0700                              |004f: if-eqz v4, 0056 // +0007
+1001223: 37b27a: 7010 f76f 0300                         |0051: invoke-direct {v3}, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer;.dockSoScTasks:()Landroid/os/Bundle; // method@6f
+1001224: 37b280: 0c03                                   |0054: move-result-object v3
+1001225: 37b282: 1103                                   |0055: return-object v3
+1001226: 37b284: 1100                                   |0056: return-object v0
+1001227:       catches       : (none)
+1001228:       positions     :
+1001229:       locals        :
+1001230: 
+1001231:     #21              : (in Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer;)
+1001232:       name          : 'dump'
+1001233:       type          : '(Ljava/io/PrintWriter;Ljava/lang/String;)V'
+1001234:       access        : 0x0001 (PUBLIC)
+1001235:       code          -
+1001236:       registers     : 7
+1001237:       ins           : 3
+1001238:       outs          : 5
+1001239:       insns size    : 260 16-bit code units
+1001240: 37ff38:                                        |[37ff38] com.android.wm.shell.multiplesplit.MultipleSplitRootTaskOrganizer.dump:(Ljava/io/PrintWriter;Ljava/lang/String;)V
+1001241: 37ff48: 1a00 7e00                              |0000: const-string v0, "  " // string@007e
+1001242: 37ff4c: 7120 521b 0600                         |0002: invoke-static {v6, v0}, Lcom/android/miui/kotlinxx/coroutines/android/HandlerContext$$ExternalSyntheticOutline0;.m:(Ljava/lang/String;Lj
+1001243: 37ff52: 0c01                                   |0005: move-result-object v1
+1001244: 37ff54: 6e20 79c0 0100                         |0006: invoke-virtual {v1, v0}, Ljava/lang/String;.concat:(Ljava/lang/String;)Ljava/lang/String; // method@c079
+1001245: 37ff5a: 0c00                                   |0009: move-result-object v0
+1001246: 37ff5c: 1a02 665d                              |000a: const-string v2, "MultipleSplitRootTaskOrganizer DisplayId=" // string@5d66
+1001247: 37ff60: 7120 7213 2600                         |000c: invoke-static {v6, v2}, Lcom/android/miui/airbnb/lottie/parser/moshi/JsonReader$$ExternalSyntheticOutline0;.m:(Ljava/lang/String;Ljava/l
+1001248: 37ff66: 0c06                                   |000f: move-result-object v6
+1001249: 37ff68: 5242 a970                              |0010: iget v2, v4, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer;.mDisplayId:I // field@70a9
+1001250: 37ff6c: 1a03 505d                              |0012: const-string v3, "MultipleSplitActive=" // string@5d50
+1001251: 37ff70: 7153 b53f 2615                         |0014: invoke-static {v6, v2, v5, v1, v3}, Lcom/android/wm/shell/common/pip/PipBoundsAlgorithm$$ExternalSyntheticOutline0;.m:(Ljava/lang/String
+1001252: 37ff76: 0c06                                   |0017: move-result-object v6
+1001253: 37ff78: 6e10 6870 0400                         |0018: invoke-virtual {v4}, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer;.isMultipleSplitActive:()Z // method@7068
+1001254: 37ff7e: 0a02                                   |001b: move-result v2
+1001255: 37ff80: 6e20 b5c0 2600                         |001c: invoke-virtual {v6, v2}, Ljava/lang/StringBuilder;.append:(Z)Ljava/lang/StringBuilder; // method@c0b5
+1001256: 37ff86: 6e10 c0c0 0600                         |001f: invoke-virtual {v6}, Ljava/lang/StringBuilder;.toString:()Ljava/lang/String; // method@c0c0
+1001257: 37ff8c: 0c06                                   |0022: move-result-object v6
+1001258: 37ff8e: 6e20 68bf 6500                         |0023: invoke-virtual {v5, v6}, Ljava/io/PrintWriter;.println:(Ljava/lang/String;)V // method@bf68
+1001259: 37ff94: 2206 0d22                              |0026: new-instance v6, Ljava/lang/StringBuilder; // type@220d
+
+
+
+### 调用方方法： runDockTasks([Ljava/lang/String;Ljava/io/PrintWriter;)Z
+============================== 调用 dockMultipleSplitTasks 的上下文 (L1010740~1010830)
+1010740: 38a104: 0a04                                   |001a: move-result v4
+1010741: 38a106: 2205 0d22                              |001b: new-instance v5, Ljava/lang/StringBuilder; // type@220d
+1010742: 38a10a: 7020 a9c0 0500                         |001d: invoke-direct {v5, v0}, Ljava/lang/StringBuilder;.<init>:(Ljava/lang/String;)V // method@c0a9
+1010743: 38a110: 6e20 afc0 4500                         |0020: invoke-virtual {v5, v4}, Ljava/lang/StringBuilder;.append:(I)Ljava/lang/StringBuilder; // method@c0af
+1010744: 38a116: 6e10 c0c0 0500                         |0023: invoke-virtual {v5}, Ljava/lang/StringBuilder;.toString:()Ljava/lang/String; // method@c0c0
+1010745: 38a11c: 0c04                                   |0026: move-result-object v4
+1010746: 38a11e: 6e20 68bf 4600                         |0027: invoke-virtual {v6, v4}, Ljava/io/PrintWriter;.println:(Ljava/lang/String;)V // method@bf68
+1010747: 38a124: 0f03                                   |002a: return v3
+1010748: 38a126: 2205 0d22                              |002b: new-instance v5, Ljava/lang/StringBuilder; // type@220d
+1010749: 38a12a: 1a00 f22c                              |002d: const-string v0, "Error: invalid faultCode - " // string@2cf2
+1010750: 38a12e: 7020 a9c0 0500                         |002f: invoke-direct {v5, v0}, Ljava/lang/StringBuilder;.<init>:(Ljava/lang/String;)V // method@c0a9
+1010751: 38a134: 7130 1e6c 5406                         |0032: invoke-static {v4, v5, v6}, Lcom/android/wm/shell/multiplesplit/MultipleSplitController$$ExternalSyntheticOutline0;.m:(Ljava/lang/Except
+1010752: 38a13a: 1204                                   |0035: const/4 v4, #int 0 // #0
+1010753: 38a13c: 0f04                                   |0036: return v4
+1010754:       catches       : 1
+1010755:         0x0002 - 0x002a
+1010756:           Ljava/lang/Exception; -> 0x0012
+1010757:       positions     :
+1010758:       locals        :
+1010759: 
+1010760:     #10              : (in Lcom/android/wm/shell/multiplesplit/MultipleSplitShellCommandHandler;)
+1010761:       name          : 'runDockTasks'
+1010762:       type          : '([Ljava/lang/String;Ljava/io/PrintWriter;)Z'
+1010763:       access        : 0x0002 (PRIVATE)
+1010764:       code          -
+1010765:       registers     : 6
+1010766:       ins           : 3
+1010767:       outs          : 3
+1010768:       insns size    : 78 16-bit code units
+1010769: 38a150:                                        |[38a150] com.android.wm.shell.multiplesplit.MultipleSplitShellCommandHandler.runDockTasks:([Ljava/lang/String;Ljava/io/PrintWriter;)Z
+1010770: 38a160: 1204                                   |0000: const/4 v4, #int 0 // #0
+1010771: 38a162: 2200 2c01                              |0001: new-instance v0, Landroid/os/Bundle; // type@012c
+1010772: 38a166: 7010 c605 0000                         |0003: invoke-direct {v0}, Landroid/os/Bundle;.<init>:()V // method@05c6
+1010773: 38a16c: 7100 f4aa 0000                         |0006: invoke-static {}, Lcom/android/wm/shell/sosc/SoScUtils;.getInstance:()Lcom/android/wm/shell/sosc/SoScUtils; // method@aaf4
+1010774: 38a172: 0c01                                   |0009: move-result-object v1
+1010775: 38a174: 6e10 17ab 0100                         |000a: invoke-virtual {v1}, Lcom/android/wm/shell/sosc/SoScUtils;.inSoScFullMode:()Z // method@ab17
+1010776: 38a17a: 0a01                                   |000d: move-result v1
+1010777: 38a17c: 3801 0d00                              |000e: if-eqz v1, 001b // +000d
+1010778: 38a180: 7100 65ac 0000                         |0010: invoke-static {}, Lcom/android/wm/shell/sosc/SoScUtilsImpl;.getInstance:()Lcom/android/wm/shell/sosc/SoScUtilsImpl; // method@ac65
+1010779: 38a186: 0c01                                   |0013: move-result-object v1
+1010780: 38a188: 6e10 87ac 0100                         |0014: invoke-virtual {v1}, Lcom/android/wm/shell/sosc/SoScUtilsImpl;.getSplitRootTaskInfo:()Landroid/app/ActivityManager$RunningTaskInfo; // m
+1010781: 38a18e: 0c01                                   |0017: move-result-object v1
+1010782: 38a190: 2817                                   |0018: goto 002f // +0017
+1010783: 38a192: 0d03                                   |0019: move-exception v3
+1010784: 38a194: 2829                                   |001a: goto 0043 // +0029
+1010785: 38a196: 7100 b473 0000                         |001b: invoke-static {}, Lcom/android/wm/shell/multiplesplit/MultipleSplitUtils;.getInstance:()Lcom/android/wm/shell/multiplesplit/MultipleSpli
+1010786: 38a19c: 0c01                                   |001e: move-result-object v1
+1010787: 38a19e: 6e10 c373 0100                         |001f: invoke-virtual {v1}, Lcom/android/wm/shell/multiplesplit/MultipleSplitUtils;.isMultipleSplitActive:()Z // method@73c3
+1010788: 38a1a4: 0a01                                   |0022: move-result v1
+1010789: 38a1a6: 3801 0b00                              |0023: if-eqz v1, 002e // +000b
+1010790: 38a1aa: 5431 f270                              |0025: iget-object v1, v3, Lcom/android/wm/shell/multiplesplit/MultipleSplitShellCommandHandler;.mController:Lcom/android/wm/shell/multiplespli
+1010791: 38a1ae: 6e10 3a6c 0100                         |0027: invoke-virtual {v1}, Lcom/android/wm/shell/multiplesplit/MultipleSplitController;.getMultipleSplitOrganizer:()Lcom/android/wm/shell/mult
+1010792: 38a1b4: 0c01                                   |002a: move-result-object v1
+1010793: 38a1b6: 5411 e170                              |002b: iget-object v1, v1, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer;.mSplitRootTaskInfo:Landroid/app/ActivityManager$
+1010794: 38a1ba: 2802                                   |002d: goto 002f // +0002
+1010795: 38a1bc: 1201                                   |002e: const/4 v1, #int 0 // #0
+1010796: 38a1be: 3901 0800                              |002f: if-nez v1, 0037 // +0008
+1010797: 38a1c2: 1a03 6c6a                              |0031: const-string v3, "TaskInfo is null." // string@6a6c
+1010798: 38a1c6: 6e20 68bf 3500                         |0033: invoke-virtual {v5, v3}, Ljava/io/PrintWriter;.println:(Ljava/lang/String;)V // method@bf68
+1010799: 38a1cc: 0f04                                   |0036: return v4
+1010800: 38a1ce: 1a02 93e2                              |0037: const-string v2, "multiple_split_dock_task" // string@e293
+1010801: 38a1d2: 6e30 f205 2001                         |0039: invoke-virtual {v0, v2, v1}, Landroid/os/Bundle;.putParcelable:(Ljava/lang/String;Landroid/os/Parcelable;)V // method@05f2
+1010802: 38a1d8: 5433 f270                              |003c: iget-object v3, v3, Lcom/android/wm/shell/multiplesplit/MultipleSplitShellCommandHandler;.mController:Lcom/android/wm/shell/multiplespli
+1010803: 38a1dc: 6e20 326c 0300                         |003e: invoke-virtual {v3, v0}, Lcom/android/wm/shell/multiplesplit/MultipleSplitController;.dockMultipleSplitTasks:(Landroid/os/Bundle;)Landro
+1010804: 38a1e2: 1213                                   |0041: const/4 v3, #int 1 // #1
+1010805: 38a1e4: 0f03                                   |0042: return v3
+1010806: 38a1e6: 2200 0d22                              |0043: new-instance v0, Ljava/lang/StringBuilder; // type@220d
+1010807: 38a1ea: 1a01 f82c                              |0045: const-string v1, "Error: invalid task id - " // string@2cf8
+1010808: 38a1ee: 7020 a9c0 1000                         |0047: invoke-direct {v0, v1}, Ljava/lang/StringBuilder;.<init>:(Ljava/lang/String;)V // method@c0a9
+1010809: 38a1f4: 7130 1e6c 0305                         |004a: invoke-static {v3, v0, v5}, Lcom/android/wm/shell/multiplesplit/MultipleSplitController$$ExternalSyntheticOutline0;.m:(Ljava/lang/Except
+1010810: 38a1fa: 0f04                                   |004d: return v4
+1010811:       catches       : 1
+1010812:         0x0001 - 0x0041
+1010813:           Ljava/lang/Exception; -> 0x0019
+1010814:       positions     :
+1010815:       locals        :
+1010816: 
+1010817:     #11              : (in Lcom/android/wm/shell/multiplesplit/MultipleSplitShellCommandHandler;)
+1010818:       name          : 'runEnterQuickViewMode'
+1010819:       type          : '([Ljava/lang/String;Ljava/io/PrintWriter;)Z'
+1010820:       access        : 0x0002 (PRIVATE)
+1010821:       code          -
+1010822:       registers     : 3
+1010823:       ins           : 3
+1010824:       outs          : 1
+1010825:       insns size    : 7 16-bit code units
+1010826: 38a20c:                                        |[38a20c] com.android.wm.shell.multiplesplit.MultipleSplitShellCommandHandler.runEnterQuickViewMode:([Ljava/lang/String;Ljava/io/PrintWriter;)Z
+1010827: 38a21c: 5400 f270                              |0000: iget-object v0, v0, Lcom/android/wm/shell/multiplesplit/MultipleSplitShellCommandHandler;.mController:Lcom/android/wm/shell/multiplespli
+1010828: 38a220: 6e10 346c 0000                         |0002: invoke-virtual {v0}, Lcom/android/wm/shell/multiplesplit/MultipleSplitController;.enterQuickViewMode:()V // method@6c34
+1010829: 38a226: 1210                                   |0005: const/4 v0, #int 1 // #1

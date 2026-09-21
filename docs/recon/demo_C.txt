@@ -1,0 +1,550 @@
+======================== ★ 用户手势窗口（拖到左上 / dock 前夜） [18:29:04.100 ~ 18:29:08.310]
+18:29:04.247  VRI[InputMethod]                       | getMiuiFreeformStackInfo mTmpFrames.miuiFreeFormStackInfo: null
+18:29:04.252  MiuiSplitInputMethodImpl               | getDeclaredMethod:java.lang.NoSuchMethodException: com.android.server.inputmethod.InputMethodManagerService.getSelectedMethodIdLocked []
+18:29:04.292  VRI[AllInOneActivity]                  | getMiuiFreeformStackInfo mTmpFrames.miuiFreeFormStackInfo: null
+18:29:04.292  MulWinSwitchEventController            | start handle ACTION_DOWN PointF(1169.0, 1611.9902) 89818446
+18:29:04.292  MiuiFreeformModeGestureHandler         | handleMotionEvents mActiveMiuiFreeformTask null x: 1169.0 y: 1611.9902 current miuiFreeformModeTaskInfo: 
+18:29:04.292  MiuiSplitInputMethodImpl               | Skip onPointerDownOutsideFocusLocked
+18:29:04.292  MiuiDecorationDot                      | isTouchedInTopCaption: taskId = 7701, mMulWinSwitchVIewHost is not ready for layout
+18:29:04.292  MiuiDecorationDot                      | isTouchedInTopCaption: taskId = 7703,  captionTouchRegion = RectF(499.5, 0.0, 670.5, 140.0) pointRelativeToTask=PointF(-25.0, 1611.9902) isSplitTask=true eventX=1169.0 ev
+18:29:04.292  MiuiDecorationDot                      | isTouchedInTopCaption: taskId = 7688, mMulWinSwitchVIewHost is not ready for layout
+18:29:04.292  MiuiDecorationDot                      | isTouchedInTopCaption: taskId = 7705,  captionTouchRegion = RectF(499.5, 0.0, 670.5, 140.0) pointRelativeToTask=PointF(1169.0, 1611.9902) isSplitTask=true eventX=1169.0 e
+18:29:04.292  MulWinSwitchEventHandler               | dispatchToFullOrSplitDecorationDot: touchedTaskId=-1
+18:29:04.292  MiuiDecorationBottom                   | isTouchedInSplitBottomCaption::isSplitTask=true, eventX=1169.0, eventY=1611.9902, captionTouchRegion=RectF(398.0, 1637.0, 909.5, 1692.0), pointRelativeToTask=PointF(-25.0
+18:29:04.292  MiuiDecorationBottom                   | isTouchedInSplitBottomCaption::isSplitTask=true, eventX=1169.0, eventY=1611.9902, captionTouchRegion=RectF(398.0, 1637.0, 909.5, 1692.0), pointRelativeToTask=PointF(1169.
+18:29:04.292  MulWinSwitchEventHandler               | handleReceivedMotionEvent: mTouchedBottomTaskId=-1
+18:29:04.294  ActivityTaskManager                    | moveTaskToFront: Task{520b032 #7705 type=standard A=10245:android.task.calendar} caller trace:com.android.server.wm.TaskDisplayArea.onTaskMoved:434 com.android.server.wm.
+18:29:04.296  MiuiMirrorInputMethodImpl              | InsetsControlTarget invalid!:Window{6551864 u0 com.android.contacts/com.android.contacts.activities.TwelveKeyDialer}
+18:29:04.298  ActivityManagerServiceImpl             | Sending non-protected broadcast com.xiaomi.multisence.action.FOCUSED_CHANGE from system 24230:system/1000 pkg android. Callers=com.android.server.am.BroadcastController.c
+18:29:04.299  DisconnectHandler                      | No disconnect change found in the transition, not handling request.
+18:29:04.299  MultipleSplitUtils                     | isMultipleSplitSupport: isUltra=true, isPadOrLargeFold=true, ComputilityLevel=4, false
+18:29:04.299  SoScStageCoordinator                   | requestOpenToSoScFullMode, singleMode : false, type : 3, keyguardActive : false
+18:29:04.299  SoScStageCoordinator                   | requestCloseToSoScSingleMode, fullMode : true, type : 3, keyguardActive : false
+18:29:04.299  MultipleSplitTransitionHandler         | Transition requested:TransitionRequestInfo { type = TO_FRONT, triggerTask = null, pipChange = null, remoteTransitionInfo = null, displayChanges = null, requestedLocation 
+18:29:04.299  ShellSplitScreen                       | handleRequest: transition=177 display rotation
+18:29:04.300  SchedBoost                             | handleLowLatencySceneBoost active= true, methodName= startTransition
+18:29:04.300  SecondPageAnimSpeed_Controller         | setTransitionReady fail because basic condition check failed
+18:29:04.300  SystemPerformanceHinter                | startSession#HighPerfSession-d0-Transition
+18:29:04.301  SchedBoost                             | handleLowLatencySceneBoost active= false, methodName= startTransition
+18:29:04.303  WindowManagerService                   | may change transition changeInfo, task=Task{520b032 #7705 type=standard A=10245:android.task.calendar}mVisibleRequested=true
+18:29:04.303  WindowManagerService                   | may change transition changeInfo, task=Task{b5476d5 #7689 name=main type=undefined}mVisibleRequested=true
+18:29:04.303  MiuiSoScManager                        | commit minimized change : ChangeInfo{e7c1382 container=Task{b5476d5 #7689 name=main type=undefined} flags=0x820}, preMinimized : false, requestedMinimized : false, minimi
+18:29:04.303  MiuiSoScManager                        | commit minimized change : ChangeInfo{e7c1382 container=Task{b5476d5 #7689 name=main type=undefined} flags=0x820}, preMinimized : false, requestedMinimized : false, minimi
+18:29:04.303  Transition                             | calculateTargets isHomeOpen = false, isHomeLaunchApp = false
+18:29:04.303  MiuiSplitScreenImpl                    | notifyTaskMultiWindowModeChanged when transition ready: taskId=7705 bounds=Rect(0, 0 - 1170, 1672) packageName=com.android.calendar windowMode=6 vis=true inMultiWindowMod
+18:29:04.303  SurfaceFlinger                         | [SF-ColorSample] Transition anim start
+18:29:04.304  TransitionImpl                         | top task Task{c9d3142 #7688 type=undefined} is not home, so setCanAbortByRecents = false
+18:29:04.305  libbinder.BpBinder                     | Large outgoing transaction of 22952 bytes, interface descriptor android.window.ITransitionPlayer, code 1 was sent
+18:29:04.305  MiuiSplitInputMethodImpl               | Skip onPointerDownOutsideFocusLocked
+18:29:04.306  MiuiSplitInputMethodImpl               | Skip onPointerDownOutsideFocusLocked
+18:29:04.306  MiuiSplitInputMethodImpl               | Skip onPointerDownOutsideFocusLocked
+18:29:04.306  MiuiSplitInputMethodImpl               | Skip onPointerDownOutsideFocusLocked
+18:29:04.306  TransitionImpl                         | onCollectForSetRequestedOrientation container: ActivityRecord{220933886 u0 com.miui.home/.launcher.Launcher t2} transition: 178
+18:29:04.307  TransitionImpl                         | abort TransitionRecord{d2743fc id=178 type=CHANGE flags=0x0 parallelCollectType=NONE recentsDisplayId=-1 c=[
+18:29:04.307  TransitionImpl                         |    ChangeInfo{156ea85 container=Task{873d0a #2 type=home I=com.miui.home/.launcher.Launcher} flags=0x0}
+18:29:04.307  TransitionImpl                         |    ChangeInfo{55490da container=WindowedMagnification:0:31@12755363 flags=0x0}
+18:29:04.307  TransitionImpl                         |    ChangeInfo{bc0490b container=Display{#0 state=ON size=2364x1672 ROTATION_90} flags=0x0}
+18:29:04.307  TransitionImpl                         |    ChangeInfo{a2a3e8 container=OneHanded:0:23@89371903 flags=0x0}
+18:29:04.307  TransitionImpl                         |    ChangeInfo{a0aa01 container=DefaultTaskDisplayArea@124729747 flags=0x0}
+18:29:04.307  TransitionImpl                         |    ChangeInfo{5fae0a6 container=AppZoomOut:2:14@146097399 flags=0x0}
+18:29:04.307  TransitionImpl                         |    ChangeInfo{2a86ae7 container=Task{991f58e #1 type=home} flags=0x0}
+18:29:04.307  TransitionImpl                         |    ChangeInfo{7f21694 container=ActivityRecord{220933886 u0 com.miui.home/.launcher.Launcher t2} flags=0x0}
+18:29:04.307  TransitionImpl                         | ]
+18:29:04.307  TransitionImpl                         | } from = 0 Caller: com.android.server.wm.Transition.abort:2445 com.android.server.wm.Transition.abort:2436 com.android.server.wm.ActivityClientController.setRequestedOrie
+18:29:04.307  MultipleSplitUtils                     | handleTaskInfoChanged task: 7688
+18:29:04.307  MultipleSplitRootTaskOrganizer         | removeRecentTasks[7688]
+18:29:04.307  MultipleSplitUtils                     | removeMultipleSplitPair tasks:[7688]
+18:29:04.307  MultipleSplitRootTaskOrganizer         | removeRecentTasks splitBoundsMap = {}
+18:29:04.307  SplitLayout                            | updateConfiguration config:{1.0 460mcc11mnc [zh_CN] ldltr sw608dp w860dp h608dp 440dpi lrg compactNeeded hdr widecg land finger -keyb/v/h -nav/h winConfig={ mBounds=Rect(
+18:29:04.307  SplitLayout                            |  mRootBounds:Rect(0, 0 - 2364, 1672)getTopLeftBounds()Rect(0, 0 - 1170, 1672) getBottomRightBounds():Rect(1194, 0 - 2364, 1672) mRotation:1 mOrientation:2 mDensity:440
+18:29:04.307  SplitLayout                            | com.android.wm.shell.sosc.SoScStageCoordinator.onTaskInfoChanged:46 com.android.wm.shell.ShellTaskOrganizer.onTaskInfoChanged:122 android.window.TaskOrganizer$1.lambda$on
+18:29:04.308  MultiTaskingTaskRepository             | needSkip::is sosc root task
+18:29:04.308  MiuiDecorationDot                      | needTopCaption: SoScRootTask or SoScStageRootTask don't need WindowDecoration
+18:29:04.308  OS4FreeFromX                           | TRACE SoScCoord#isMainStageRootTask(7688)
+18:29:04.308  OS4FreeFromX                           | TRACE SoScCoord#isSideStageRootTask(7688)
+18:29:04.308  MiuiDecorationDot                      | needTopCaption: SoScRootTask or SoScStageRootTask don't need WindowDecoration
+18:29:04.308  MiuiSplitInputMethodImpl               | Skip onPointerDownOutsideFocusLocked
+18:29:04.308  OS4FreeFromX                           | TRACE SoScCoord#isMainStageRootTask(7688)
+18:29:04.308  OS4FreeFromX                           | TRACE SoScCoord#isSideStageRootTask(7688)
+18:29:04.309  MiuiDecorationDot                      | needTopCaption: SoScRootTask or SoScStageRootTask don't need WindowDecoration
+18:29:04.309  OS4FreeFromX                           | TRACE SoScCoord#isMainStageRootTask(7688)
+18:29:04.309  OS4FreeFromX                           | TRACE SoScCoord#isSideStageRootTask(7688)
+18:29:04.310  TransitionChain                        | Can't collect into a chain with no transition
+18:29:04.310  hyper_launcher_app                     | : <binder:25236_5-app_launcher::api::model::recents::task_description:25>: [TitleTrace] TaskDescription::from_ref label=None
+18:29:04.310  hyper_launcher_app                     | : <binder:25236_5-app_launcher::recents::task::recent_model:442>: [TitleTrace] push notify_task_changed task_id=7688 label=None
+18:29:04.310  OS4FreeFromX                           | TRACE SoScCoord#isMainStageRootTask(7688)
+18:29:04.310  OS4FreeFromX                           | TRACE SoScCoord#isSideStageRootTask(7688)
+18:29:04.310  OS4FreeFromX                           | TRACE SoScCoord#isMainStageRootTask(7689)
+18:29:04.311  MultiTaskingTaskRepository             | moveMultiWindowTaskToTop taskId=7689
+18:29:04.311  MultiTaskingTaskInfo                   | MultiTaskingBaseTaskInfo::update::mTaskBounds = Rect(0, 0 - 1170, 1672), mTaskId = 7689
+18:29:04.311  OS4FreeFromX                           | TRACE SoScCoord#isMainStageRootTask(7689)
+18:29:04.311  MultiTaskingTransitionsHelper          | skip updateBaseAnimParam taskId: 7689 pending: [] readyDuringSync: [] tracks: [Track#0 ready=[android.os.BinderProxy@442b322] Track#1 ]
+18:29:04.311  OS4FreeFromX                           | TRACE SoScCoord#isMainStageRootTask(7689)
+18:29:04.311  MultiTaskingTaskRepository             | moveMultiWindowTaskToTop taskId=7705
+18:29:04.311  MultiTaskingTaskInfo                   | MultiTaskingBaseTaskInfo::update::mTaskBounds = Rect(0, 0 - 1170, 1672), mTaskId = 7705
+18:29:04.311  OS4FreeFromX                           | TRACE SoScCoord#isMainStageRootTask(7705)
+18:29:04.311  OS4FreeFromX                           | TRACE SoScCoord#isSideStageRootTask(7705)
+18:29:04.311  MultiTaskingTransitionsHelper          | skip updateBaseAnimParam taskId: 7705 pending: [] readyDuringSync: [] tracks: [Track#0 ready=[android.os.BinderProxy@442b322] Track#1 ]
+18:29:04.311  MulWinSwitchDecorViewModel             | onTaskChanging taskId:7705 decoration = com.android.wm.shell.multitasking.miuimultiwinswitch.miuiwindowdecor.decoration.MiuiDecorationController@3ad6e5a
+18:29:04.311  OS4FreeFromX                           | TRACE SoScCoord#isMainStageRootTask(7705)
+18:29:04.311  OS4FreeFromX                           | TRACE SoScCoord#isSideStageRootTask(7705)
+18:29:04.311  OS4FreeFromX                           | TRACE SoScCoord#getSplitSnapPosition()
+18:29:04.314  FoldPolicy                             | foregroundInfo = ForegroundInfo{mForegroundPackageName='com.android.calendar', mForegroundUid=10245, mForegroundPid=7001, mForegroundDisplayId=0, mLastForegroundPackageNa
+18:29:04.314  LSPosedFramework                       | (com.android.systemui)[com.abel.os4freeformx,OS4FreeFromX,94a-1a0c37e7ea6-45a-185,0,1] bounds 载入 41 条
+18:29:04.314  OS4FreeFromX                           | bounds 载入 41 条
+18:29:04.315  MiuiDecorationDot                      | updateCaptionGeometry_TopCaption: taskId=7705 isMultipleSplit=false captionHeight=140 captionOffsetY=0 dotY=70 dotSurfaceHeight=12.0 scale=1.0 mTaskBounds=Rect(0, 0 - 117
+18:29:04.315  LSPosedFramework                       | (com.android.systemui)[com.abel.os4freeformx,OS4FreeFromX,94a-1a0c37e7ea6-45a-186,0,1] 沉浸: task=7705 栏隐藏=true (MiuiDotView#5640344)
+18:29:04.315  OS4FreeFromX                           | 沉浸: task=7705 栏隐藏=true (MiuiDotView#5640344)
+18:29:04.315  MiuiDecorationBase                     | updateSampling_TopCaption: taskId = 7705 scale = 1.0 mTaskBounds = Rect(0, 0 - 1170, 1672) mCaptionVisibility = true mIsFsgestureEntered = false isRunningAnim = false isD
+18:29:04.315  OS4FreeFromX                           | TRACE SoScCoord#isMainStageRootTask(7705)
+18:29:04.315  OS4FreeFromX                           | TRACE SoScCoord#isSideStageRootTask(7705)
+18:29:04.316  LSPosedFramework                       | (com.android.systemui)[com.abel.os4freeformx,OS4FreeFromX,94a-1a0c37e7ea6-45a-187,0,1] 沉浸: task=7705 栏隐藏=true (MiuiBottomBarView#18627869)
+18:29:04.316  OS4FreeFromX                           | 沉浸: task=7705 栏隐藏=true (MiuiBottomBarView#18627869)
+18:29:04.316  MiuiDecorationBase                     | updateSampling_BottomCaption: taskId = 7705 scale = 1.0 mTaskBounds = Rect(0, 0 - 1170, 1672) mCaptionVisibility = true mIsFsgestureEntered = false isRunningAnim = false 
+18:29:04.316  OS4FreeFromX                           | TRACE SoScCoord#isMainStageRootTask(7689)
+18:29:04.316  MultiTaskingTransitionHandler          | canHandleTransition try handler: com.android.wm.shell.multitasking.common.linkage.MultiTaskingLinkageTransition@c37bc50
+18:29:04.316  MultiTaskingTransitionHandler          | canHandleTransition try handler: com.android.wm.shell.multitasking.miuifreeform.MiuiFreeformModeAnimation@e226213
+18:29:04.316  MultiTaskingTransitionHandler          | canHandleTransition try handler: com.android.wm.shell.multitasking.miuimultiwinswitch.MulWinSwitchTransition@17d2308
+18:29:04.317  TransitionFilter                       | modify mode from change to front for standard. change: {m=CHANGE f=MOVE_TO_TOP leash=Surface(name=Task=7689(main)#71027)/@0x47cdf6e sb=Rect(0, 0 - 1170, 1672) eb=Rect(0, 
+18:29:04.317  TransitionFilter                       | modify mode from change to front for standard. change: {m=CHANGE f=MOVE_TO_TOP leash=Surface(name=Task=7689(main)#71027)/@0x47cdf6e sb=Rect(0, 0 - 1170, 1672) eb=Rect(0, 
+18:29:04.317  TransitionFilter                       | modify mode from change to front for standard. change: {m=CHANGE f=MOVE_TO_TOP leash=Surface(name=Task=7689(main)#71027)/@0x47cdf6e sb=Rect(0, 0 - 1170, 1672) eb=Rect(0, 
+18:29:04.317  TransitionFilter                       | modify mode from change to front for standard. change: {m=CHANGE f=MOVE_TO_TOP leash=Surface(name=Task=7689(main)#71027)/@0x47cdf6e sb=Rect(0, 0 - 1170, 1672) eb=Rect(0, 
+18:29:04.317  TransitionFilter                       | modify mode from change to front for standard. change: {m=CHANGE f=MOVE_TO_TOP p=WCT{android.os.BinderProxy@fb45e11} leash=Surface(name=Task=7705#71445)/@0x27e0370 sb=Rec
+18:29:04.317  TransitionFilter                       | modify mode from change to front for standard. change: {m=CHANGE f=MOVE_TO_TOP p=WCT{android.os.BinderProxy@fb45e11} leash=Surface(name=Task=7705#71445)/@0x27e0370 sb=Rec
+18:29:04.317  TransitionFilter                       | modify mode from change to front for standard. change: {m=CHANGE f=MOVE_TO_TOP leash=Surface(name=Task=7689(main)#71027)/@0x47cdf6e sb=Rect(0, 0 - 1170, 1672) eb=Rect(0, 
+18:29:04.317  TransitionFilter                       | modify mode from change to front for standard. change: {m=CHANGE f=MOVE_TO_TOP leash=Surface(name=Task=7689(main)#71027)/@0x47cdf6e sb=Rect(0, 0 - 1170, 1672) eb=Rect(0, 
+18:29:04.317  ShellTransitions                       | getMaybeHandlerType active = (#177) android.os.BinderProxy@442b322@0, type = 99
+18:29:04.317  SoScStageCoordinator                   | inCloseTransition:false inSoScUnactivie:false mDeferUpdateSoScStateCount:0
+18:29:04.317  ShellSplitScreen                       | startAnimation: transition=177
+18:29:04.317  SoScStageCoordinator                   | startAnimation change:{m=CHANGE f=MOVE_TO_TOP p=WCT{android.os.BinderProxy@fb45e11} leash=Surface(name=Task=7705#71445)/@0x27e0370 sb=Rect(0, 0 - 1170, 1672) eb=Rect(0, 0
+18:29:04.317  SoScStageCoordinator                   | startAnimation change:{m=CHANGE f=MOVE_TO_TOP leash=Surface(name=Task=7689(main)#71027)/@0x47cdf6e sb=Rect(0, 0 - 1170, 1672) eb=Rect(0, 0 - 1170, 1672) epz=Point(2364, 1
+18:29:04.317  SoScStageCoordinator                   | handleUnPendingTransitionWithSoSc, fullRoot : null, mainStage : {m=CHANGE f=MOVE_TO_TOP leash=Surface(name=Task=7689(main)#71027)/@0x47cdf6e sb=Rect(0, 0 - 1170, 1672) eb
+18:29:04.317  TransitionFilter                       | modify mode from change to front for standard. change: {m=CHANGE f=MOVE_TO_TOP leash=Surface(name=Task=7689(main)#71027)/@0x47cdf6e sb=Rect(0, 0 - 1170, 1672) eb=Rect(0, 
+18:29:04.317  TransitionFilter                       | modify mode from change to front for standard. change: {m=CHANGE f=MOVE_TO_TOP leash=Surface(name=Task=7689(main)#71027)/@0x47cdf6e sb=Rect(0, 0 - 1170, 1672) eb=Rect(0, 
+18:29:04.317  TransitionFilter                       | modify mode from change to front for standard. change: {m=CHANGE f=MOVE_TO_TOP leash=Surface(name=Task=7689(main)#71027)/@0x47cdf6e sb=Rect(0, 0 - 1170, 1672) eb=Rect(0, 
+18:29:04.317  TransitionFilter                       | modify mode from change to front for standard. change: {m=CHANGE f=MOVE_TO_TOP leash=Surface(name=Task=7689(main)#71027)/@0x47cdf6e sb=Rect(0, 0 - 1170, 1672) eb=Rect(0, 
+18:29:04.317  TransitionFilter                       | modify mode from change to front for standard. change: {m=CHANGE f=MOVE_TO_TOP p=WCT{android.os.BinderProxy@fb45e11} leash=Surface(name=Task=7705#71445)/@0x27e0370 sb=Rec
+18:29:04.317  TransitionFilter                       | modify mode from change to front for standard. change: {m=CHANGE f=MOVE_TO_TOP p=WCT{android.os.BinderProxy@fb45e11} leash=Surface(name=Task=7705#71445)/@0x27e0370 sb=Rec
+18:29:04.317  TransitionFilter                       | modify mode from change to front for standard. change: {m=CHANGE f=MOVE_TO_TOP leash=Surface(name=Task=7689(main)#71027)/@0x47cdf6e sb=Rect(0, 0 - 1170, 1672) eb=Rect(0, 
+18:29:04.317  TransitionFilter                       | modify mode from change to front for standard. change: {m=CHANGE f=MOVE_TO_TOP leash=Surface(name=Task=7689(main)#71027)/@0x47cdf6e sb=Rect(0, 0 - 1170, 1672) eb=Rect(0, 
+18:29:04.317  ShellSplitScreen                       | startAnimation: transition=177 isSplitActive=false
+18:29:04.317  MultiTaskingTransitionHandler          | startAnimation try handler: com.android.wm.shell.multitasking.common.linkage.MultiTaskingLinkageTransition@c37bc50
+18:29:04.317  MultiTaskingTransitionHandler          | startAnimation try handler: com.android.wm.shell.multitasking.miuifreeform.MiuiFreeformModeAnimation@e226213
+18:29:04.317  MultiTaskingTransitionHandler          | startAnimation try handler: com.android.wm.shell.multitasking.miuimultiwinswitch.MulWinSwitchTransition@17d2308
+18:29:04.317  MulWinSwitchTransition                 | startAnimation::receive an unknown transition:: token = android.os.BinderProxy@442b322 type = TO_FRONT
+18:29:04.317  MultiTaskingTransitionHandler          | startAnimation no handler
+18:29:04.318  TransitionFilter                       | modify mode from change to front for standard. change: {m=CHANGE f=MOVE_TO_TOP leash=Surface(name=Task=7689(main)#71027)/@0x47cdf6e sb=Rect(0, 0 - 1170, 1672) eb=Rect(0, 
+18:29:04.318  TransitionFilter                       | modify mode from change to front for standard. change: {m=CHANGE f=MOVE_TO_TOP leash=Surface(name=Task=7689(main)#71027)/@0x47cdf6e sb=Rect(0, 0 - 1170, 1672) eb=Rect(0, 
+18:29:04.318  TransitionFilter                       | modify mode from change to front for standard. change: {m=CHANGE f=MOVE_TO_TOP leash=Surface(name=Task=7689(main)#71027)/@0x47cdf6e sb=Rect(0, 0 - 1170, 1672) eb=Rect(0, 
+18:29:04.318  TransitionFilter                       | modify mode from change to front for standard. change: {m=CHANGE f=MOVE_TO_TOP leash=Surface(name=Task=7689(main)#71027)/@0x47cdf6e sb=Rect(0, 0 - 1170, 1672) eb=Rect(0, 
+18:29:04.318  TransitionFilter                       | modify mode from change to front for standard. change: {m=CHANGE f=MOVE_TO_TOP p=WCT{android.os.BinderProxy@fb45e11} leash=Surface(name=Task=7705#71445)/@0x27e0370 sb=Rec
+18:29:04.318  TransitionFilter                       | modify mode from change to front for standard. change: {m=CHANGE f=MOVE_TO_TOP p=WCT{android.os.BinderProxy@fb45e11} leash=Surface(name=Task=7705#71445)/@0x27e0370 sb=Rec
+18:29:04.318  TransitionFilter                       | modify mode from change to front for standard. change: {m=CHANGE f=MOVE_TO_TOP leash=Surface(name=Task=7689(main)#71027)/@0x47cdf6e sb=Rect(0, 0 - 1170, 1672) eb=Rect(0, 
+18:29:04.318  TransitionFilter                       | modify mode from change to front for standard. change: {m=CHANGE f=MOVE_TO_TOP leash=Surface(name=Task=7689(main)#71027)/@0x47cdf6e sb=Rect(0, 0 - 1170, 1672) eb=Rect(0, 
+18:29:04.318  TransitionFilter                       | modify mode from change to front for standard. change: {m=CHANGE f=MOVE_TO_TOP leash=Surface(name=Task=7689(main)#71027)/@0x47cdf6e sb=Rect(0, 0 - 1170, 1672) eb=Rect(0, 
+18:29:04.318  TransitionFilter                       | modify mode from change to front for standard. change: {m=CHANGE f=MOVE_TO_TOP leash=Surface(name=Task=7689(main)#71027)/@0x47cdf6e sb=Rect(0, 0 - 1170, 1672) eb=Rect(0, 
+18:29:04.318  TransitionFilter                       | modify mode from change to front for standard. change: {m=CHANGE f=MOVE_TO_TOP leash=Surface(name=Task=7689(main)#71027)/@0x47cdf6e sb=Rect(0, 0 - 1170, 1672) eb=Rect(0, 
+18:29:04.318  TransitionFilter                       | modify mode from change to front for standard. change: {m=CHANGE f=MOVE_TO_TOP leash=Surface(name=Task=7689(main)#71027)/@0x47cdf6e sb=Rect(0, 0 - 1170, 1672) eb=Rect(0, 
+18:29:04.318  TransitionFilter                       | modify mode from change to front for standard. change: {m=CHANGE f=MOVE_TO_TOP p=WCT{android.os.BinderProxy@fb45e11} leash=Surface(name=Task=7705#71445)/@0x27e0370 sb=Rec
+18:29:04.318  TransitionFilter                       | modify mode from change to front for standard. change: {m=CHANGE f=MOVE_TO_TOP p=WCT{android.os.BinderProxy@fb45e11} leash=Surface(name=Task=7705#71445)/@0x27e0370 sb=Rec
+18:29:04.318  TransitionFilter                       | modify mode from change to front for standard. change: {m=CHANGE f=MOVE_TO_TOP leash=Surface(name=Task=7689(main)#71027)/@0x47cdf6e sb=Rect(0, 0 - 1170, 1672) eb=Rect(0, 
+18:29:04.318  TransitionFilter                       | modify mode from change to front for standard. change: {m=CHANGE f=MOVE_TO_TOP leash=Surface(name=Task=7689(main)#71027)/@0x47cdf6e sb=Rect(0, 0 - 1170, 1672) eb=Rect(0, 
+18:29:04.318  MultiTaskingTaskRepository             | try to update multiTaskingTaskInfo taskInfo taskId = 7689
+18:29:04.318  MultiTaskingTaskInfo                   | MultiTaskingBaseTaskInfo::update::mTaskBounds = Rect(0, 0 - 1170, 1672), mTaskId = 7689
+18:29:04.318  OS4FreeFromX                           | TRACE SoScCoord#isMainStageRootTask(7689)
+18:29:04.318  MultiTaskingAnimTarget                 | setAnimParam bounds: Rect(0, 0 - 1170, 1672) scaleX: 1.0 scaleY: 1.0
+18:29:04.318  MultiTaskingFolmeControl               | updateBaseAnimParam taskId = 7689 taskBounds : Rect(0, 0 - 1170, 1672)
+18:29:04.318  MultiTaskingTaskRepository             | try to update multiTaskingTaskInfo taskInfo taskId = 7705
+18:29:04.319  MultiTaskingTaskInfo                   | MultiTaskingBaseTaskInfo::update::mTaskBounds = Rect(0, 0 - 1170, 1672), mTaskId = 7705
+18:29:04.319  OS4FreeFromX                           | TRACE SoScCoord#isMainStageRootTask(7705)
+18:29:04.319  OS4FreeFromX                           | TRACE SoScCoord#isSideStageRootTask(7705)
+18:29:04.319  MultiTaskingAnimTarget                 | setAnimParam bounds: Rect(0, 0 - 1170, 1672) scaleX: 1.0 scaleY: 1.0
+18:29:04.319  MultiTaskingFolmeControl               | updateBaseAnimParam taskId = 7705 taskBounds : Rect(0, 0 - 1170, 1672)
+18:29:04.319  MultiTaskingTransitionObserver         | onTransitionFinished::mRunningTransitions = 0 mRemoteOpenFreeformTransitions = []
+18:29:04.319  SoScUtils                              | monitorTransitionFinished transition:android.os.BinderProxy@442b322 transaction: android.view.SurfaceControl$Transaction@74e4515 mRequestCloseTransition:null mRequestOpen
+18:29:04.319  SurfaceFlinger                         | [SF-ColorSample] Transition anim end
+18:29:04.319  SurfaceFlinger                         | [SF-ColorSample] Transition anim end
+18:29:04.319  TransitionImpl                         | finishTransition: updateLastSurfacePosition tf=Task{520b032 #7705 type=standard A=10245:android.task.calendar}
+18:29:04.320  TransitionImpl                         | finishTransition: updateLastSurfacePosition tf=Task{b5476d5 #7689 name=main type=undefined}
+18:29:04.320  SystemPerformanceHinter                | endSession#HighPerfSession-d0-Transition
+18:29:04.321  RemoteTransitionHandlerStubImpl        | invokeAndRemoveWctCB transition is null, curWctCB: null
+18:29:04.321  MultipleSplitUtils                     | handleTaskInfoChanged task: 7703
+18:29:04.321  MultipleSplitRootTaskOrganizer         | removeRecentTasks[7703]
+18:29:04.322  MultipleSplitUtils                     | removeMultipleSplitPair tasks:[7703]
+18:29:04.322  MultipleSplitRootTaskOrganizer         | removeRecentTasks splitBoundsMap = {}
+18:29:04.322  ShellSplitScreen                       | onTaskInfoChanged: taskId=7703 taskAct=ComponentInfo{com.android.contacts/com.android.contacts.activities.PeopleActivity} stageId=SIDE
+18:29:04.322  SoScStageTaskListener                  | onTaskInfoChanged id:7703 isVisible:true isVisibleRequested:true isFocused:false taskActivity:ComponentInfo{com.android.contacts/com.android.contacts.activities.PeopleAct
+18:29:04.322  OS4FreeFromX                           | TRACE SoScCoord#isMainStageRootTask(7703)
+18:29:04.322  OS4FreeFromX                           | TRACE SoScCoord#isSideStageRootTask(7703)
+18:29:04.322  OS4FreeFromX                           | TRACE SoScCoord#getSplitSnapPosition()
+18:29:04.322  MirimRefreshRatePolicy                 | [Intercept] notifyInteractionEnd blocked, type=transition currentType=transition, keep current timer
+18:29:04.323  MiuiDecorationDot                      | updateCaptionGeometry_TopCaption: taskId=7703 isMultipleSplit=false captionHeight=140 captionOffsetY=0 dotY=70 dotSurfaceHeight=12.0 scale=1.0 mTaskBounds=Rect(1194, 0 - 
+18:29:04.324  LSPosedFramework                       | (com.android.systemui)[com.abel.os4freeformx,OS4FreeFromX,94a-1a0c37e7ea6-45a-188,0,1] 沉浸: task=7703 栏隐藏=true (MiuiDotView#92467638)
+18:29:04.324  OS4FreeFromX                           | 沉浸: task=7703 栏隐藏=true (MiuiDotView#92467638)
+18:29:04.324  MiuiDecorationBase                     | updateSampling_TopCaption: taskId = 7703 scale = 1.0 mTaskBounds = Rect(1194, 0 - 2364, 1672) mCaptionVisibility = true mIsFsgestureEntered = false isRunningAnim = false 
+18:29:04.324  OS4FreeFromX                           | TRACE SoScCoord#isMainStageRootTask(7703)
+18:29:04.324  OS4FreeFromX                           | TRACE SoScCoord#isSideStageRootTask(7703)
+18:29:04.324  LSPosedFramework                       | (com.android.systemui)[com.abel.os4freeformx,OS4FreeFromX,94a-1a0c37e7ea6-45a-189,0,1] 沉浸: task=7703 栏隐藏=true (MiuiBottomBarView#122065831)
+18:29:04.324  OS4FreeFromX                           | 沉浸: task=7703 栏隐藏=true (MiuiBottomBarView#122065831)
+18:29:04.324  MiuiDecorationBase                     | updateSampling_BottomCaption: taskId = 7703 scale = 1.0 mTaskBounds = Rect(1194, 0 - 2364, 1672) mCaptionVisibility = true mIsFsgestureEntered = false isRunningAnim = fal
+18:29:04.324  InsetsController                       | hide(ime())
+18:29:04.325  MulWinSwitchSoScStateListener          | onRootTaskInfoChanged
+18:29:04.325  ProcessMonitor                         | onForegroundInfoChanged: ForegroundInfo{mForegroundPackageName='com.android.calendar', mForegroundUid=10245, mForegroundPid=7001, mForegroundDisplayId=0, mLastForegroundP
+18:29:04.325  MiuiDecorationDot                      | needTopCaption: SoScRootTask or SoScStageRootTask don't need WindowDecoration
+18:29:04.325  OS4FreeFromX                           | TRACE SoScCoord#isMainStageRootTask(7688)
+18:29:04.325  OS4FreeFromX                           | TRACE SoScCoord#isSideStageRootTask(7688)
+18:29:04.325  OS4FreeFromX                           | TRACE SoScCoord#isMainStageRootTask(7690)
+18:29:04.325  OS4FreeFromX                           | TRACE SoScCoord#isSideStageRootTask(7690)
+18:29:04.325  MultiTaskingTaskInfo                   | MultiTaskingBaseTaskInfo::update::mTaskBounds = Rect(1194, 0 - 2364, 1672), mTaskId = 7703
+18:29:04.325  OS4FreeFromX                           | TRACE SoScCoord#isMainStageRootTask(7703)
+18:29:04.325  RelayAppLocalHelper                    | onForegroundInfoChanged: ForegroundInfo{mForegroundPackageName='com.android.calendar', mForegroundUid=10245, mForegroundPid=7001, mForegroundDisplayId=0, mLastForegroundP
+18:29:04.325  OS4FreeFromX                           | TRACE SoScCoord#isSideStageRootTask(7703)
+18:29:04.325  MultiTaskingAnimTarget                 | setAnimParam bounds: Rect(1194, 0 - 2364, 1672) scaleX: 1.0 scaleY: 1.0
+18:29:04.325  MultiTaskingFolmeControl               | updateBaseAnimParam taskId = 7703 taskBounds : Rect(1194, 0 - 2364, 1672)
+18:29:04.325  MultiTaskingTaskRepository             | onTaskInfoChanged::taskId = 7703, windowingMode = 6, mMultiWindowTaskIdsInZOrder = [7705, 7689, 7690, 7703, 7697, 7696, 7695, 7694, 7693, 7692], mFullscreenTaskIdsInZOrde
+18:29:04.326  MultipleSplitUtils                     | handleTaskInfoChanged task: 7690
+18:29:04.326  MultipleSplitRootTaskOrganizer         | removeRecentTasks[7690]
+18:29:04.326  MultipleSplitUtils                     | removeMultipleSplitPair tasks:[7690]
+18:29:04.326  MultipleSplitRootTaskOrganizer         | removeRecentTasks splitBoundsMap = {}
+18:29:04.326  ShellSplitScreen                       | onTaskInfoChanged: taskId=7690 taskAct=ComponentInfo{com.android.contacts/com.android.contacts.activities.PeopleActivity} stageId=SIDE
+18:29:04.326  SoScStageTaskListener                  | onTaskInfoChanged id:7690 isVisible:true isVisibleRequested:true isFocused:false taskActivity:ComponentInfo{com.android.contacts/com.android.contacts.activities.PeopleAct
+18:29:04.326  OS4FreeFromX                           | TRACE SoScCoord#isMainStageRootTask(7688)
+18:29:04.326  OS4FreeFromX                           | TRACE SoScCoord#isSideStageRootTask(7688)
+18:29:04.326  OS4FreeFromX                           | TRACE SoScCoord#isMainStageRootTask(7690)
+18:29:04.326  OS4FreeFromX                           | TRACE SoScCoord#isSideStageRootTask(7690)
+18:29:04.326  MultiTaskingTaskInfo                   | MultiTaskingBaseTaskInfo::update::mTaskBounds = Rect(1194, 0 - 2364, 1672), mTaskId = 7690
+18:29:04.326  OS4FreeFromX                           | TRACE SoScCoord#isMainStageRootTask(7690)
+18:29:04.326  OS4FreeFromX                           | TRACE SoScCoord#isSideStageRootTask(7690)
+18:29:04.326  MultiTaskingAnimTarget                 | setAnimParam bounds: Rect(1194, 0 - 2364, 1672) scaleX: 1.0 scaleY: 1.0
+18:29:04.326  MultiTaskingFolmeControl               | updateBaseAnimParam taskId = 7690 taskBounds : Rect(1194, 0 - 2364, 1672)
+18:29:04.326  MultiTaskingTaskRepository             | onTaskInfoChanged::taskId = 7690, windowingMode = 6, mMultiWindowTaskIdsInZOrder = [7705, 7689, 7690, 7703, 7697, 7696, 7695, 7694, 7693, 7692], mFullscreenTaskIdsInZOrde
+18:29:04.326  MultipleSplitUtils                     | handleTaskInfoChanged task: 7705
+18:29:04.326  MultipleSplitRootTaskOrganizer         | removeRecentTasks[7705]
+18:29:04.326  MultipleSplitUtils                     | removeMultipleSplitPair tasks:[7705]
+18:29:04.326  MultipleSplitRootTaskOrganizer         | removeRecentTasks splitBoundsMap = {}
+18:29:04.326  ShellSplitScreen                       | onTaskInfoChanged: taskId=7705 taskAct=ComponentInfo{com.android.calendar/com.android.calendar.homepage.AllInOneActivity} stageId=MAIN
+18:29:04.326  SoScStageTaskListener                  | onTaskInfoChanged id:7705 isVisible:true isVisibleRequested:true isFocused:true taskActivity:ComponentInfo{com.android.calendar/com.android.calendar.homepage.AllInOneActi
+18:29:04.327  MulWinSwitchSoScStateListener          | onRootTaskInfoChanged
+18:29:04.327  MiuiDecorationDot                      | needTopCaption: SoScRootTask or SoScStageRootTask don't need WindowDecoration
+18:29:04.327  OS4FreeFromX                           | TRACE SoScCoord#isMainStageRootTask(7688)
+18:29:04.327  OS4FreeFromX                           | TRACE SoScCoord#isSideStageRootTask(7688)
+18:29:04.327  OS4FreeFromX                           | TRACE SoScCoord#isMainStageRootTask(7689)
+18:29:04.327  MultiTaskingTaskRepository             | moveMultiWindowTaskToTop taskId=7705
+18:29:04.327  MultiTaskingTaskInfo                   | MultiTaskingBaseTaskInfo::update::mTaskBounds = Rect(0, 0 - 1170, 1672), mTaskId = 7705
+18:29:04.327  OS4FreeFromX                           | TRACE SoScCoord#isMainStageRootTask(7705)
+18:29:04.327  OS4FreeFromX                           | TRACE SoScCoord#isSideStageRootTask(7705)
+18:29:04.327  MultiTaskingAnimTarget                 | setAnimParam bounds: Rect(0, 0 - 1170, 1672) scaleX: 1.0 scaleY: 1.0
+18:29:04.327  MultiTaskingFolmeControl               | updateBaseAnimParam taskId = 7705 taskBounds : Rect(0, 0 - 1170, 1672)
+18:29:04.327  MultiTaskingTaskRepository             | onTaskInfoChanged::taskId = 7705, windowingMode = 6, mMultiWindowTaskIdsInZOrder = [7705, 7689, 7690, 7703, 7697, 7696, 7695, 7694, 7693, 7692], mFullscreenTaskIdsInZOrde
+18:29:04.327  PerfEngineController                   | ForegroundInfo{mForegroundPackageName='com.android.calendar', mForegroundUid=10245, mForegroundPid=7001, mForegroundDisplayId=0, mLastForegroundPackageName='com.android.c
+18:29:04.328  MiuiFreeformModeController             | onFocusTaskChanged taskInfo: TaskInfo{userId=0 taskId=7705 effectiveUid=10245 displayId=0 isRunning=true baseIntent=Intent { act=android.intent.action.MAIN cat=[android.i
+18:29:04.328  MultiTaskingFrameController            | onFocusTaskChanged::focusUid = 10245
+18:29:04.328  MultiTaskingFrameController            | setProcessFrameRate::uid = 10245  rate = 0
+18:29:04.328  MultipleSplitUtils                     | handleTaskInfoChanged task: 7689
+18:29:04.328  MultipleSplitRootTaskOrganizer         | removeRecentTasks[7689]
+18:29:04.328  MultipleSplitUtils                     | removeMultipleSplitPair tasks:[7689]
+18:29:04.328  MultipleSplitRootTaskOrganizer         | removeRecentTasks splitBoundsMap = {}
+18:29:04.328  ShellSplitScreen                       | onTaskInfoChanged: taskId=7689 taskAct=ComponentInfo{com.android.calendar/com.android.calendar.homepage.AllInOneActivity} stageId=MAIN
+18:29:04.328  SoScStageTaskListener                  | onTaskInfoChanged id:7689 isVisible:true isVisibleRequested:true isFocused:true taskActivity:ComponentInfo{com.android.calendar/com.android.calendar.homepage.AllInOneActi
+18:29:04.328  OS4FreeFromX                           | TRACE SoScCoord#isMainStageRootTask(7688)
+18:29:04.328  OS4FreeFromX                           | TRACE SoScCoord#isSideStageRootTask(7688)
+18:29:04.328  OS4FreeFromX                           | TRACE SoScCoord#isMainStageRootTask(7689)
+18:29:04.328  MultiTaskingTaskRepository             | moveMultiWindowTaskToTop taskId=7689
+18:29:04.328  MultiTaskingTaskInfo                   | MultiTaskingBaseTaskInfo::update::mTaskBounds = Rect(0, 0 - 1170, 1672), mTaskId = 7689
+18:29:04.328  OS4FreeFromX                           | TRACE SoScCoord#isMainStageRootTask(7689)
+18:29:04.328  MultiTaskingAnimTarget                 | setAnimParam bounds: Rect(0, 0 - 1170, 1672) scaleX: 1.0 scaleY: 1.0
+18:29:04.328  MultiTaskingFolmeControl               | updateBaseAnimParam taskId = 7689 taskBounds : Rect(0, 0 - 1170, 1672)
+18:29:04.328  MultiTaskingTaskRepository             | onTaskInfoChanged::taskId = 7689, windowingMode = 6, mMultiWindowTaskIdsInZOrder = [7689, 7705, 7690, 7703, 7697, 7696, 7695, 7694, 7693, 7692], mFullscreenTaskIdsInZOrde
+18:29:04.328  BluetoothLatencyMode                   | ForegroundInfo{mForegroundPackageName='com.android.calendar', mForegroundUid=10245, mForegroundPid=7001, mForegroundDisplayId=0, mLastForegroundPackageName='com.android.c
+18:29:04.328  MiuiFreeformModeController             | onFocusTaskChanged taskInfo: TaskInfo{userId=0 taskId=7689 effectiveUid=0 displayId=0 isRunning=true baseIntent=Intent {  } baseActivity=ComponentInfo{com.android.calenda
+18:29:04.328  MultiTaskingFrameController            | onFocusTaskChanged::focusUid = 0
+18:29:04.329  HyperComm_AppMonitor                   | onForegroundInfoChanged: foregroundInfo = ForegroundInfo{mForegroundPackageName='com.android.calendar', mForegroundUid=10245, mForegroundPid=7001, mForegroundDisplayId=0,
+18:29:04.332  hyper_launcher_app                     | : <app-frb-pool-app_launcher::api::model::recents::task_description:25>: [TitleTrace] TaskDescription::from_ref label=None
+18:29:04.332  hyper_launcher_app                     | : <app-frb-pool-app_launcher::api::model::recents::grouped_recent_task_info:32>: multipleSplit task_info1 = 7705, task_Info2 = "7703", multiple_split_task_ids = Ok(Some([
+18:29:04.332  hyper_launcher_app                     | : <app-frb-pool-app_launcher::api::model::recents::grouped_recent_task_info:63>: init Split TaskInfo
+18:29:04.332  hyper_launcher_app                     | : <app-frb-pool-app_launcher::api::model::recents::task_description:25>: [TitleTrace] TaskDescription::from_ref label=None
+18:29:04.332  hyper_launcher_app                     | : <app-frb-pool-app_launcher::api::model::recents::task_description:25>: [TitleTrace] TaskDescription::from_ref label=None
+18:29:04.332  hyper_launcher_app                     | : <app-frb-pool-app_launcher::api::model::recents::task_description:25>: [TitleTrace] TaskDescription::from_ref label=None
+18:29:04.333  TransitionChain                        | Can't collect into a chain with no transition
+18:29:04.334  TransitionChain                        | Can't collect into a chain with no transition
+18:29:04.335  RelayAppLocalHelper                    | in split screen mode com.android.contacts, notify with com.miui.home
+18:29:04.336  GameBoosterService                     | onGameStatusChange foreground:ForegroundInfo{mForegroundPackageName='com.android.calendar', mForegroundUid=10245, mForegroundPid=7001, mForegroundDisplayId=0, mLastForegr
+18:29:04.336  GlobalDock-MonitorService              | onForegroundInfoChanged: appUserId=0	myUserId=0	foregroundInfo = ForegroundInfo{mForegroundPackageName='com.android.calendar', mForegroundUid=10245, mForegroundPid=7001, 
+18:29:04.336  VideoToolBoxService                    | splitMode: ontrue
+18:29:04.337  FreeformUtil                           | retrieveFirstNoFreeformRootTaskInfo: windowMode = 1
+18:29:04.339  FiveGModemExpress                      | Not supported under Split Screen
+18:29:04.341  MiuiMirrorInputMethodImpl              | InsetsControlTarget invalid!:Window{8e61081 u0 com.android.calendar/com.android.calendar.homepage.AllInOneActivity}
+18:29:04.342  NetworkMetricsController               | processUidChangeEvent : Not supported under Split Screen
+18:29:04.347  DockFeature                            | isSupportDock: isSupportFreeform=true	isAboveMiui125=true	isSupportDock=true	isDevBuild=false
+18:29:04.349  hyper_launcher_app                     | : <1.ui-app_launcher::api::recents::recents_menu_api:193>: is_multiple_split_support: true
+18:29:04.350  hyper_launcher_app                     | : <appfrbasync5-app_launcher::recents::systemui_shared::transition::window_transion_manager:1567>: WindowTransitionManager start_recents
+18:29:04.350  hyper_launcher_app                     | : <appfrbasync5-app_launcher::recents::systemui_shared::transition::window_transition_callback_helper:493>: WindowTransitionCallbackHelper set_recents_pending: true
+18:29:04.350  hyper_launcher_app                     | : <appfrbasync5-app_launcher::recents::systemui_shared::transition::window_transion_manager:1583>: WindowTransitionManager start_recents reuse=false recents_target_len=0
+18:29:04.350  hyper_launcher_app                     | : <appfrbasync5-app_launcher::recents::systemui_shared::systemui_proxy_helper:105>: start_recents_transition_api36
+18:29:04.350  hyper_launcher_app                     | : <appfrbasync5-app_launcher::recents::systemui_shared::systemui_proxy_wrapper:394>: SystemUiProxyWrapper start_recents_transition_api36 run
+18:29:04.351  RecentsTransitionHandler               | onGestureStateUpdated state = 6
+18:29:04.351  TransitionImpl                         | onGestureStateCallback state = 6, info = {id=114 t=OPEN f=0x0 trk=0 r=[0@Point(0, 0)] c=[{WCT{RemoteToken{aa00af9 Task{8d4918c #7703 type=standard A=10116:android.task.co
+18:29:04.353  MiuiFreeformModeSettingsObserver       | handleFreeFormReceiver intent = Intent { act=com.miui.fullscreen_state_change flg=0x10 (has extras) }, action = com.miui.fullscreen_state_change
+18:29:04.353  hyper_launcher_app                     | : <app-frb-pool-app_launcher::recents::sosc::sosc_split_screen_controller:898>: on_gesture_start: touch_range = 2 
+18:29:04.353  MiuiFreeformModeSettingsObserver       | ACTION_FULLSCREEN_STATE_CHANGE stateName: taskSnapshot, channelName: gesture
+18:29:04.353  MiuiFreeformModeController             | snapshotAllFreeform
+18:29:04.353  MulWinSwitchSoScStateListener          | onGestureStart::state = 2
+18:29:04.353  MulWinSwitchAnimStatus                 | setIsDraggingRecent isDraggingRecent=true
+18:29:04.353  MiuiDecorationBase                     | updateSampling_TopCaption: taskId = 7703 scale = 1.0 mTaskBounds = Rect(1194, 0 - 2364, 1672) mCaptionVisibility = true mIsFsgestureEntered = false isRunningAnim = false 
+18:29:04.354  MiuiDecorationBase                     | updateSampling_BottomCaption: taskId = 7703 scale = 1.0 mTaskBounds = Rect(1194, 0 - 2364, 1672) mCaptionVisibility = true mIsFsgestureEntered = false isRunningAnim = fal
+18:29:04.354  MiuiDecorationBase                     | updateSampling_TopCaption: taskId = 7705 scale = 1.0 mTaskBounds = Rect(0, 0 - 1170, 1672) mCaptionVisibility = true mIsFsgestureEntered = false isRunningAnim = false isD
+18:29:04.354  MiuiDecorationBase                     | updateSampling_BottomCaption: taskId = 7705 scale = 1.0 mTaskBounds = Rect(0, 0 - 1170, 1672) mCaptionVisibility = true mIsFsgestureEntered = false isRunningAnim = false 
+18:29:04.354  MulWinSwitchSoScStateListener          | setRootTaskCaptionVisibilty:: state = 2, visible = false
+18:29:04.354  MulWinSwitchDecorViewModel             | setCaptionVisibility taskId=7688, visible=false
+18:29:04.354  MiuiDecorationBase                     | setVisibility_TopCaption, mCaptionVisible= true, visible= false, taskId= 7688, callers = com.android.wm.shell.multitasking.miuimultiwinswitch.miuiwindowdecor.decoration.M
+18:29:04.354  MiuiDecorationBase                     | setVisibility_BottomCaption, mCaptionVisible= true, visible= false, taskId= 7688, callers = com.android.wm.shell.multitasking.miuimultiwinswitch.miuiwindowdecor.decoratio
+18:29:04.354  MiuiDecorationDot                      | needTopCaption: SoScRootTask or SoScStageRootTask don't need WindowDecoration
+18:29:04.355  OS4FreeFromX                           | TRACE SoScCoord#isMainStageRootTask(7688)
+18:29:04.355  OS4FreeFromX                           | TRACE SoScCoord#isSideStageRootTask(7688)
+18:29:04.355  SoScStageCoordinator                   | recordStageOnGestureStart state:2
+18:29:04.355  WindowManagerShell                     | PipDesktopState: Recents transition state changed: TRANSITION_STATE_REQUESTED
+18:29:04.355  TransitionChain                        | Can't collect into a chain with no transition
+18:29:04.356  SchedBoost                             | handleLowLatencySceneBoost active= true, methodName= startTransition
+18:29:04.357  SystemPerformanceHinter                | startSession#HighPerfSession-d0-Transition
+18:29:04.357  ActivityTaskManager                    | moveTaskToFront: Task{873d0a #2 type=home I=com.miui.home/.launcher.Launcher} caller trace:com.android.server.wm.TaskDisplayArea.onTaskMoved:434 com.android.server.wm.Tas
+18:29:04.360  SecondPageAnimSpeed_Controller         | setTransitionReady fail because basic condition check failed
+18:29:04.362  Transition                             | calculateTargets isHomeOpen = true, isHomeLaunchApp = false
+18:29:04.362  TransitionImpl                         | forceAddToTransition WallpaperWindowToken{aaccc7f showWhenLocked=true fixedRotationBySelf=false}
+18:29:04.362  MiuiSplitScreenImpl                    | notifyTaskMultiWindowModeChanged when transition ready: taskId=7705 bounds=Rect(0, 0 - 1170, 1672) packageName=com.android.calendar windowMode=6 vis=true inMultiWindowMod
+18:29:04.363  MiuiSplitScreenImpl                    | notifyTaskMultiWindowModeChanged when transition ready: taskId=7703 bounds=Rect(1194, 0 - 2364, 1672) packageName=com.android.contacts windowMode=6 vis=true inMultiWindow
+18:29:04.363  SurfaceFlinger                         | [SF-ColorSample] Transition anim start
+18:29:04.364  Transition                             | handleLegacyRecentsStartBehavior recentsTask=Task{991f58e #1 type=home}, topNonRecentsTask=Task{520b032 #7705 type=standard A=10245:android.task.calendar}
+18:29:04.365  libbinder.BpBinder                     | Large outgoing transaction of 62588 bytes, interface descriptor android.window.ITransitionPlayer, code 1 was sent
+18:29:04.365  Transition                             | #%d: Condition met too late, already in state=2: {start WCT appliedIGNORED}
+18:29:04.365  ImeInsetsSourceProvider                | showImePostLayout aborted, serverVisible: false, frozen: false, mWin is: non-null, isDrawn: false, mGivenInsetsPending: false, imeLayeringTarget: Window{8e61081 u0 com.an
+18:29:04.365  ImeInsetsSourceProvider                | controlTarget == DisplayContent.imeControlTarget: true, hasPendingControls: false, leash is: non-null
+18:29:04.366  SchedBoost                             | handleLowLatencySceneBoost active= false, methodName= startTransition
+18:29:04.366  MirimRefreshRatePolicy                 | [Extend] type=transition, newDuration=1000ms
+18:29:04.366  SoScSplitScreenController              | updateDividerFixedState isFixed:true
+18:29:04.366  OS4FreeFromX                           | TRACE SoScCoord#updateDividerFixedState(true)
+18:29:04.366  MultiTaskingTaskRepository             | needSkip::home task snapshot: isVisible=true isVisibleRequested=true
+18:29:04.366  MultiTaskingTaskRepository             | putOrUpdateTaskInfo skip putOrUpdate fromOpenTransitionReady=true
+18:29:04.366  MulWinSwitchDecorViewModel             | onTaskChanging taskId:7703 decoration = com.android.wm.shell.multitasking.miuimultiwinswitch.miuiwindowdecor.decoration.MiuiDecorationController@e10008c
+18:29:04.367  OS4FreeFromX                           | TRACE SoScCoord#isMainStageRootTask(7703)
+18:29:04.367  OS4FreeFromX                           | TRACE SoScCoord#isSideStageRootTask(7703)
+18:29:04.367  OS4FreeFromX                           | TRACE SoScCoord#getSplitSnapPosition()
+18:29:04.368  MiuiDecorationDot                      | updateCaptionGeometry_TopCaption: taskId=7703 isMultipleSplit=false captionHeight=140 captionOffsetY=0 dotY=70 dotSurfaceHeight=12.0 scale=1.0 mTaskBounds=Rect(1194, 0 - 
+18:29:04.368  LSPosedFramework                       | (com.android.systemui)[com.abel.os4freeformx,OS4FreeFromX,94a-1a0c37e7ea6-45a-18a,0,1] 沉浸: task=7703 栏隐藏=true (MiuiDotView#92467638)
+18:29:04.368  OS4FreeFromX                           | 沉浸: task=7703 栏隐藏=true (MiuiDotView#92467638)
+18:29:04.368  MiuiDecorationBase                     | updateSampling_TopCaption: taskId = 7703 scale = 1.0 mTaskBounds = Rect(1194, 0 - 2364, 1672) mCaptionVisibility = true mIsFsgestureEntered = false isRunningAnim = false 
+18:29:04.369  OS4FreeFromX                           | TRACE SoScCoord#isMainStageRootTask(7703)
+18:29:04.369  OS4FreeFromX                           | TRACE SoScCoord#isSideStageRootTask(7703)
+18:29:04.369  LSPosedFramework                       | (com.android.systemui)[com.abel.os4freeformx,OS4FreeFromX,94a-1a0c37e7ea6-45a-18b,0,1] 沉浸: task=7703 栏隐藏=true (MiuiBottomBarView#122065831)
+18:29:04.369  OS4FreeFromX                           | 沉浸: task=7703 栏隐藏=true (MiuiBottomBarView#122065831)
+18:29:04.369  MiuiDecorationBase                     | updateSampling_BottomCaption: taskId = 7703 scale = 1.0 mTaskBounds = Rect(1194, 0 - 2364, 1672) mCaptionVisibility = true mIsFsgestureEntered = false isRunningAnim = fal
+18:29:04.369  MulWinSwitchDecorViewModel             | onTaskChanging taskId:7705 decoration = com.android.wm.shell.multitasking.miuimultiwinswitch.miuiwindowdecor.decoration.MiuiDecorationController@3ad6e5a
+18:29:04.369  OS4FreeFromX                           | TRACE SoScCoord#isMainStageRootTask(7705)
+18:29:04.369  OS4FreeFromX                           | TRACE SoScCoord#isSideStageRootTask(7705)
+18:29:04.369  OS4FreeFromX                           | TRACE SoScCoord#getSplitSnapPosition()
+18:29:04.370  MiuiDecorationDot                      | updateCaptionGeometry_TopCaption: taskId=7705 isMultipleSplit=false captionHeight=140 captionOffsetY=0 dotY=70 dotSurfaceHeight=12.0 scale=1.0 mTaskBounds=Rect(0, 0 - 117
+18:29:04.371  LSPosedFramework                       | (com.android.systemui)[com.abel.os4freeformx,OS4FreeFromX,94a-1a0c37e7ea6-45a-18c,0,1] 沉浸: task=7705 栏隐藏=true (MiuiDotView#5640344)
+18:29:04.371  OS4FreeFromX                           | 沉浸: task=7705 栏隐藏=true (MiuiDotView#5640344)
+18:29:04.371  MiuiDecorationBase                     | updateSampling_TopCaption: taskId = 7705 scale = 1.0 mTaskBounds = Rect(0, 0 - 1170, 1672) mCaptionVisibility = true mIsFsgestureEntered = false isRunningAnim = false isD
+18:29:04.371  OS4FreeFromX                           | TRACE SoScCoord#isMainStageRootTask(7705)
+18:29:04.371  OS4FreeFromX                           | TRACE SoScCoord#isSideStageRootTask(7705)
+18:29:04.371  LSPosedFramework                       | (com.android.systemui)[com.abel.os4freeformx,OS4FreeFromX,94a-1a0c37e7ea6-45a-18d,0,1] 沉浸: task=7705 栏隐藏=true (MiuiBottomBarView#18627869)
+18:29:04.371  OS4FreeFromX                           | 沉浸: task=7705 栏隐藏=true (MiuiBottomBarView#18627869)
+18:29:04.371  MiuiDecorationBase                     | updateSampling_BottomCaption: taskId = 7705 scale = 1.0 mTaskBounds = Rect(0, 0 - 1170, 1672) mCaptionVisibility = true mIsFsgestureEntered = false isRunningAnim = false 
+18:29:04.372  MulWinSwitchDecorViewModel             | onTaskChanging taskId:1 decoration = com.android.wm.shell.multitasking.miuimultiwinswitch.miuiwindowdecor.decoration.MiuiDecorationHomeController@3c605cf
+18:29:04.372  MiuiDecorationHomeBottom               | disableMultiStatusBarNavBar needCaption inSoScFullMode.
+18:29:04.372  ShellTransitions                       | getMaybeHandlerType active = (#179) android.os.BinderProxy@e8e7832@0, type = 4
+18:29:04.372  ShellSplitScreen                       | onRecentsInSplitAnimationStart: transition=179
+18:29:04.372  OS4FreeFromX                           | TRACE SoScCoord#addDividerBarToTransition({id=179 t=FIRST_CUSTOM+21 f=0x80 trk=0 r=[0@Point(0, 0)] c=[{m=TO_FRONT f=SHOW_WALLPAPER|MOVE_TO_TOP|FLAG_CHAN…, false)
+18:29:04.373  SoScStageCoordinator                   | onRecentsInSplitAnimationStart info:{id=179 t=FIRST_CUSTOM+21 f=0x80 trk=0 r=[0@Point(0, 0)] c=[{m=TO_FRONT f=SHOW_WALLPAPER|MOVE_TO_TOP|FLAG_CHANGED_INTERACTIVE leash=Su
+18:29:04.373  SoScUtils                              | isSingle: false, isFullMode: true, isActive: true, soscState: 2, isSoScVisible: true
+18:29:04.373  OS4FreeFromX                           | TRACE SoScCoord#getMainStageRoot()
+18:29:04.373  OS4FreeFromX                           | TRACE SoScCoord#getSideStageRoot()
+18:29:04.373  OS4FreeFromX                           | TRACE SoScCoord#getMainStageRoot()
+18:29:04.373  OS4FreeFromX                           | TRACE SoScCoord#getSideStageRoot()
+18:29:04.373  OS4FreeFromX                           | TRACE SoScCoord#getMainStageRoot()
+18:29:04.373  OS4FreeFromX                           | TRACE SoScCoord#getMainStageRoot()
+18:29:04.373  OS4FreeFromX                           | TRACE SoScCoord#getSideStageRoot()
+18:29:04.373  OS4FreeFromX                           | TRACE SoScCoord#getMainStageRoot()
+18:29:04.373  OS4FreeFromX                           | TRACE SoScCoord#getSideStageRoot()
+18:29:04.373  SoScUtils                              | fullRoot : {m=TO_BACK f=FLAG_CHANGED_INTERACTIVE leash=Surface(name=Task=7688#71025)/@0x5e187a6 sb=Rect(0, 0 - 2364, 1672) eb=Rect(0, 0 - 2364, 1672) epz=Point(2364, 1672
+18:29:04.373  SoScUtils                              | mainStage : {m=TO_BACK f=NONE p=WCT{android.os.BinderProxy@f13e0e7} leash=Surface(name=Task=7689(main)#71027)/@0xb42e2fc sb=Rect(0, 0 - 1170, 1672) eb=Rect(0, 0 - 1170, 1
+18:29:04.373  SoScUtils                              | sideStage : {m=TO_BACK f=FLAG_CHANGED_INTERACTIVE p=WCT{android.os.BinderProxy@f13e0e7} leash=Surface(name=Task=7690(side)#71029)/@0xe5932e8 sb=Rect(1194, 0 - 2364, 1672)
+18:29:04.373  SoScUtils                              | mainActive : true, sideActive : true
+18:29:04.373  SoScUtils                              | close full
+18:29:04.373  SoScUtils                              | Update divider bg visible from true to:false, com.android.wm.shell.sosc.SoScUtilsImpl.addDividerBackgroundToTransition:135 com.android.wm.shell.sosc.SoScUtilsImpl.addDivi
+18:29:04.373  SoScUtils                              | Update divider bg leash from Surface(name=DividerBackground#71488)/@0x11c35a7, com.android.wm.shell.sosc.SoScUtilsImpl.updateBackgroundLeashSurface:32 com.android.wm.shel
+18:29:04.373  SoScUtils                              | to: Surface(name=DividerBackground#71488)/@0x11c35a7, visible ? false, fullmode: true
+18:29:04.373  SoScUtils                              | Add divider bg need show ? false, bgleash: Surface(name=DividerBackground#71488)/@0x26ddb39, mDividerBgLeash: Surface(name=DividerBackground#71488)/@0x11c35a7, finishT: a
+18:29:04.373  RecentsTransitionHandler               | home/recents is opening, hasOpeningTasks=true: {m=TO_FRONT f=SHOW_WALLPAPER|MOVE_TO_TOP|FLAG_CHANGED_INTERACTIVE leash=Surface(name=Task=1#70996)/@0xc0ff9d0 sb=Rect(0, 0 
+18:29:04.373  RecentsTransitionHandler               | add mRecentsTaskStateNotifyHome: 1
+18:29:04.374  OS4FreeFromX                           | TRACE SoScCoord#isMainStageRootTask(7689)
+18:29:04.374  OS4FreeFromX                           | TRACE SoScCoord#isMainStageRootTask(7690)
+18:29:04.374  OS4FreeFromX                           | TRACE SoScCoord#isSideStageRootTask(7690)
+18:29:04.374  MiuiMirrorInputMethodImpl              | InsetsControlTarget invalid!:Window{8e61081 u0 com.android.calendar/com.android.calendar.homepage.AllInOneActivity}
+18:29:04.375  MiuiSplitInputMethodImpl               | getDeclaredMethod:java.lang.NoSuchMethodException: com.android.server.inputmethod.InputMethodManagerService.getSelectedMethodIdLocked []
+18:29:04.376  RecentsTransitionHandler               | adjust divider bg Surface(name=Surface(name=DividerBackground#71488)/@0x26ddb39_transition-leash#71528)/@0xeb32618 relative to home Surface(name=Surface(name=Task=1#70996
+18:29:04.376  MiuiSplitInputMethodImpl               | getDeclaredMethod:java.lang.NoSuchMethodException: com.android.server.inputmethod.InputMethodManagerService.getSelectedMethodIdLocked []
+18:29:04.376  TransitionChain                        | Can't collect into a chain with no transition
+18:29:04.376  hyper_launcher_app                     | : <binder:25236_5-app_launcher::recents::systemui_shared::transition::window_transion_manager:6564>: BarFollow on_gesture_state_update_callback
+18:29:04.376  hyper_launcher_app                     | : <binder:25236_5-app_launcher::recents::systemui_shared::transition::window_transion_manager:6566>: BarFollow on_gesture_state_update_callback skip
+18:29:04.376  RecentsTransitionHandler               | Register callback to Launcher in start, callback = com.android.wm.shell.recents.RecentsTransitionHandler$1@672b871
+18:29:04.377  WindowManagerShell                     | PipDesktopState: Recents transition state changed: TRANSITION_STATE_ANIMATING
+18:29:04.377  ShellTransitions                       |  DefaultMixedHandler.recentsTransitionHandler = com.android.wm.shell.recents.RecentsTransitionHandler@c2da065 mGestureStateUpdateCallback = android.window.IGestureStateUp
+18:29:04.378  hyper_launcher_app                     | : <binder:25236_5-app_launcher::recents::systemui_shared::transition::window_transion_manager:5784>: IRecentsAnimationRunnerApi36 on_animation_start called
+18:29:04.378  hyper_launcher_app                     | : <binder:25236_5-app_launcher::recents::systemui_shared::transition::window_transition_callback_helper:196>: WindowTransitionCallbackHelper IRecentsAnimationRunnerImplAp
+18:29:04.378  hyper_launcher_app                     | : <binder:25236_5-app_launcher::recents::systemui_shared::transition::window_transition_callback_helper:385>: [FrameTransaction] SKIP FollowingSurface registration (Frame
+18:29:04.378  hyper_launcher_app                     | : <binder:25236_5-app_launcher::recents::task::fast_launch_manager:145>: FastLaunchManager: set_home_task_leash: leash="Surface(name=\"Surface(name=Task=1#70996)/@0xc0ff9
+18:29:04.378  hyper_launcher_app                     | : <binder:25236_5-app_launcher::recents::systemui_shared::transition::window_transion_manager:5827>: IRecentsAnimationRunnerImplApi36 on_animation_start token=0
+18:29:04.378  hyper_launcher_app                     | : <binder:25236_5-app_launcher::recents::systemui_shared::transition::window_transition_callback_helper:1439>: init_transition_root_if_needed: set root leash for token=0
+18:29:04.378  hyper_launcher_app                     | : <binder:25236_5-app_launcher::recents::systemui_shared::transition::window_transion_manager:5841>: IRecentsAnimationRunnerImplApi36 on_animation_start add success
+18:29:04.379  MiuiSplitInputMethodImpl               | getDeclaredMethod:java.lang.NoSuchMethodException: com.android.server.inputmethod.InputMethodManagerService.getSelectedMethodIdLocked []
+18:29:04.381  TransitionController                   | Set visible without transition WallpaperWindowToken{aaccc7f showWhenLocked=true fixedRotationBySelf=false} playing=true caller=com.android.server.wm.WallpaperControllerIm
+18:29:04.382  hyper_launcher_app                     | : <1.ui-app_launcher::recents::systemui_shared::transition::window_transion_manager:2554>: update_key_intercept_and_animation called: intercept_home=true, intercept_back=
+18:29:04.382  hyper_launcher_app                     | : <1.ui-app_launcher::recents::systemui_shared::transition::window_transion_manager:2336>: set_input_consumer_enabled true
+18:29:04.383  hyper_launcher_app                     | : <appfrbasync2-app_launcher::api::recents::window_transition_agent:683>: set_recents_app_behind_system_bars: behind=false
+18:29:04.386  MultipleSplitUtils                     | handleTaskInfoChanged task: 1
+18:29:04.386  MultipleSplitRootTaskOrganizer         | removeRecentTasks[1]
+18:29:04.386  MultipleSplitUtils                     | removeMultipleSplitPair tasks:[1]
+18:29:04.386  MultipleSplitRootTaskOrganizer         | removeRecentTasks splitBoundsMap = {}
+18:29:04.386  MultiTaskingTaskRepository             | needSkip::home task snapshot: isVisible=true isVisibleRequested=true
+18:29:04.386  MiuiDecorationHomeBottom               | disableMultiStatusBarNavBar needCaption inSoScFullMode.
+18:29:04.386  ActivityManagerServiceImpl             | Sending non-protected broadcast com.xiaomi.multisence.action.FOCUSED_CHANGE from system 24230:system/1000 pkg android. Callers=com.android.server.am.BroadcastController.c
+18:29:04.386  MiuiFreeformModeController             | onFocusTaskChanged taskInfo: TaskInfo{userId=0 taskId=1 effectiveUid=0 displayId=0 isRunning=true baseIntent=Intent { act=android.intent.action.MAIN cat=[android.intent.c
+18:29:04.386  MultiTaskingFrameController            | onFocusTaskChanged::focusUid = 0
+18:29:04.387  TransitionChain                        | Can't collect into a chain with no transition
+18:29:04.389  RecentsTransitionHandler               | onGestureStateUpdated state = 12
+18:29:04.389  TransitionImpl                         | onGestureStateCallback state = 12, info = {id=114 t=OPEN f=0x0 trk=0 r=[0@Point(0, 0)] c=[{WCT{RemoteToken{aa00af9 Task{8d4918c #7703 type=standard A=10116:android.task.c
+18:29:04.390  FoldPolicy                             | foregroundInfo = ForegroundInfo{mForegroundPackageName='com.miui.home', mForegroundUid=10126, mForegroundPid=25236, mForegroundDisplayId=0, mLastForegroundPackageName='co
+18:29:04.390  MultipleSplitUtils                     | handleTaskInfoChanged task: 7705
+18:29:04.390  MultipleSplitRootTaskOrganizer         | removeRecentTasks[7705]
+18:29:04.390  MultipleSplitUtils                     | removeMultipleSplitPair tasks:[7705]
+18:29:04.390  MultipleSplitRootTaskOrganizer         | removeRecentTasks splitBoundsMap = {}
+18:29:04.390  ShellSplitScreen                       | onTaskInfoChanged: taskId=7705 taskAct=ComponentInfo{com.android.calendar/com.android.calendar.homepage.AllInOneActivity} stageId=MAIN
+18:29:04.390  SoScStageTaskListener                  | onTaskInfoChanged id:7705 isVisible:true isVisibleRequested:true isFocused:false taskActivity:ComponentInfo{com.android.calendar/com.android.calendar.homepage.AllInOneAct
+18:29:04.390  ShellSplitScreen                       | updateRecentTasksSplitPair: skipping reason=no pausing tasks
+18:29:04.391  OS4FreeFromX                           | TRACE SoScCoord#isMainStageRootTask(7705)
+18:29:04.391  OS4FreeFromX                           | TRACE SoScCoord#isSideStageRootTask(7705)
+18:29:04.391  OS4FreeFromX                           | TRACE SoScCoord#getSplitSnapPosition()
+18:29:04.392  MiuiDecorationDot                      | updateCaptionGeometry_TopCaption: taskId=7705 isMultipleSplit=false captionHeight=140 captionOffsetY=0 dotY=70 dotSurfaceHeight=12.0 scale=1.0 mTaskBounds=Rect(0, 0 - 117
+18:29:04.392  LSPosedFramework                       | (com.android.systemui)[com.abel.os4freeformx,OS4FreeFromX,94a-1a0c37e7ea6-45a-18e,0,1] 沉浸: task=7705 栏隐藏=true (MiuiDotView#5640344)
+18:29:04.392  OS4FreeFromX                           | 沉浸: task=7705 栏隐藏=true (MiuiDotView#5640344)
+18:29:04.392  MiuiDecorationBase                     | updateSampling_TopCaption: taskId = 7705 scale = 1.0 mTaskBounds = Rect(0, 0 - 1170, 1672) mCaptionVisibility = true mIsFsgestureEntered = false isRunningAnim = false isD
+18:29:04.393  OS4FreeFromX                           | TRACE SoScCoord#isMainStageRootTask(7705)
+18:29:04.393  OS4FreeFromX                           | TRACE SoScCoord#isSideStageRootTask(7705)
+18:29:04.393  hyper_launcher_app                     | : <rt-internal-channel-0-engine_platform::channel::platform_channel:158>: PlatformChannel called: SystemChrome.handleWindowInsetsChanged, arguments: {"left":54.7677241181
+18:29:04.393  hyper_launcher_app                     | : <rt-internal-channel-0-engine_platform::channel::platform_channel:305>: platform handle window insets changed
+18:29:04.393  hyper_launcher_app                     | : <rt-internal-channel-0-engine_platform::plugin::platform::system_bars:327>: Ignoring color view update because insets haven't changed
+18:29:04.393  LSPosedFramework                       | (com.android.systemui)[com.abel.os4freeformx,OS4FreeFromX,94a-1a0c37e7ea6-45a-18f,0,1] 沉浸: task=7705 栏隐藏=true (MiuiBottomBarView#18627869)
+18:29:04.393  OS4FreeFromX                           | 沉浸: task=7705 栏隐藏=true (MiuiBottomBarView#18627869)
+18:29:04.393  MiuiDecorationBase                     | updateSampling_BottomCaption: taskId = 7705 scale = 1.0 mTaskBounds = Rect(0, 0 - 1170, 1672) mCaptionVisibility = true mIsFsgestureEntered = false isRunningAnim = false 
+18:29:04.393  OS4FreeFromX                           | TRACE SoScCoord#isMainStageRootTask(7689)
+18:29:04.393  MultiTaskingTaskInfo                   | MultiTaskingBaseTaskInfo::update::mTaskBounds = Rect(0, 0 - 1170, 1672), mTaskId = 7705
+18:29:04.393  OS4FreeFromX                           | TRACE SoScCoord#isMainStageRootTask(7705)
+18:29:04.393  OS4FreeFromX                           | TRACE SoScCoord#isSideStageRootTask(7705)
+18:29:04.394  MultiTaskingTransitionsHelper          | skip updateBaseAnimParam taskId: 7705 pending: [] readyDuringSync: [] tracks: [Track#0 active=android.os.BinderProxy@e8e7832 Track#1 ]
+18:29:04.394  MultiTaskingTaskRepository             | onTaskInfoChanged::taskId = 7705, windowingMode = 6, mMultiWindowTaskIdsInZOrder = [7689, 7705, 7690, 7703, 7697, 7696, 7695, 7694, 7693, 7692], mFullscreenTaskIdsInZOrde
+18:29:04.394  TransitionChain                        | Can't collect into a chain with no transition
+18:29:04.394  MiuiFreeformModeSettingsObserver       | handleFreeFormReceiver intent = Intent { act=com.miui.fullscreen_state_change flg=0x10 (has extras) }, action = com.miui.fullscreen_state_change
+18:29:04.394  MiuiFreeformModeSettingsObserver       | ACTION_FULLSCREEN_STATE_CHANGE stateName: startControlAppWindow, channelName: gesture
+18:29:04.394  MultipleSplitUtils                     | handleTaskInfoChanged task: 7689
+18:29:04.394  MultipleSplitRootTaskOrganizer         | removeRecentTasks[7689]
+18:29:04.394  MultipleSplitUtils                     | removeMultipleSplitPair tasks:[7689]
+18:29:04.394  MultipleSplitRootTaskOrganizer         | removeRecentTasks splitBoundsMap = {}
+18:29:04.394  ShellSplitScreen                       | onTaskInfoChanged: taskId=7689 taskAct=ComponentInfo{com.android.calendar/com.android.calendar.homepage.AllInOneActivity} stageId=MAIN
+18:29:04.394  SoScStageTaskListener                  | onTaskInfoChanged id:7689 isVisible:true isVisibleRequested:true isFocused:false taskActivity:ComponentInfo{com.android.calendar/com.android.calendar.homepage.AllInOneAct
+18:29:04.394  OS4FreeFromX                           | TRACE SoScCoord#isMainStageRootTask(7688)
+18:29:04.394  OS4FreeFromX                           | TRACE SoScCoord#isSideStageRootTask(7688)
+18:29:04.394  OS4FreeFromX                           | TRACE SoScCoord#isMainStageRootTask(7689)
+18:29:04.394  MultiTaskingTaskInfo                   | MultiTaskingBaseTaskInfo::update::mTaskBounds = Rect(0, 0 - 1170, 1672), mTaskId = 7689
+18:29:04.394  OS4FreeFromX                           | TRACE SoScCoord#isMainStageRootTask(7689)
+18:29:04.394  MultiTaskingTransitionsHelper          | skip updateBaseAnimParam taskId: 7689 pending: [] readyDuringSync: [] tracks: [Track#0 active=android.os.BinderProxy@e8e7832 Track#1 ]
+18:29:04.394  MultiTaskingTaskRepository             | onTaskInfoChanged::taskId = 7689, windowingMode = 6, mMultiWindowTaskIdsInZOrder = [7689, 7705, 7690, 7703, 7697, 7696, 7695, 7694, 7693, 7692], mFullscreenTaskIdsInZOrde
+18:29:04.394  MultipleSplitUtils                     | handleTaskInfoChanged task: 1
+18:29:04.394  MultipleSplitRootTaskOrganizer         | removeRecentTasks[1]
+18:29:04.394  MultipleSplitUtils                     | removeMultipleSplitPair tasks:[1]
+18:29:04.394  MultipleSplitRootTaskOrganizer         | removeRecentTasks splitBoundsMap = {}
+18:29:04.394  MultiTaskingTaskRepository             | needSkip::home task snapshot: isVisible=true isVisibleRequested=true
+18:29:04.394  MiuiDecorationHomeBottom               | disableMultiStatusBarNavBar needCaption inSoScFullMode.
+18:29:04.395  RecentsTransitionHandler               | onGestureStateUpdated state = 14
+18:29:04.395  VRI[InputMethod]                       | getMiuiFreeformStackInfo mTmpFrames.miuiFreeFormStackInfo: null
+18:29:04.395  TransitionImpl                         | onGestureStateCallback state = 14, info = {id=114 t=OPEN f=0x0 trk=0 r=[0@Point(0, 0)] c=[{WCT{RemoteToken{aa00af9 Task{8d4918c #7703 type=standard A=10116:android.task.c
+18:29:04.397  MiuiSplitInputMethodImpl               | getDeclaredMethod:java.lang.NoSuchMethodException: com.android.server.inputmethod.InputMethodManagerService.getSelectedMethodIdLocked []
+18:29:04.398  TransitionController                   | Set visible without transition WallpaperWindowToken{aaccc7f showWhenLocked=true fixedRotationBySelf=false} playing=true caller=com.android.server.wm.WallpaperControllerIm
+18:29:04.399  MiuiFreeformModeSettingsObserver       | handleFreeFormReceiver intent = Intent { act=com.miui.fullscreen_state_change flg=0x10 (has extras) }, action = com.miui.fullscreen_state_change
+18:29:04.399  MiuiFreeformModeSettingsObserver       | ACTION_FULLSCREEN_STATE_CHANGE stateName: blurWallpaperFirstFrame, channelName: gesture
+18:29:04.399  hyper_launcher_app                     | : <app-frb-pool-app_launcher::api::model::recents::task_description:25>: [TitleTrace] TaskDescription::from_ref label=None
+18:29:04.399  hyper_launcher_app                     | : <app-frb-pool-app_launcher::api::model::recents::grouped_recent_task_info:32>: multipleSplit task_info1 = 7705, task_Info2 = "7703", multiple_split_task_ids = Ok(Some([
+18:29:04.399  hyper_launcher_app                     | : <app-frb-pool-app_launcher::api::model::recents::grouped_recent_task_info:63>: init Split TaskInfo
+18:29:04.399  hyper_launcher_app                     | : <app-frb-pool-app_launcher::api::model::recents::task_description:25>: [TitleTrace] TaskDescription::from_ref label=None
+18:29:04.399  hyper_launcher_app                     | : <app-frb-pool-app_launcher::api::model::recents::task_description:25>: [TitleTrace] TaskDescription::from_ref label=None
+18:29:04.399  hyper_launcher_app                     | : <app-frb-pool-app_launcher::api::model::recents::task_description:25>: [TitleTrace] TaskDescription::from_ref label=None
+18:29:04.401  AssistantOverlayWindow                 | gestureTrace event=onResume uptime=89818558 resumeNow=true showing=false started=true opened=false scrolling=false paused=false focus=false acceptExternalMove=false scrol
+18:29:04.402  ProcessMonitor                         | onForegroundInfoChanged: ForegroundInfo{mForegroundPackageName='com.miui.home', mForegroundUid=10126, mForegroundPid=25236, mForegroundDisplayId=0, mLastForegroundPackage
+18:29:04.403  MiuiFreeFormManagerService             | getAllFreeFormStackInfosOnDisplay list=0
+18:29:04.403  HyperComm_AppMonitor                   | onForegroundInfoChanged: foregroundInfo = ForegroundInfo{mForegroundPackageName='com.miui.home', mForegroundUid=10126, mForegroundPid=25236, mForegroundDisplayId=0, mLast
+18:29:04.403  RelayAppLocalHelper                    | onForegroundInfoChanged: ForegroundInfo{mForegroundPackageName='com.miui.home', mForegroundUid=10126, mForegroundPid=25236, mForegroundDisplayId=0, mLastForegroundPackage
+18:29:04.406  PerfEngineController                   | ForegroundInfo{mForegroundPackageName='com.miui.home', mForegroundUid=10126, mForegroundPid=25236, mForegroundDisplayId=0, mLastForegroundPackageName='com.android.calenda
+18:29:04.407  BluetoothLatencyMode                   | ForegroundInfo{mForegroundPackageName='com.miui.home', mForegroundUid=10126, mForegroundPid=25236, mForegroundDisplayId=0, mLastForegroundPackageName='com.android.calenda
+18:29:04.409  hyper_launcher_app                     | : <app-frb-pool-app_launcher::recents::base_recents_impl:1748>: restore_gesture_state_for_home_exit: home activity - half_split_not_min=false, half_split_min=false, small
+18:29:04.410  GameBoosterService                     | onGameStatusChange foreground:ForegroundInfo{mForegroundPackageName='com.miui.home', mForegroundUid=10126, mForegroundPid=25236, mForegroundDisplayId=0, mLastForegroundPa
+18:29:04.410  GlobalDock-MonitorService              | onForegroundInfoChanged: appUserId=0	myUserId=0	foregroundInfo = ForegroundInfo{mForegroundPackageName='com.miui.home', mForegroundUid=10126, mForegroundPid=25236, mForeg
+18:29:04.411  VideoToolBoxService                    | splitMode: ontrue
+18:29:04.413  FreeformUtil                           | retrieveFirstNoFreeformRootTaskInfo: windowMode = 1
+18:29:04.419  SmartPower                             | Miui monitor launch : com.miui.home/.launcher.Launcher  transitionTime:8  launchTime:61  launchFrom:home_launch  launchType:3
+18:29:04.422  MiuiFreeFormManagerService             | getAllFreeFormStackInfosOnDisplay list=0
+18:29:04.429  hyper_launcher_app                     | : <binder:25236_4-app_launcher::recents::base_recents_impl:1748>: restore_gesture_state_for_home_exit: home activity - half_split_not_min=false, half_split_min=false, sma
+18:29:04.431  DockFeature                            | isSupportDock: isSupportFreeform=true	isAboveMiui125=true	isSupportDock=true	isDevBuild=false
+18:29:04.642  SoScSplitScreenController              | updateDividerFixedState isFixed:false
+18:29:04.642  OS4FreeFromX                           | TRACE SoScCoord#updateDividerFixedState(false)
+18:29:04.642  MiuiFreeFormManagerService             | getAllFreeFormStackInfosOnDisplay list=0
+18:29:04.643  MiuiFreeFormManagerService             | getAllFreeFormStackInfosOnDisplay list=0
+18:29:04.643  RecentsTransitionHandler               | onGestureStateUpdated state = 3
+18:29:04.643  AssistantOverlayWindow                 | gestureTrace event=hideOverlay flags=4 uptime=89818800 resumeNow=true showing=false started=true opened=false scrolling=false paused=false focus=false acceptExternalMove=
+18:29:04.643  TransitionImpl                         | onGestureStateCallback state = 3, info = {id=114 t=OPEN f=0x0 trk=0 r=[0@Point(0, 0)] c=[{WCT{RemoteToken{aa00af9 Task{8d4918c #7703 type=standard A=10116:android.task.co
+18:29:04.644  MiuiFreeformModeSettingsObserver       | handleFreeFormReceiver intent = Intent { act=com.miui.fullscreen_state_change flg=0x10 (has extras) }, action = com.miui.fullscreen_state_change
+18:29:04.644  MiuiFreeformModeSettingsObserver       | ACTION_FULLSCREEN_STATE_CHANGE stateName: crossSafeArea, channelName: gesture
+18:29:04.839  SelfStudyController                    | Not supported under Split Screen
+18:29:04.902  VRI[InputMethod]                       | getMiuiFreeformStackInfo mTmpFrames.miuiFreeFormStackInfo: null
+18:29:04.906  MiuiSplitInputMethodImpl               | getDeclaredMethod:java.lang.NoSuchMethodException: com.android.server.inputmethod.InputMethodManagerService.getSelectedMethodIdLocked []
+18:29:05.328  OS4FreeFromX                           | TRACE MultiCtl#getActiveStageList()
+18:29:05.980  PowerInsight_ModemCollector            | checkModemLogAndInset Xring curState false
+18:29:07.488  MiuiSplitInputMethodImpl               | getDeclaredMethod:java.lang.NoSuchMethodException: com.android.server.inputmethod.InputMethodManagerService.getSelectedMethodIdLocked []
+18:29:07.488  MiuiFreeformModeController             | setMiuiFreeFormTouchExcludeRegion: receive region=SkRegion((0,0,2364,140)) statusBarRegion=SkRegion((948,0,1416,32))
+18:29:08.298  hyper_launcher_app                     | : <app-frb-pool-app_launcher::recents::systemui_shared::transition::window_transion_manager:2380>: set_split_dock_animating: true
+18:29:08.299  MultipleSplitRootTaskOrganizer         | dockMultipleSplitTasks: TaskInfo{userId=0 taskId=7705 effectiveUid=10245 displayId=0 isRunning=true baseIntent=Intent { act=android.intent.action.MAIN cat=[android.intent
+18:29:08.300  MultiTaskingMemoryObserver             | getMemoryInfo::memInfo.availMem = 7134154752
+18:29:08.301  OS4FreeFromX                           | TRACE SoScCoord#onPreSoScStateChangedForMultipleSplit(-7)
+18:29:08.301  OS4FreeFromX                           | TRACE SoScCoord#dispatchPreMultiWindowChangedForMultipleSplit(0, {PreState=-7, RootBounds=Rect(0, 0 - 2364, 1672)})
+18:29:08.302  SoScStageCoordinator                   | onPreMultiWindowChangedForMultipleSplit event:STATE_CHANGED PreState:TO_DOCK com.android.wm.shell.sosc.SoScStageCoordinator.onPreSoScStateChangedForMultipleSplit:69 com.a
+18:29:08.302  OS4FreeFromX                           | TRACE SoScCoord#onMultiWindowStateChangedForMultipleSplit(-7, false)
+18:29:08.302  SoScStageCoordinator                   | onMultiWindowStateChangedForMultipleSplit state:TO_DOCK MultipleSplitTaskIds:[7705, 7703] IsTransitionFinished:false com.android.wm.shell.sosc.SoScUtilsImpl.sendMultiWind
+18:29:08.302  MultipleSplitLayout                    | leftRect Rect(0, 0 - 1170, 1672), rightRect: Rect(1194, 0 - 2364, 1672)
+18:29:08.302  MultipleSplitLayout                    | Dock offset: -2294
+18:29:08.302  MultipleSplitRootTaskOrganizer         | dock sosc to Rect(-2294, 0 - 70, 1672)
+18:29:08.302  MultipleSplitRootTaskOrganizer         | Params for home: Rect(0, 0 - 2364, 1672), -2294.0, 24.0
+18:29:08.302  MultipleSplitTransitionHandler         | startDockChangeTransition: transitType = 3, extraTransitType = 11286, index = 2
+18:29:08.303  SchedBoost                             | handleLowLatencySceneBoost active= true, methodName= startTransition
+18:29:08.303  MulWinSwitchSoScStateListener          | onPreMultiWindowChanged
+18:29:08.303  MulWinSwitchSoScStateListener          | updateSoScHomeParams::state = -7, last_state = 2, needAnim = false, lotBounds = null, robBounds = null, soscHomeCenterX=0.0, soscHomeShowingWidth=0, needRelayout = true
+18:29:08.303  MulWinSwitchSoScStateListener          | onMultiWindowStateChanged
+18:29:08.303  MulWinSwitchSoScStateListener          | updateSoScHomeParams::state = -7, last_state = -7, needAnim = false, lotBounds = null, robBounds = null, soscHomeCenterX=0.0, soscHomeShowingWidth=0, needRelayout = true
+18:29:08.304  hyper_launcher_app                     | : <binder:25236_4-app_launcher::recents::sosc::sosc_split_screen_controller:1124>: on_pre_multi_window_changed, event=0
+18:29:08.304  hyper_launcher_app                     | : <binder:25236_4-app_launcher::api::recents::sosc_split_screen_api:898>: on_pre_multi_window_changed:0 
+18:29:08.304  hyper_launcher_app                     | : <binder:25236_4-app_launcher::api::recents::sosc_split_screen_api:898>: get key_left_or_top_bounds from fn_on_pre_multi_window_changed None, return default
+18:29:08.304  hyper_launcher_app                     | : <binder:25236_4-app_launcher::api::recents::sosc_split_screen_api:898>: get key_right_or_bottom_bounds from fn_on_pre_multi_window_changed None, return default
+18:29:08.304  hyper_launcher_app                     | : <binder:25236_4-app_launcher::recents::sosc::sosc_split_screen_controller:1141>: on_multi_window_state_changed
+18:29:08.304  hyper_launcher_app                     | : <binder:25236_4-app_launcher::recents::sosc::sosc_split_screen_controller:1233>: notify_split_mode_changed: in_split true -> false, last_state=2, now_state=-7
+18:29:08.304  hyper_launcher_app                     | : <binder:25236_4-app_launcher::recents::base_recents_impl:540>: split_gesture_callback: split mode changed, in_split=false
+18:29:08.304  hyper_launcher_app                     | : <binder:25236_4-app_launcher::recents::base_recents_impl:997>: update_gesture_touchable_region: reason=split_mode_changed
+18:29:08.304  hyper_launcher_app                     | : <binder:25236_4-app_launcher::api::recents::sosc_split_screen_api:898>: on_multi_window_state_changed:-7
+18:29:08.304  hyper_launcher_app                     | : <binder:25236_4-app_launcher::api::recents::sosc_split_screen_api:898>: get key_left_or_top_bounds from on_multi_window_state_changed None, return default
+18:29:08.304  hyper_launcher_app                     | : <binder:25236_4-app_launcher::api::recents::sosc_split_screen_api:898>: get key_right_or_bottom_bounds from on_multi_window_state_changed None, return default
+18:29:08.305  MiuiSplitScreenImpl                    | updateDockedState, state from 0 switch to 1, launchRootTask : Task{5483217 #7694 name=stage_c type=undefined}
+18:29:08.305  hyper_launcher_app                     | : <1.ui-app_launcher::recents::systemui_shared::transition::window_transion_manager:2336>: set_input_consumer_enabled false
+18:29:08.306  hyper_launcher_app                     | : <app-frb-pool-app_launcher::recents::sosc::sosc_split_screen_controller:909>: on_gesture_end: predict_state = -3 
+18:29:08.306  MiuiSplitInputMethodImpl               | getDeclaredMethod:java.lang.NoSuchMethodException: com.android.server.wm.WindowContextListenerController.dispatchConfigurationFromMultiWindowImeContainer [int]
+18:29:08.307  ActivityTaskManager                    | moveTaskToFront: Task{520b032 #7705 type=standard A=10245:android.task.calendar} caller trace:com.android.server.wm.TaskDisplayArea.onTaskMoved:434 com.android.server.wm.
+18:29:08.308  SecondPageAnimSpeed_Controller         | setTransitionReady fail because basic condition check failed
+18:29:08.310  MiuiSoScManager                        | commit minimized change : ChangeInfo{2cc320a container=Task{b5476d5 #7689 name=main type=undefined} flags=0x820}, preMinimized : false, requestedMinimized : false, minimi
+18:29:08.310  MiuiSoScManager                        | commit minimized change : ChangeInfo{2cc320a container=Task{b5476d5 #7689 name=main type=undefined} flags=0x820}, preMinimized : false, requestedMinimized : false, minimi
+18:29:08.310  Transition                             | calculateTargets isHomeOpen = false, isHomeLaunchApp = false

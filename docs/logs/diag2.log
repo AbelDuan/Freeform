@@ -1,0 +1,434 @@
+﻿
+[15:45:24] === DIAG2 START ===
+[15:45:24] BASELINE SystemUI pid=30702
+[15:45:27] --- 娓呯悊鍚庡墠鍙?? ---
+[15:45:27] --- launch com.android.calendar ---
+[15:45:29] --- 鍓嶅彴=? ---
+[15:45:30] after-launch-com.android.calendar : SystemUI pid=30702 (stable)
+[15:45:30] --- FIRE#1 (single->double) ---
+[15:45:30]     鍓嶅彴=?
+[15:45:35] after-fire1-com.android.calendar : SystemUI pid=30702 (stable)
+--------- beginning of main
+09-21 15:45:30.247 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#40123159)
+09-21 15:45:30.247 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#80519660)
+09-21 15:45:30.264 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#40123159)
+09-21 15:45:30.265 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#80519660)
+09-21 15:45:31.739 I/OS4FreeFromX(30702): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:45:31.741 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: SoSc=true(1) 澶氬垎灞?false 缁勫唴=[7373] shell宸茬煡=21 鍓嶅彴=null/-1/mode=-1
+09-21 15:45:31.741 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=true 褰撳墠灞傛暟=1 缁勫唴=[7373]
+09-21 15:45:31.741 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 宸插湪鍒嗗睆锛? 灞傦級鈫?璋?*鍔犲眰/澶氬垎灞?*鎺ュ彛
+09-21 15:45:31.741 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 澶氬垎灞?taskIds=[7373]锛堝幓閲嶅悗 1 涓紝涓嶈ˉ浣嶏級
+09-21 15:45:31.742 E/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 鍙栦笉鍒?MultiTaskingStateManager 瀹炵幇锛屾斁寮冿紙涓嶉€€鍥炰笅灞?controller锛?
+09-21 15:45:31.742 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 宸茶姹傝繘鍏ュ鍒嗗睆 startMultipleSplits(taskIds=[7373]) ok=false
+[15:45:35] module log dumped [fire1-com.android.calendar]
+[15:45:35] --- FIRE#2 (try add-layer -> 3-split) ---
+[15:45:35]     鍓嶅彴=?
+[15:45:40] after-fire2-com.android.calendar : SystemUI pid=30702 (stable)
+--------- beginning of main
+09-21 15:45:30.247 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#40123159)
+09-21 15:45:30.247 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#80519660)
+09-21 15:45:30.264 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#40123159)
+09-21 15:45:30.265 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#80519660)
+09-21 15:45:31.739 I/OS4FreeFromX(30702): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:45:31.741 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: SoSc=true(1) 澶氬垎灞?false 缁勫唴=[7373] shell宸茬煡=21 鍓嶅彴=null/-1/mode=-1
+09-21 15:45:31.741 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=true 褰撳墠灞傛暟=1 缁勫唴=[7373]
+09-21 15:45:31.741 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 宸插湪鍒嗗睆锛? 灞傦級鈫?璋?*鍔犲眰/澶氬垎灞?*鎺ュ彛
+09-21 15:45:31.741 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 澶氬垎灞?taskIds=[7373]锛堝幓閲嶅悗 1 涓紝涓嶈ˉ浣嶏級
+09-21 15:45:31.742 E/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 鍙栦笉鍒?MultiTaskingStateManager 瀹炵幇锛屾斁寮冿紙涓嶉€€鍥炰笅灞?controller锛?
+09-21 15:45:31.742 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 宸茶姹傝繘鍏ュ鍒嗗睆 startMultipleSplits(taskIds=[7373]) ok=false
+09-21 15:45:35.762 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#40123159)
+09-21 15:45:35.763 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#80519660)
+09-21 15:45:35.784 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#40123159)
+09-21 15:45:35.785 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#80519660)
+09-21 15:45:36.247 I/OS4FreeFromX(30702): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:45:36.249 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: SoSc=true(1) 澶氬垎灞?false 缁勫唴=[7373] shell宸茬煡=21 鍓嶅彴=null/-1/mode=-1
+09-21 15:45:36.249 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=true 褰撳墠灞傛暟=1 缁勫唴=[7373]
+09-21 15:45:36.249 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 宸插湪鍒嗗睆锛? 灞傦級鈫?璋?*鍔犲眰/澶氬垎灞?*鎺ュ彛
+09-21 15:45:36.249 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 澶氬垎灞?taskIds=[7373]锛堝幓閲嶅悗 1 涓紝涓嶈ˉ浣嶏級
+09-21 15:45:36.249 E/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 鍙栦笉鍒?MultiTaskingStateManager 瀹炵幇锛屾斁寮冿紙涓嶉€€鍥炰笅灞?controller锛?
+09-21 15:45:36.249 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 宸茶姹傝繘鍏ュ鍒嗗睆 startMultipleSplits(taskIds=[7373]) ok=false
+[15:45:41] module log dumped [fire2-com.android.calendar]
+[15:45:44] after-home-com.android.calendar : SystemUI pid=30702 (stable)
+--------- beginning of main
+09-21 15:45:30.247 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#40123159)
+09-21 15:45:30.247 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#80519660)
+09-21 15:45:30.264 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#40123159)
+09-21 15:45:30.265 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#80519660)
+09-21 15:45:31.739 I/OS4FreeFromX(30702): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:45:31.741 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: SoSc=true(1) 澶氬垎灞?false 缁勫唴=[7373] shell宸茬煡=21 鍓嶅彴=null/-1/mode=-1
+09-21 15:45:31.741 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=true 褰撳墠灞傛暟=1 缁勫唴=[7373]
+09-21 15:45:31.741 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 宸插湪鍒嗗睆锛? 灞傦級鈫?璋?*鍔犲眰/澶氬垎灞?*鎺ュ彛
+09-21 15:45:31.741 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 澶氬垎灞?taskIds=[7373]锛堝幓閲嶅悗 1 涓紝涓嶈ˉ浣嶏級
+09-21 15:45:31.742 E/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 鍙栦笉鍒?MultiTaskingStateManager 瀹炵幇锛屾斁寮冿紙涓嶉€€鍥炰笅灞?controller锛?
+09-21 15:45:31.742 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 宸茶姹傝繘鍏ュ鍒嗗睆 startMultipleSplits(taskIds=[7373]) ok=false
+09-21 15:45:35.762 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#40123159)
+09-21 15:45:35.763 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#80519660)
+09-21 15:45:35.784 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#40123159)
+09-21 15:45:35.785 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#80519660)
+09-21 15:45:36.247 I/OS4FreeFromX(30702): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:45:36.249 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: SoSc=true(1) 澶氬垎灞?false 缁勫唴=[7373] shell宸茬煡=21 鍓嶅彴=null/-1/mode=-1
+09-21 15:45:36.249 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=true 褰撳墠灞傛暟=1 缁勫唴=[7373]
+09-21 15:45:36.249 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 宸插湪鍒嗗睆锛? 灞傦級鈫?璋?*鍔犲眰/澶氬垎灞?*鎺ュ彛
+09-21 15:45:36.249 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 澶氬垎灞?taskIds=[7373]锛堝幓閲嶅悗 1 涓紝涓嶈ˉ浣嶏級
+09-21 15:45:36.249 E/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 鍙栦笉鍒?MultiTaskingStateManager 瀹炵幇锛屾斁寮冿紙涓嶉€€鍥炰笅灞?controller锛?
+09-21 15:45:36.249 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 宸茶姹傝繘鍏ュ鍒嗗睆 startMultipleSplits(taskIds=[7373]) ok=false
+[15:45:44] module log dumped [home-com.android.calendar]
+[15:45:44] --- launch com.xingin.xhs ---
+[15:45:46] --- 鍓嶅彴=? ---
+[15:45:46] after-launch-com.xingin.xhs : SystemUI pid=30702 (stable)
+[15:45:46] --- FIRE#1 (single->double) ---
+[15:45:46]     鍓嶅彴=?
+[15:45:52] after-fire1-com.xingin.xhs : SystemUI pid=30702 (stable)
+--------- beginning of main
+09-21 15:45:30.247 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#40123159)
+09-21 15:45:30.247 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#80519660)
+09-21 15:45:30.264 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#40123159)
+09-21 15:45:30.265 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#80519660)
+09-21 15:45:31.739 I/OS4FreeFromX(30702): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:45:31.741 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: SoSc=true(1) 澶氬垎灞?false 缁勫唴=[7373] shell宸茬煡=21 鍓嶅彴=null/-1/mode=-1
+09-21 15:45:31.741 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=true 褰撳墠灞傛暟=1 缁勫唴=[7373]
+09-21 15:45:31.741 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 宸插湪鍒嗗睆锛? 灞傦級鈫?璋?*鍔犲眰/澶氬垎灞?*鎺ュ彛
+09-21 15:45:31.741 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 澶氬垎灞?taskIds=[7373]锛堝幓閲嶅悗 1 涓紝涓嶈ˉ浣嶏級
+09-21 15:45:31.742 E/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 鍙栦笉鍒?MultiTaskingStateManager 瀹炵幇锛屾斁寮冿紙涓嶉€€鍥炰笅灞?controller锛?
+09-21 15:45:31.742 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 宸茶姹傝繘鍏ュ鍒嗗睆 startMultipleSplits(taskIds=[7373]) ok=false
+09-21 15:45:35.762 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#40123159)
+09-21 15:45:35.763 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#80519660)
+09-21 15:45:35.784 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#40123159)
+09-21 15:45:35.785 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#80519660)
+09-21 15:45:36.247 I/OS4FreeFromX(30702): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:45:36.249 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: SoSc=true(1) 澶氬垎灞?false 缁勫唴=[7373] shell宸茬煡=21 鍓嶅彴=null/-1/mode=-1
+09-21 15:45:36.249 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=true 褰撳墠灞傛暟=1 缁勫唴=[7373]
+09-21 15:45:36.249 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 宸插湪鍒嗗睆锛? 灞傦級鈫?璋?*鍔犲眰/澶氬垎灞?*鎺ュ彛
+09-21 15:45:36.249 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 澶氬垎灞?taskIds=[7373]锛堝幓閲嶅悗 1 涓紝涓嶈ˉ浣嶏級
+09-21 15:45:36.249 E/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 鍙栦笉鍒?MultiTaskingStateManager 瀹炵幇锛屾斁寮冿紙涓嶉€€鍥炰笅灞?controller锛?
+09-21 15:45:36.249 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 宸茶姹傝繘鍏ュ鍒嗗睆 startMultipleSplits(taskIds=[7373]) ok=false
+09-21 15:45:47.019 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#40123159)
+09-21 15:45:47.020 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#80519660)
+09-21 15:45:47.032 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#40123159)
+09-21 15:45:47.033 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#80519660)
+09-21 15:45:48.276 I/OS4FreeFromX(30702): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:45:48.281 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: SoSc=true(1) 澶氬垎灞?false 缁勫唴=[7373] shell宸茬煡=21 鍓嶅彴=null/-1/mode=-1
+09-21 15:45:48.281 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=true 褰撳墠灞傛暟=1 缁勫唴=[7373]
+09-21 15:45:48.282 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 宸插湪鍒嗗睆锛? 灞傦級鈫?璋?*鍔犲眰/澶氬垎灞?*鎺ュ彛
+09-21 15:45:48.282 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 澶氬垎灞?taskIds=[7373]锛堝幓閲嶅悗 1 涓紝涓嶈ˉ浣嶏級
+09-21 15:45:48.282 E/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 鍙栦笉鍒?MultiTaskingStateManager 瀹炵幇锛屾斁寮冿紙涓嶉€€鍥炰笅灞?controller锛?
+09-21 15:45:48.283 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 宸茶姹傝繘鍏ュ鍒嗗睆 startMultipleSplits(taskIds=[7373]) ok=false
+[15:45:52] module log dumped [fire1-com.xingin.xhs]
+[15:45:52] --- FIRE#2 (try add-layer -> 3-split) ---
+[15:45:52]     鍓嶅彴=?
+[15:45:57] after-fire2-com.xingin.xhs : SystemUI pid=30702 (stable)
+--------- beginning of main
+09-21 15:45:30.247 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#40123159)
+09-21 15:45:30.247 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#80519660)
+09-21 15:45:30.264 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#40123159)
+09-21 15:45:30.265 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#80519660)
+09-21 15:45:31.739 I/OS4FreeFromX(30702): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:45:31.741 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: SoSc=true(1) 澶氬垎灞?false 缁勫唴=[7373] shell宸茬煡=21 鍓嶅彴=null/-1/mode=-1
+09-21 15:45:31.741 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=true 褰撳墠灞傛暟=1 缁勫唴=[7373]
+09-21 15:45:31.741 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 宸插湪鍒嗗睆锛? 灞傦級鈫?璋?*鍔犲眰/澶氬垎灞?*鎺ュ彛
+09-21 15:45:31.741 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 澶氬垎灞?taskIds=[7373]锛堝幓閲嶅悗 1 涓紝涓嶈ˉ浣嶏級
+09-21 15:45:31.742 E/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 鍙栦笉鍒?MultiTaskingStateManager 瀹炵幇锛屾斁寮冿紙涓嶉€€鍥炰笅灞?controller锛?
+09-21 15:45:31.742 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 宸茶姹傝繘鍏ュ鍒嗗睆 startMultipleSplits(taskIds=[7373]) ok=false
+09-21 15:45:35.762 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#40123159)
+09-21 15:45:35.763 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#80519660)
+09-21 15:45:35.784 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#40123159)
+09-21 15:45:35.785 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#80519660)
+09-21 15:45:36.247 I/OS4FreeFromX(30702): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:45:36.249 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: SoSc=true(1) 澶氬垎灞?false 缁勫唴=[7373] shell宸茬煡=21 鍓嶅彴=null/-1/mode=-1
+09-21 15:45:36.249 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=true 褰撳墠灞傛暟=1 缁勫唴=[7373]
+09-21 15:45:36.249 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 宸插湪鍒嗗睆锛? 灞傦級鈫?璋?*鍔犲眰/澶氬垎灞?*鎺ュ彛
+09-21 15:45:36.249 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 澶氬垎灞?taskIds=[7373]锛堝幓閲嶅悗 1 涓紝涓嶈ˉ浣嶏級
+09-21 15:45:36.249 E/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 鍙栦笉鍒?MultiTaskingStateManager 瀹炵幇锛屾斁寮冿紙涓嶉€€鍥炰笅灞?controller锛?
+09-21 15:45:36.249 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 宸茶姹傝繘鍏ュ鍒嗗睆 startMultipleSplits(taskIds=[7373]) ok=false
+09-21 15:45:47.019 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#40123159)
+09-21 15:45:47.020 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#80519660)
+09-21 15:45:47.032 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#40123159)
+09-21 15:45:47.033 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#80519660)
+09-21 15:45:48.276 I/OS4FreeFromX(30702): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:45:48.281 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: SoSc=true(1) 澶氬垎灞?false 缁勫唴=[7373] shell宸茬煡=21 鍓嶅彴=null/-1/mode=-1
+09-21 15:45:48.281 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=true 褰撳墠灞傛暟=1 缁勫唴=[7373]
+09-21 15:45:48.282 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 宸插湪鍒嗗睆锛? 灞傦級鈫?璋?*鍔犲眰/澶氬垎灞?*鎺ュ彛
+09-21 15:45:48.282 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 澶氬垎灞?taskIds=[7373]锛堝幓閲嶅悗 1 涓紝涓嶈ˉ浣嶏級
+09-21 15:45:48.282 E/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 鍙栦笉鍒?MultiTaskingStateManager 瀹炵幇锛屾斁寮冿紙涓嶉€€鍥炰笅灞?controller锛?
+09-21 15:45:48.283 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 宸茶姹傝繘鍏ュ鍒嗗睆 startMultipleSplits(taskIds=[7373]) ok=false
+09-21 15:45:52.504 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#40123159)
+09-21 15:45:52.504 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#80519660)
+09-21 15:45:52.521 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#40123159)
+09-21 15:45:52.522 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#80519660)
+09-21 15:45:52.783 I/OS4FreeFromX(30702): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:45:52.784 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: SoSc=true(1) 澶氬垎灞?false 缁勫唴=[7373] shell宸茬煡=21 鍓嶅彴=null/-1/mode=-1
+09-21 15:45:52.784 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=true 褰撳墠灞傛暟=1 缁勫唴=[7373]
+09-21 15:45:52.784 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 宸插湪鍒嗗睆锛? 灞傦級鈫?璋?*鍔犲眰/澶氬垎灞?*鎺ュ彛
+09-21 15:45:52.784 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 澶氬垎灞?taskIds=[7373]锛堝幓閲嶅悗 1 涓紝涓嶈ˉ浣嶏級
+09-21 15:45:52.784 E/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 鍙栦笉鍒?MultiTaskingStateManager 瀹炵幇锛屾斁寮冿紙涓嶉€€鍥炰笅灞?controller锛?
+09-21 15:45:52.784 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 宸茶姹傝繘鍏ュ鍒嗗睆 startMultipleSplits(taskIds=[7373]) ok=false
+[15:45:57] module log dumped [fire2-com.xingin.xhs]
+[15:46:01] after-home-com.xingin.xhs : SystemUI pid=30702 (stable)
+--------- beginning of main
+09-21 15:45:30.247 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#40123159)
+09-21 15:45:30.247 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#80519660)
+09-21 15:45:30.264 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#40123159)
+09-21 15:45:30.265 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#80519660)
+09-21 15:45:31.739 I/OS4FreeFromX(30702): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:45:31.741 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: SoSc=true(1) 澶氬垎灞?false 缁勫唴=[7373] shell宸茬煡=21 鍓嶅彴=null/-1/mode=-1
+09-21 15:45:31.741 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=true 褰撳墠灞傛暟=1 缁勫唴=[7373]
+09-21 15:45:31.741 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 宸插湪鍒嗗睆锛? 灞傦級鈫?璋?*鍔犲眰/澶氬垎灞?*鎺ュ彛
+09-21 15:45:31.741 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 澶氬垎灞?taskIds=[7373]锛堝幓閲嶅悗 1 涓紝涓嶈ˉ浣嶏級
+09-21 15:45:31.742 E/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 鍙栦笉鍒?MultiTaskingStateManager 瀹炵幇锛屾斁寮冿紙涓嶉€€鍥炰笅灞?controller锛?
+09-21 15:45:31.742 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 宸茶姹傝繘鍏ュ鍒嗗睆 startMultipleSplits(taskIds=[7373]) ok=false
+09-21 15:45:35.762 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#40123159)
+09-21 15:45:35.763 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#80519660)
+09-21 15:45:35.784 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#40123159)
+09-21 15:45:35.785 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#80519660)
+09-21 15:45:36.247 I/OS4FreeFromX(30702): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:45:36.249 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: SoSc=true(1) 澶氬垎灞?false 缁勫唴=[7373] shell宸茬煡=21 鍓嶅彴=null/-1/mode=-1
+09-21 15:45:36.249 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=true 褰撳墠灞傛暟=1 缁勫唴=[7373]
+09-21 15:45:36.249 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 宸插湪鍒嗗睆锛? 灞傦級鈫?璋?*鍔犲眰/澶氬垎灞?*鎺ュ彛
+09-21 15:45:36.249 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 澶氬垎灞?taskIds=[7373]锛堝幓閲嶅悗 1 涓紝涓嶈ˉ浣嶏級
+09-21 15:45:36.249 E/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 鍙栦笉鍒?MultiTaskingStateManager 瀹炵幇锛屾斁寮冿紙涓嶉€€鍥炰笅灞?controller锛?
+09-21 15:45:36.249 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 宸茶姹傝繘鍏ュ鍒嗗睆 startMultipleSplits(taskIds=[7373]) ok=false
+09-21 15:45:47.019 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#40123159)
+09-21 15:45:47.020 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#80519660)
+09-21 15:45:47.032 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#40123159)
+09-21 15:45:47.033 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#80519660)
+09-21 15:45:48.276 I/OS4FreeFromX(30702): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:45:48.281 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: SoSc=true(1) 澶氬垎灞?false 缁勫唴=[7373] shell宸茬煡=21 鍓嶅彴=null/-1/mode=-1
+09-21 15:45:48.281 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=true 褰撳墠灞傛暟=1 缁勫唴=[7373]
+09-21 15:45:48.282 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 宸插湪鍒嗗睆锛? 灞傦級鈫?璋?*鍔犲眰/澶氬垎灞?*鎺ュ彛
+09-21 15:45:48.282 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 澶氬垎灞?taskIds=[7373]锛堝幓閲嶅悗 1 涓紝涓嶈ˉ浣嶏級
+09-21 15:45:48.282 E/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 鍙栦笉鍒?MultiTaskingStateManager 瀹炵幇锛屾斁寮冿紙涓嶉€€鍥炰笅灞?controller锛?
+09-21 15:45:48.283 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 宸茶姹傝繘鍏ュ鍒嗗睆 startMultipleSplits(taskIds=[7373]) ok=false
+09-21 15:45:52.504 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#40123159)
+09-21 15:45:52.504 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#80519660)
+09-21 15:45:52.521 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#40123159)
+09-21 15:45:52.522 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#80519660)
+09-21 15:45:52.783 I/OS4FreeFromX(30702): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:45:52.784 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: SoSc=true(1) 澶氬垎灞?false 缁勫唴=[7373] shell宸茬煡=21 鍓嶅彴=null/-1/mode=-1
+09-21 15:45:52.784 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=true 褰撳墠灞傛暟=1 缁勫唴=[7373]
+09-21 15:45:52.784 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 宸插湪鍒嗗睆锛? 灞傦級鈫?璋?*鍔犲眰/澶氬垎灞?*鎺ュ彛
+09-21 15:45:52.784 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 澶氬垎灞?taskIds=[7373]锛堝幓閲嶅悗 1 涓紝涓嶈ˉ浣嶏級
+09-21 15:45:52.784 E/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 鍙栦笉鍒?MultiTaskingStateManager 瀹炵幇锛屾斁寮冿紙涓嶉€€鍥炰笅灞?controller锛?
+09-21 15:45:52.784 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 宸茶姹傝繘鍏ュ鍒嗗睆 startMultipleSplits(taskIds=[7373]) ok=false
+[15:46:01] module log dumped [home-com.xingin.xhs]
+[15:46:01] --- launch com.coolapk.market ---
+[15:46:03] --- 鍓嶅彴=? ---
+[15:46:03] after-launch-com.coolapk.market : SystemUI pid=30702 (stable)
+[15:46:03] --- FIRE#1 (single->double) ---
+[15:46:03]     鍓嶅彴=?
+[15:46:09] after-fire1-com.coolapk.market : SystemUI pid=30702 (stable)
+--------- beginning of main
+09-21 15:45:30.247 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#40123159)
+09-21 15:45:30.247 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#80519660)
+09-21 15:45:30.264 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#40123159)
+09-21 15:45:30.265 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#80519660)
+09-21 15:45:31.739 I/OS4FreeFromX(30702): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:45:31.741 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: SoSc=true(1) 澶氬垎灞?false 缁勫唴=[7373] shell宸茬煡=21 鍓嶅彴=null/-1/mode=-1
+09-21 15:45:31.741 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=true 褰撳墠灞傛暟=1 缁勫唴=[7373]
+09-21 15:45:31.741 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 宸插湪鍒嗗睆锛? 灞傦級鈫?璋?*鍔犲眰/澶氬垎灞?*鎺ュ彛
+09-21 15:45:31.741 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 澶氬垎灞?taskIds=[7373]锛堝幓閲嶅悗 1 涓紝涓嶈ˉ浣嶏級
+09-21 15:45:31.742 E/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 鍙栦笉鍒?MultiTaskingStateManager 瀹炵幇锛屾斁寮冿紙涓嶉€€鍥炰笅灞?controller锛?
+09-21 15:45:31.742 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 宸茶姹傝繘鍏ュ鍒嗗睆 startMultipleSplits(taskIds=[7373]) ok=false
+09-21 15:45:35.762 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#40123159)
+09-21 15:45:35.763 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#80519660)
+09-21 15:45:35.784 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#40123159)
+09-21 15:45:35.785 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#80519660)
+09-21 15:45:36.247 I/OS4FreeFromX(30702): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:45:36.249 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: SoSc=true(1) 澶氬垎灞?false 缁勫唴=[7373] shell宸茬煡=21 鍓嶅彴=null/-1/mode=-1
+09-21 15:45:36.249 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=true 褰撳墠灞傛暟=1 缁勫唴=[7373]
+09-21 15:45:36.249 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 宸插湪鍒嗗睆锛? 灞傦級鈫?璋?*鍔犲眰/澶氬垎灞?*鎺ュ彛
+09-21 15:45:36.249 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 澶氬垎灞?taskIds=[7373]锛堝幓閲嶅悗 1 涓紝涓嶈ˉ浣嶏級
+09-21 15:45:36.249 E/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 鍙栦笉鍒?MultiTaskingStateManager 瀹炵幇锛屾斁寮冿紙涓嶉€€鍥炰笅灞?controller锛?
+09-21 15:45:36.249 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 宸茶姹傝繘鍏ュ鍒嗗睆 startMultipleSplits(taskIds=[7373]) ok=false
+09-21 15:45:47.019 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#40123159)
+09-21 15:45:47.020 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#80519660)
+09-21 15:45:47.032 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#40123159)
+09-21 15:45:47.033 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#80519660)
+09-21 15:45:48.276 I/OS4FreeFromX(30702): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:45:48.281 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: SoSc=true(1) 澶氬垎灞?false 缁勫唴=[7373] shell宸茬煡=21 鍓嶅彴=null/-1/mode=-1
+09-21 15:45:48.281 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=true 褰撳墠灞傛暟=1 缁勫唴=[7373]
+09-21 15:45:48.282 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 宸插湪鍒嗗睆锛? 灞傦級鈫?璋?*鍔犲眰/澶氬垎灞?*鎺ュ彛
+09-21 15:45:48.282 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 澶氬垎灞?taskIds=[7373]锛堝幓閲嶅悗 1 涓紝涓嶈ˉ浣嶏級
+09-21 15:45:48.282 E/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 鍙栦笉鍒?MultiTaskingStateManager 瀹炵幇锛屾斁寮冿紙涓嶉€€鍥炰笅灞?controller锛?
+09-21 15:45:48.283 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 宸茶姹傝繘鍏ュ鍒嗗睆 startMultipleSplits(taskIds=[7373]) ok=false
+09-21 15:45:52.504 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#40123159)
+09-21 15:45:52.504 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#80519660)
+09-21 15:45:52.521 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#40123159)
+09-21 15:45:52.522 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#80519660)
+09-21 15:45:52.783 I/OS4FreeFromX(30702): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:45:52.784 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: SoSc=true(1) 澶氬垎灞?false 缁勫唴=[7373] shell宸茬煡=21 鍓嶅彴=null/-1/mode=-1
+09-21 15:45:52.784 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=true 褰撳墠灞傛暟=1 缁勫唴=[7373]
+09-21 15:45:52.784 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 宸插湪鍒嗗睆锛? 灞傦級鈫?璋?*鍔犲眰/澶氬垎灞?*鎺ュ彛
+09-21 15:45:52.784 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 澶氬垎灞?taskIds=[7373]锛堝幓閲嶅悗 1 涓紝涓嶈ˉ浣嶏級
+09-21 15:45:52.784 E/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 鍙栦笉鍒?MultiTaskingStateManager 瀹炵幇锛屾斁寮冿紙涓嶉€€鍥炰笅灞?controller锛?
+09-21 15:45:52.784 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 宸茶姹傝繘鍏ュ鍒嗗睆 startMultipleSplits(taskIds=[7373]) ok=false
+09-21 15:46:01.265 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#40123159)
+09-21 15:46:01.266 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#80519660)
+09-21 15:46:01.316 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#40123159)
+09-21 15:46:01.317 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#80519660)
+09-21 15:46:01.961 I/OS4FreeFromX(30702): 鍏抽棴鏃跺厹搴曡褰? task=7373 pkg=com.android.calendar bounds=Rect(1194, 0 - 2364, 1672)
+09-21 15:46:04.009 I/OS4FreeFromX(30702): 娌夋蹈: task=7444 鏍忛殣钘?true (MiuiDotView#185289375)
+09-21 15:46:04.032 I/OS4FreeFromX(30702): 娌夋蹈: task=7444 鏍忛殣钘?true (MiuiDotView#185289375)
+09-21 15:46:04.809 I/OS4FreeFromX(30702): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:46:04.812 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: SoSc=false(-1) 澶氬垎灞?false 缁勫唴=[] shell宸茬煡=21 鍓嶅彴=com.coolapk.market/7444/mode=1
+09-21 15:46:04.812 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=false 褰撳墠灞傛暟=1 缁勫唴=[]
+09-21 15:46:04.813 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 鍗曚换鍔?鈫?璋?*鍙屽垎灞?*鎺ュ彛锛堝墠鍙?pkg=com.coolapk.market task=7444锛?
+09-21 15:46:04.814 I/OS4FreeFromX(30702): 杩涘垎灞? 宸叉姇閫掑埌 Transitions.mainExecutor锛坱ask=7444 pkg=com.coolapk.market锛?
+09-21 15:46:04.865 I/OS4FreeFromX(30702): 杩涘垎灞? 宸茶姹?openWindowFromFullscreen(task=7444 pkg=com.coolapk.market)
+09-21 15:46:04.872 I/OS4FreeFromX(30702): 灏忕獥甯冨眬: task=7444 mode=6 pkg=com.coolapk.market bounds=Rect(1194, 0 - 2364, 1672)
+09-21 15:46:04.872 I/OS4FreeFromX(30702): 娌夋蹈: task=7444 鏍忛殣钘?true (MiuiDotView#185289375)
+09-21 15:46:05.067 I/OS4FreeFromX(30702): 娌夋蹈: task=7444 鏍忛殣钘?true (MiuiDotView#185289375)
+09-21 15:46:05.068 I/OS4FreeFromX(30702): 娌夋蹈: task=7444 鏍忛殣钘?true (MiuiBottomBarView#163332877)
+[15:46:09] module log dumped [fire1-com.coolapk.market]
+[15:46:09] --- FIRE#2 (try add-layer -> 3-split) ---
+[15:46:09]     鍓嶅彴=?
+[15:46:14] after-fire2-com.coolapk.market : SystemUI pid=30702 (stable)
+--------- beginning of main
+09-21 15:45:30.247 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#40123159)
+09-21 15:45:30.247 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#80519660)
+09-21 15:45:30.264 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#40123159)
+09-21 15:45:30.265 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#80519660)
+09-21 15:45:31.739 I/OS4FreeFromX(30702): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:45:31.741 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: SoSc=true(1) 澶氬垎灞?false 缁勫唴=[7373] shell宸茬煡=21 鍓嶅彴=null/-1/mode=-1
+09-21 15:45:31.741 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=true 褰撳墠灞傛暟=1 缁勫唴=[7373]
+09-21 15:45:31.741 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 宸插湪鍒嗗睆锛? 灞傦級鈫?璋?*鍔犲眰/澶氬垎灞?*鎺ュ彛
+09-21 15:45:31.741 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 澶氬垎灞?taskIds=[7373]锛堝幓閲嶅悗 1 涓紝涓嶈ˉ浣嶏級
+09-21 15:45:31.742 E/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 鍙栦笉鍒?MultiTaskingStateManager 瀹炵幇锛屾斁寮冿紙涓嶉€€鍥炰笅灞?controller锛?
+09-21 15:45:31.742 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 宸茶姹傝繘鍏ュ鍒嗗睆 startMultipleSplits(taskIds=[7373]) ok=false
+09-21 15:45:35.762 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#40123159)
+09-21 15:45:35.763 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#80519660)
+09-21 15:45:35.784 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#40123159)
+09-21 15:45:35.785 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#80519660)
+09-21 15:45:36.247 I/OS4FreeFromX(30702): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:45:36.249 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: SoSc=true(1) 澶氬垎灞?false 缁勫唴=[7373] shell宸茬煡=21 鍓嶅彴=null/-1/mode=-1
+09-21 15:45:36.249 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=true 褰撳墠灞傛暟=1 缁勫唴=[7373]
+09-21 15:45:36.249 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 宸插湪鍒嗗睆锛? 灞傦級鈫?璋?*鍔犲眰/澶氬垎灞?*鎺ュ彛
+09-21 15:45:36.249 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 澶氬垎灞?taskIds=[7373]锛堝幓閲嶅悗 1 涓紝涓嶈ˉ浣嶏級
+09-21 15:45:36.249 E/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 鍙栦笉鍒?MultiTaskingStateManager 瀹炵幇锛屾斁寮冿紙涓嶉€€鍥炰笅灞?controller锛?
+09-21 15:45:36.249 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 宸茶姹傝繘鍏ュ鍒嗗睆 startMultipleSplits(taskIds=[7373]) ok=false
+09-21 15:45:47.019 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#40123159)
+09-21 15:45:47.020 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#80519660)
+09-21 15:45:47.032 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#40123159)
+09-21 15:45:47.033 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#80519660)
+09-21 15:45:48.276 I/OS4FreeFromX(30702): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:45:48.281 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: SoSc=true(1) 澶氬垎灞?false 缁勫唴=[7373] shell宸茬煡=21 鍓嶅彴=null/-1/mode=-1
+09-21 15:45:48.281 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=true 褰撳墠灞傛暟=1 缁勫唴=[7373]
+09-21 15:45:48.282 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 宸插湪鍒嗗睆锛? 灞傦級鈫?璋?*鍔犲眰/澶氬垎灞?*鎺ュ彛
+09-21 15:45:48.282 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 澶氬垎灞?taskIds=[7373]锛堝幓閲嶅悗 1 涓紝涓嶈ˉ浣嶏級
+09-21 15:45:48.282 E/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 鍙栦笉鍒?MultiTaskingStateManager 瀹炵幇锛屾斁寮冿紙涓嶉€€鍥炰笅灞?controller锛?
+09-21 15:45:48.283 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 宸茶姹傝繘鍏ュ鍒嗗睆 startMultipleSplits(taskIds=[7373]) ok=false
+09-21 15:45:52.504 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#40123159)
+09-21 15:45:52.504 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#80519660)
+09-21 15:45:52.521 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#40123159)
+09-21 15:45:52.522 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#80519660)
+09-21 15:45:52.783 I/OS4FreeFromX(30702): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:45:52.784 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: SoSc=true(1) 澶氬垎灞?false 缁勫唴=[7373] shell宸茬煡=21 鍓嶅彴=null/-1/mode=-1
+09-21 15:45:52.784 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=true 褰撳墠灞傛暟=1 缁勫唴=[7373]
+09-21 15:45:52.784 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 宸插湪鍒嗗睆锛? 灞傦級鈫?璋?*鍔犲眰/澶氬垎灞?*鎺ュ彛
+09-21 15:45:52.784 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 澶氬垎灞?taskIds=[7373]锛堝幓閲嶅悗 1 涓紝涓嶈ˉ浣嶏級
+09-21 15:45:52.784 E/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 鍙栦笉鍒?MultiTaskingStateManager 瀹炵幇锛屾斁寮冿紙涓嶉€€鍥炰笅灞?controller锛?
+09-21 15:45:52.784 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 宸茶姹傝繘鍏ュ鍒嗗睆 startMultipleSplits(taskIds=[7373]) ok=false
+09-21 15:46:01.265 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#40123159)
+09-21 15:46:01.266 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#80519660)
+09-21 15:46:01.316 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#40123159)
+09-21 15:46:01.317 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#80519660)
+09-21 15:46:01.961 I/OS4FreeFromX(30702): 鍏抽棴鏃跺厹搴曡褰? task=7373 pkg=com.android.calendar bounds=Rect(1194, 0 - 2364, 1672)
+09-21 15:46:04.009 I/OS4FreeFromX(30702): 娌夋蹈: task=7444 鏍忛殣钘?true (MiuiDotView#185289375)
+09-21 15:46:04.032 I/OS4FreeFromX(30702): 娌夋蹈: task=7444 鏍忛殣钘?true (MiuiDotView#185289375)
+09-21 15:46:04.809 I/OS4FreeFromX(30702): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:46:04.812 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: SoSc=false(-1) 澶氬垎灞?false 缁勫唴=[] shell宸茬煡=21 鍓嶅彴=com.coolapk.market/7444/mode=1
+09-21 15:46:04.812 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=false 褰撳墠灞傛暟=1 缁勫唴=[]
+09-21 15:46:04.813 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 鍗曚换鍔?鈫?璋?*鍙屽垎灞?*鎺ュ彛锛堝墠鍙?pkg=com.coolapk.market task=7444锛?
+09-21 15:46:04.814 I/OS4FreeFromX(30702): 杩涘垎灞? 宸叉姇閫掑埌 Transitions.mainExecutor锛坱ask=7444 pkg=com.coolapk.market锛?
+09-21 15:46:04.865 I/OS4FreeFromX(30702): 杩涘垎灞? 宸茶姹?openWindowFromFullscreen(task=7444 pkg=com.coolapk.market)
+09-21 15:46:04.872 I/OS4FreeFromX(30702): 灏忕獥甯冨眬: task=7444 mode=6 pkg=com.coolapk.market bounds=Rect(1194, 0 - 2364, 1672)
+09-21 15:46:04.872 I/OS4FreeFromX(30702): 娌夋蹈: task=7444 鏍忛殣钘?true (MiuiDotView#185289375)
+09-21 15:46:05.067 I/OS4FreeFromX(30702): 娌夋蹈: task=7444 鏍忛殣钘?true (MiuiDotView#185289375)
+09-21 15:46:05.068 I/OS4FreeFromX(30702): 娌夋蹈: task=7444 鏍忛殣钘?true (MiuiBottomBarView#163332877)
+09-21 15:46:09.712 I/OS4FreeFromX(30702): 娌夋蹈: task=7444 鏍忛殣钘?true (MiuiDotView#185289375)
+09-21 15:46:09.712 I/OS4FreeFromX(30702): 娌夋蹈: task=7444 鏍忛殣钘?true (MiuiBottomBarView#163332877)
+09-21 15:46:09.723 I/OS4FreeFromX(30702): 娌夋蹈: task=7444 鏍忛殣钘?true (MiuiDotView#185289375)
+09-21 15:46:09.724 I/OS4FreeFromX(30702): 娌夋蹈: task=7444 鏍忛殣钘?true (MiuiBottomBarView#163332877)
+09-21 15:46:10.830 I/OS4FreeFromX(30702): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:46:10.834 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: SoSc=true(1) 澶氬垎灞?false 缁勫唴=[7444] shell宸茬煡=21 鍓嶅彴=null/-1/mode=-1
+09-21 15:46:10.835 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=true 褰撳墠灞傛暟=1 缁勫唴=[7444]
+09-21 15:46:10.835 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 宸插湪鍒嗗睆锛? 灞傦級鈫?璋?*鍔犲眰/澶氬垎灞?*鎺ュ彛
+09-21 15:46:10.835 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 澶氬垎灞?taskIds=[7444]锛堝幓閲嶅悗 1 涓紝涓嶈ˉ浣嶏級
+09-21 15:46:10.835 E/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 鍙栦笉鍒?MultiTaskingStateManager 瀹炵幇锛屾斁寮冿紙涓嶉€€鍥炰笅灞?controller锛?
+09-21 15:46:10.836 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 宸茶姹傝繘鍏ュ鍒嗗睆 startMultipleSplits(taskIds=[7444]) ok=false
+[15:46:15] module log dumped [fire2-com.coolapk.market]
+[15:46:18] after-home-com.coolapk.market : SystemUI pid=30702 (stable)
+--------- beginning of main
+09-21 15:45:30.247 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#40123159)
+09-21 15:45:30.247 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#80519660)
+09-21 15:45:30.264 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#40123159)
+09-21 15:45:30.265 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#80519660)
+09-21 15:45:31.739 I/OS4FreeFromX(30702): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:45:31.741 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: SoSc=true(1) 澶氬垎灞?false 缁勫唴=[7373] shell宸茬煡=21 鍓嶅彴=null/-1/mode=-1
+09-21 15:45:31.741 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=true 褰撳墠灞傛暟=1 缁勫唴=[7373]
+09-21 15:45:31.741 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 宸插湪鍒嗗睆锛? 灞傦級鈫?璋?*鍔犲眰/澶氬垎灞?*鎺ュ彛
+09-21 15:45:31.741 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 澶氬垎灞?taskIds=[7373]锛堝幓閲嶅悗 1 涓紝涓嶈ˉ浣嶏級
+09-21 15:45:31.742 E/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 鍙栦笉鍒?MultiTaskingStateManager 瀹炵幇锛屾斁寮冿紙涓嶉€€鍥炰笅灞?controller锛?
+09-21 15:45:31.742 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 宸茶姹傝繘鍏ュ鍒嗗睆 startMultipleSplits(taskIds=[7373]) ok=false
+09-21 15:45:35.762 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#40123159)
+09-21 15:45:35.763 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#80519660)
+09-21 15:45:35.784 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#40123159)
+09-21 15:45:35.785 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#80519660)
+09-21 15:45:36.247 I/OS4FreeFromX(30702): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:45:36.249 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: SoSc=true(1) 澶氬垎灞?false 缁勫唴=[7373] shell宸茬煡=21 鍓嶅彴=null/-1/mode=-1
+09-21 15:45:36.249 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=true 褰撳墠灞傛暟=1 缁勫唴=[7373]
+09-21 15:45:36.249 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 宸插湪鍒嗗睆锛? 灞傦級鈫?璋?*鍔犲眰/澶氬垎灞?*鎺ュ彛
+09-21 15:45:36.249 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 澶氬垎灞?taskIds=[7373]锛堝幓閲嶅悗 1 涓紝涓嶈ˉ浣嶏級
+09-21 15:45:36.249 E/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 鍙栦笉鍒?MultiTaskingStateManager 瀹炵幇锛屾斁寮冿紙涓嶉€€鍥炰笅灞?controller锛?
+09-21 15:45:36.249 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 宸茶姹傝繘鍏ュ鍒嗗睆 startMultipleSplits(taskIds=[7373]) ok=false
+09-21 15:45:47.019 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#40123159)
+09-21 15:45:47.020 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#80519660)
+09-21 15:45:47.032 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#40123159)
+09-21 15:45:47.033 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#80519660)
+09-21 15:45:48.276 I/OS4FreeFromX(30702): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:45:48.281 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: SoSc=true(1) 澶氬垎灞?false 缁勫唴=[7373] shell宸茬煡=21 鍓嶅彴=null/-1/mode=-1
+09-21 15:45:48.281 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=true 褰撳墠灞傛暟=1 缁勫唴=[7373]
+09-21 15:45:48.282 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 宸插湪鍒嗗睆锛? 灞傦級鈫?璋?*鍔犲眰/澶氬垎灞?*鎺ュ彛
+09-21 15:45:48.282 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 澶氬垎灞?taskIds=[7373]锛堝幓閲嶅悗 1 涓紝涓嶈ˉ浣嶏級
+09-21 15:45:48.282 E/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 鍙栦笉鍒?MultiTaskingStateManager 瀹炵幇锛屾斁寮冿紙涓嶉€€鍥炰笅灞?controller锛?
+09-21 15:45:48.283 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 宸茶姹傝繘鍏ュ鍒嗗睆 startMultipleSplits(taskIds=[7373]) ok=false
+09-21 15:45:52.504 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#40123159)
+09-21 15:45:52.504 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#80519660)
+09-21 15:45:52.521 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#40123159)
+09-21 15:45:52.522 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#80519660)
+09-21 15:45:52.783 I/OS4FreeFromX(30702): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:45:52.784 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: SoSc=true(1) 澶氬垎灞?false 缁勫唴=[7373] shell宸茬煡=21 鍓嶅彴=null/-1/mode=-1
+09-21 15:45:52.784 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=true 褰撳墠灞傛暟=1 缁勫唴=[7373]
+09-21 15:45:52.784 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 宸插湪鍒嗗睆锛? 灞傦級鈫?璋?*鍔犲眰/澶氬垎灞?*鎺ュ彛
+09-21 15:45:52.784 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 澶氬垎灞?taskIds=[7373]锛堝幓閲嶅悗 1 涓紝涓嶈ˉ浣嶏級
+09-21 15:45:52.784 E/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 鍙栦笉鍒?MultiTaskingStateManager 瀹炵幇锛屾斁寮冿紙涓嶉€€鍥炰笅灞?controller锛?
+09-21 15:45:52.784 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 宸茶姹傝繘鍏ュ鍒嗗睆 startMultipleSplits(taskIds=[7373]) ok=false
+09-21 15:46:01.265 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#40123159)
+09-21 15:46:01.266 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#80519660)
+09-21 15:46:01.316 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiDotView#40123159)
+09-21 15:46:01.317 I/OS4FreeFromX(30702): 娌夋蹈: task=7373 鏍忛殣钘?true (MiuiBottomBarView#80519660)
+09-21 15:46:01.961 I/OS4FreeFromX(30702): 鍏抽棴鏃跺厹搴曡褰? task=7373 pkg=com.android.calendar bounds=Rect(1194, 0 - 2364, 1672)
+09-21 15:46:04.009 I/OS4FreeFromX(30702): 娌夋蹈: task=7444 鏍忛殣钘?true (MiuiDotView#185289375)
+09-21 15:46:04.032 I/OS4FreeFromX(30702): 娌夋蹈: task=7444 鏍忛殣钘?true (MiuiDotView#185289375)
+09-21 15:46:04.809 I/OS4FreeFromX(30702): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:46:04.812 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: SoSc=false(-1) 澶氬垎灞?false 缁勫唴=[] shell宸茬煡=21 鍓嶅彴=com.coolapk.market/7444/mode=1
+09-21 15:46:04.812 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=false 褰撳墠灞傛暟=1 缁勫唴=[]
+09-21 15:46:04.813 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 鍗曚换鍔?鈫?璋?*鍙屽垎灞?*鎺ュ彛锛堝墠鍙?pkg=com.coolapk.market task=7444锛?
+09-21 15:46:04.814 I/OS4FreeFromX(30702): 杩涘垎灞? 宸叉姇閫掑埌 Transitions.mainExecutor锛坱ask=7444 pkg=com.coolapk.market锛?
+09-21 15:46:04.865 I/OS4FreeFromX(30702): 杩涘垎灞? 宸茶姹?openWindowFromFullscreen(task=7444 pkg=com.coolapk.market)
+09-21 15:46:04.872 I/OS4FreeFromX(30702): 灏忕獥甯冨眬: task=7444 mode=6 pkg=com.coolapk.market bounds=Rect(1194, 0 - 2364, 1672)
+09-21 15:46:04.872 I/OS4FreeFromX(30702): 娌夋蹈: task=7444 鏍忛殣钘?true (MiuiDotView#185289375)
+09-21 15:46:05.067 I/OS4FreeFromX(30702): 娌夋蹈: task=7444 鏍忛殣钘?true (MiuiDotView#185289375)
+09-21 15:46:05.068 I/OS4FreeFromX(30702): 娌夋蹈: task=7444 鏍忛殣钘?true (MiuiBottomBarView#163332877)
+09-21 15:46:09.712 I/OS4FreeFromX(30702): 娌夋蹈: task=7444 鏍忛殣钘?true (MiuiDotView#185289375)
+09-21 15:46:09.712 I/OS4FreeFromX(30702): 娌夋蹈: task=7444 鏍忛殣钘?true (MiuiBottomBarView#163332877)
+09-21 15:46:09.723 I/OS4FreeFromX(30702): 娌夋蹈: task=7444 鏍忛殣钘?true (MiuiDotView#185289375)
+09-21 15:46:09.724 I/OS4FreeFromX(30702): 娌夋蹈: task=7444 鏍忛殣钘?true (MiuiBottomBarView#163332877)
+09-21 15:46:10.830 I/OS4FreeFromX(30702): 娴嬭瘯鍏ュ彛: 鏀跺埌璇锋眰銆孎IRE:銆?
+09-21 15:46:10.834 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: SoSc=true(1) 澶氬垎灞?false 缁勫唴=[7444] shell宸茬煡=21 鍓嶅彴=null/-1/mode=-1
+09-21 15:46:10.835 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦鐘舵€佸垽瀹? 澶氬垎灞?false SoSc=true 褰撳墠灞傛暟=1 缁勫唴=[7444]
+09-21 15:46:10.835 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 宸插湪鍒嗗睆锛? 灞傦級鈫?璋?*鍔犲眰/澶氬垎灞?*鎺ュ彛
+09-21 15:46:10.835 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 澶氬垎灞?taskIds=[7444]锛堝幓閲嶅悗 1 涓紝涓嶈ˉ浣嶏級
+09-21 15:46:10.835 E/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 鍙栦笉鍒?MultiTaskingStateManager 瀹炵幇锛屾斁寮冿紙涓嶉€€鍥炰笅灞?controller锛?
+09-21 15:46:10.836 I/OS4FreeFromX(30702): 鍥涙寚涓婃粦: 宸茶姹傝繘鍏ュ鍒嗗睆 startMultipleSplits(taskIds=[7444]) ok=false
+[15:46:18] module log dumped [home-com.coolapk.market]
+[15:46:18] === DIAG2 END restarts=0 ===

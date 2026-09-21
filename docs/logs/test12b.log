@@ -1,0 +1,12 @@
+[17:52:56] === TEST12 START ===
+[17:53:11] state(pre)=        mGlobalConfig={1.0 460mcc11mnc [zh_CN] ldltr sw608dp w860dp h608dp 440dp
+        mOverrideConfig={1.0 460mcc11mnc [zh_CN] ldltr sw374dp w375dp h537dp 440
+[17:53:12] --- inject swipe bottom-center -> top-left (2-split) ---
+[17:53:21] after swipe-TL FocusedWindows:   FocusedWindows:
+[17:53:23] state=        mGlobalConfig={1.0 460mcc11mnc [zh_CN] ldltr sw608dp w860dp h608dp 440dp
+        mOverrideConfig={1.0 460mcc11mnc [zh_CN] ldltr sw374dp w375dp h537dp 440
+[17:53:24] --- inject swipe bottom-center -> up (multi-split) ---
+[17:53:33] after swipe-up FocusedWindows:   FocusedWindows:
+[17:53:36] state=        mGlobalConfig={1.0 460mcc11mnc [zh_CN] ldltr sw608dp w860dp h608dp 440dp
+        mOverrideConfig={1.0 460mcc11mnc [zh_CN] ldltr sw374dp w375dp h537dp 440
+[17:53:37] === TEST12 END ===

@@ -1,0 +1,18 @@
+[18:07:26] === TEST15 START pid=25187 ===
+[18:07:47] --- DRAGADD:1|com.coolapk.market (from fullscreen) ---
+[18:07:56]   pid=25187  fwin=  FocusedWindows:     displayId=0, name='7d25447 NotificationShade' 
+[18:07:59]   st=09-21 18:07:48.585 25187 25187 I OS4FreeFromX: 加分屏(drag): 已投递到 Transitions.mainExecutor（hot=1 target=com.coolapk.market） 09-21 18:07:48.639 25187 26423 I OS4FreeFromX: 加分屏(drag): startIconDragSplitScreen(hot=1 target=com.coolapk.market) 已调用 
+[18:08:03] --- DRAGADD:1|com.miui.calculator (add layer) ---
+[18:08:13]   pid=25187  fwin=  FocusedWindows:     displayId=0, name='7d25447 NotificationShade' 
+[18:08:15]   st=09-21 18:08:05.117 25187 25187 I OS4FreeFromX: 加分屏(drag): 已投递到 Transitions.mainExecutor（hot=1 target=com.miui.calculator） 09-21 18:08:05.162 25187 26423 I OS4FreeFromX: 加分屏(drag): startIconDragSplitScreen(hot=1 target=com.miui.calculator) 已调用 
+----- MODLOG -----
+--------- beginning of main
+09-21 18:07:48.582 I/OS4FreeFromX(25187): 测试入口: 收到请求「DRAGADD:1|com.coolapk.market」
+09-21 18:07:48.584 I/OS4FreeFromX(25187): 测试入口: dragAddSplit(hot=1 target=com.coolapk.market) SoSc=false 多分屏=false 组内=[]
+09-21 18:07:48.585 I/OS4FreeFromX(25187): 加分屏(drag): 已投递到 Transitions.mainExecutor（hot=1 target=com.coolapk.market）
+09-21 18:07:48.639 I/OS4FreeFromX(25187): 加分屏(drag): startIconDragSplitScreen(hot=1 target=com.coolapk.market) 已调用
+09-21 18:08:05.116 I/OS4FreeFromX(25187): 测试入口: 收到请求「DRAGADD:1|com.miui.calculator」
+09-21 18:08:05.116 I/OS4FreeFromX(25187): 测试入口: dragAddSplit(hot=1 target=com.miui.calculator) SoSc=false 多分屏=false 组内=[]
+09-21 18:08:05.117 I/OS4FreeFromX(25187): 加分屏(drag): 已投递到 Transitions.mainExecutor（hot=1 target=com.miui.calculator）
+09-21 18:08:05.162 I/OS4FreeFromX(25187): 加分屏(drag): startIconDragSplitScreen(hot=1 target=com.miui.calculator) 已调用
+[18:08:20] === TEST15 END pid=25187 ===

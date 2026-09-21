@@ -1,0 +1,12 @@
+﻿=== devices ===
+List of devices attached
+02040860499C3540	device
+
+=== systemui pid ===
+4512
+=== module version ===
+
+    versionCode=1 minSdk=33 targetSdk=36
+    versionName=0.1.0
+
+

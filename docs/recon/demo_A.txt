@@ -1,0 +1,228 @@
+########################## MultipleSplitRootTaskOrganizer
+  [x1] 09-21 18:28:39.710 removeRecentTasks[7701]
+  [x1] 09-21 18:28:39.710 removeRecentTasks splitBoundsMap = {}
+  [x1] 09-21 18:28:46.112 removeRecentTasks[1]
+  [x1] 09-21 18:28:46.112 removeRecentTasks splitBoundsMap = {}
+  [x1] 09-21 18:28:46.132 removeRecentTasks[7701]
+  [x1] 09-21 18:28:46.132 removeRecentTasks splitBoundsMap = {}
+  [x1] 09-21 18:28:46.134 removeRecentTasks[1]
+  [x1] 09-21 18:28:46.134 removeRecentTasks splitBoundsMap = {}
+  [x1] 09-21 18:28:51.529 removeRecentTasks[1]
+  [x1] 09-21 18:28:51.529 removeRecentTasks splitBoundsMap = {}
+  [x1] 09-21 18:28:51.530 removeRecentTasks[7701]
+  [x1] 09-21 18:28:51.530 removeRecentTasks splitBoundsMap = {}
+  [x1] 09-21 18:28:51.813 removeRecentTasks[1]
+  [x1] 09-21 18:28:51.813 removeRecentTasks splitBoundsMap = {}
+  [x1] 09-21 18:28:51.819 removeRecentTasks[7701]
+  [x1] 09-21 18:28:51.819 removeRecentTasks splitBoundsMap = {}
+  [x1] 09-21 18:28:51.822 removeRecentTasks[1]
+  [x1] 09-21 18:28:51.822 removeRecentTasks splitBoundsMap = {}
+  [x1] 09-21 18:28:54.395 removeRecentTasks[1]
+  [x1] 09-21 18:28:54.395 removeRecentTasks splitBoundsMap = {}
+  [x1] 09-21 18:28:54.396 removeRecentTasks[7701]
+  [x1] 09-21 18:28:54.396 removeRecentTasks splitBoundsMap = {}
+  [x1] 09-21 18:28:54.496 removeRecentTasks[1]
+  [x1] 09-21 18:28:54.496 removeRecentTasks splitBoundsMap = {}
+  [x1] 09-21 18:28:54.502 removeRecentTasks[7701]
+  [x1] 09-21 18:28:54.502 removeRecentTasks splitBoundsMap = {}
+  [x1] 09-21 18:28:54.505 removeRecentTasks[1]
+  [x1] 09-21 18:28:54.505 removeRecentTasks splitBoundsMap = {}
+  [x1] 09-21 18:28:56.937 removeRecentTasks[7705]
+  [x1] 09-21 18:28:56.937 removeRecentTasks splitBoundsMap = {}
+########################## MultipleSplitTransitionHandler
+  [x2] 09-21 18:28:39.695 Transition requested:TransitionRequestInfo { type = OPEN, triggerTask = TaskInfo{userId=0 taskId=7701 effectiveUid=10242 displayId=0 isRunning=true baseIntent=Intent { act=android.
+  [x1] 09-21 18:29:04.299 Transition requested:TransitionRequestInfo { type = TO_FRONT, triggerTask = null, pipChange = null, remoteTransitionInfo = null, displayChanges = null, requestedLocation = null, us
+  [x1] 09-21 18:29:08.302 startDockChangeTransition: transitType = 3, extraTransitType = 11286, index = 2
+  [x1] 09-21 18:29:08.875 resolved dock change transition, extra type=DOCK_ENTER
+  [x1] 09-21 18:29:08.875 startPendingAnimation: transition=180
+  [x1] 09-21 18:29:08.875 startPendingDockChangeAnimation 11286
+  [x1] 09-21 18:29:08.875 filterChange, fullRootChange = null, toBackStageChanges = {}, toFrontStageChanges = {}
+  [x1] 09-21 18:29:08.876 playDockChangeAnimation: transition=180, extraType=DOCK_ENTER, enteringIndex=2, dockOffset=-2294, selfDriveRemote=true, hasRemoteHandler=false, changeCount=5, isMixedDockAnimating=
+  [x1] 09-21 18:29:08.876 playDockChangeAnimation: branch=DOCK_ENTER, enteringIndex=2, offset=-2294
+  [x1] 09-21 18:29:08.877 playDockChangeAnimation: DOCK_ENTER finish immediately
+  [x1] 09-21 18:29:08.887 onFinish for dock change transition
+  [x1] 09-21 18:29:09.490 requestOpenToExitDockMode, request : TransitionRequestInfo { type = OPEN, triggerTask = TaskInfo{userId=0 taskId=7706 effectiveUid=10298 displayId=0 isRunning=true baseIntent=Inten
+  [x1] 09-21 18:29:09.490 requestOpenToExitDockMode, isOpening : true, mode : 6, stage : mId: STAGE_C token: WCT{android.os.BinderProxy@a39ef5f} taskId: 7694 mVisible: false mActive: false mHasRootTask: tru
+  [x1] 09-21 18:29:09.531 setDockChangeTransition: transition = android.os.BinderProxy@f2eb4, extraTransitType = 11288, index = 2
+  [x1] 09-21 18:29:09.683 startPendingAnimation: transition=181
+  [x1] 09-21 18:29:09.683 startPendingDockChangeAnimation 11288
+  [x1] 09-21 18:29:09.683 filterChange, fullRootChange = {m=TO_FRONT f=MOVE_TO_TOP|FLAG_CHANGED_INTERACTIVE leash=Surface(name=Task=7691#71031)/@0xae22707 sb=Rect(0, 0 - 2364, 1672) eb=Rect(0, 0 - 2364, 167
+  [x1] 09-21 18:29:09.683 playDockChangeAnimation: transition=181, extraType=DOCK_EXIT_SOSC_TO_THREE, enteringIndex=2, dockOffset=-2294, selfDriveRemote=false, hasRemoteHandler=true, changeCount=12, isMixed
+  [x1] 09-21 18:29:09.683 playDockChangeAnimation: branch=DOCK_EXIT_SOSC_TO_THREE, dockOffset=-2294
+  [x1] 09-21 18:29:10.586 playDockChangeAnimation: DOCK_EXIT_SOSC_TO_THREE finish(no remote)
+  [x1] 09-21 18:29:10.586 onFinish for dock change transition
+  [x1] 09-21 18:29:14.733 onRecentsInSplitAnimationStart
+  [x1] 09-21 18:29:16.890 startDockChangeTransition: transitType = 3, extraTransitType = 11286, index = 3
+  [x1] 09-21 18:29:17.457 onRecentsInSplitAnimationFinishing, returnToApp = true
+  [x1] 09-21 18:29:17.459 onTransitionAnimationComplete
+  [x1] 09-21 18:29:17.467 resolved dock change transition, extra type=DOCK_ENTER
+  [x1] 09-21 18:29:17.467 startPendingAnimation: transition=184
+  [x1] 09-21 18:29:17.467 startPendingDockChangeAnimation 11286
+  [x1] 09-21 18:29:17.467 filterChange, fullRootChange = {m=CHANGE f=TRANSLUCENT|MOVE_TO_TOP|FLAG_CHANGED_INTERACTIVE leash=Surface(name=Task=7691#71031)/@0x9cb5e33 sb=Rect(0, 0 - 2364, 1672) eb=Rect(0, 0 -
+  [x1] 09-21 18:29:17.467 playDockChangeAnimation: transition=184, extraType=DOCK_ENTER, enteringIndex=3, dockOffset=-2196, selfDriveRemote=true, hasRemoteHandler=false, changeCount=8, isMixedDockAnimating=
+########################## MulWinSwitchEventHandler
+  [x1] 09-21 18:28:39.664 dispatchToFullOrSplitDecorationDot: touchedTaskId=-1
+  [x1] 09-21 18:28:39.664 handleReceivedMotionEvent: mTouchedBottomTaskId=-1
+  [x1] 09-21 18:28:45.264 dispatchToFullOrSplitDecorationDot: touchedTaskId=-1
+  [x1] 09-21 18:28:45.264 handleReceivedMotionEvent: mTouchedBottomTaskId=-1
+  [x1] 09-21 18:28:46.060 dispatchToFullOrSplitDecorationDot: touchedTaskId=-1
+  [x1] 09-21 18:28:46.060 handleReceivedMotionEvent: mTouchedBottomTaskId=-1
+  [x1] 09-21 18:28:51.774 dispatchToFullOrSplitDecorationDot: touchedTaskId=-1
+  [x1] 09-21 18:28:51.774 handleReceivedMotionEvent: mTouchedBottomTaskId=-1
+  [x1] 09-21 18:28:53.770 dispatchToFullOrSplitDecorationDot: touchedTaskId=-1
+  [x1] 09-21 18:28:53.770 handleReceivedMotionEvent: mTouchedBottomTaskId=-1
+  [x1] 09-21 18:28:54.442 dispatchToFullOrSplitDecorationDot: touchedTaskId=-1
+  [x1] 09-21 18:28:54.442 handleReceivedMotionEvent: mTouchedBottomTaskId=-1
+  [x1] 09-21 18:28:54.690 dispatchToFullOrSplitDecorationDot: touchedTaskId=-1
+  [x1] 09-21 18:28:54.690 handleReceivedMotionEvent: mTouchedBottomTaskId=-1
+  [x1] 09-21 18:28:54.699 dispatchToFullOrSplitDecorationDot: touchedTaskId=-1
+  [x1] 09-21 18:28:54.699 handleReceivedMotionEvent: mTouchedBottomTaskId=-1
+  [x1] 09-21 18:28:56.847 dispatchToFullOrSplitDecorationDot: touchedTaskId=-1
+  [x1] 09-21 18:28:56.847 handleReceivedMotionEvent: mTouchedBottomTaskId=-1
+  [x1] 09-21 18:28:58.149 dispatchToFullOrSplitDecorationDot: touchedTaskId=-1
+  [x1] 09-21 18:28:58.149 handleReceivedMotionEvent: mTouchedBottomTaskId=-1
+  [x1] 09-21 18:29:01.732 dispatchToFullOrSplitDecorationDot: touchedTaskId=-1
+  [x1] 09-21 18:29:01.732 handleReceivedMotionEvent: mTouchedBottomTaskId=-1
+  [x1] 09-21 18:29:02.866 dispatchToFullOrSplitDecorationDot: touchedTaskId=-1
+  [x1] 09-21 18:29:02.866 handleReceivedMotionEvent: mTouchedBottomTaskId=-1
+  [x1] 09-21 18:29:04.292 dispatchToFullOrSplitDecorationDot: touchedTaskId=-1
+  [x1] 09-21 18:29:04.292 handleReceivedMotionEvent: mTouchedBottomTaskId=-1
+  [x1] 09-21 18:29:09.418 dispatchToFullOrSplitDecorationDot: touchedTaskId=-1
+  [x1] 09-21 18:29:09.418 handleReceivedMotionEvent: mTouchedBottomTaskId=-1
+  [x1] 09-21 18:29:12.507 dispatchToFullOrSplitDecorationDot: touchedTaskId=-1
+  [x1] 09-21 18:29:12.507 handleReceivedMotionEvent: mTouchedBottomTaskId=-1
+########################## MulWinSwitchSoScStateListener
+  [x1] 09-21 18:28:46.080 onGestureStart::state = 2
+  [x1] 09-21 18:28:46.080 setRootTaskCaptionVisibilty:: state = 2, visible = false
+  [x1] 09-21 18:28:51.529 onGestureEnd::predictState = -1
+  [x1] 09-21 18:28:51.791 onGestureStart::state = 2
+  [x1] 09-21 18:28:51.791 setRootTaskCaptionVisibilty:: state = 2, visible = false
+  [x1] 09-21 18:28:54.379 onGestureEnd::predictState = -1
+  [x1] 09-21 18:28:54.491 onGestureStart::state = 2
+  [x1] 09-21 18:28:54.491 setRootTaskCaptionVisibilty:: state = 2, visible = false
+  [x1] 09-21 18:28:54.678 onGestureEnd::predictState = -3
+  [x1] 09-21 18:28:58.195 onGestureStart::state = 2
+  [x1] 09-21 18:28:58.195 setRootTaskCaptionVisibilty:: state = 2, visible = false
+  [x1] 09-21 18:29:00.720 onPreSoScStateChanged
+  [x1] 09-21 18:29:00.720 updateSoScHomeParams::state = 0, last_state = -1, needAnim = true, lotBounds = Rect(0, 0 - 1170, 1672), robBounds = Rect(1194, 0 - 2364, 1672), soscHomeCenterX=1767.0, soscHomeShow
+  [x1] 09-21 18:29:00.772 onGestureEnd::predictState = -3
+  [x1] 09-21 18:29:00.782 onRootTaskAppeared:: enterSplitScreen = true
+  [x1] 09-21 18:29:01.746 onRootTaskInfoChanged
+  [x1] 09-21 18:29:01.883 onSoScStateChanged
+  [x1] 09-21 18:29:01.884 updateSoScHomeParams::state = 0, last_state = 0, needAnim = true, lotBounds = Rect(0, 0 - 1170, 1672), robBounds = Rect(1194, 0 - 2364, 1672), soscHomeCenterX=1767.0, soscHomeShowi
+  [x1] 09-21 18:29:01.885 onRootTaskInfoChanged
+  [x1] 09-21 18:29:02.980 onPreSoScStateChanged
+  [x1] 09-21 18:29:02.980 updateSoScHomeParams::state = 2, last_state = 0, needAnim = false, lotBounds = Rect(0, 0 - 1170, 1672), robBounds = Rect(1194, 0 - 2364, 1672), soscHomeCenterX=0.0, soscHomeShowing
+  [x1] 09-21 18:29:03.003 onRootTaskInfoChanged
+  [x1] 09-21 18:29:03.560 onSoScStateChanged
+  [x1] 09-21 18:29:03.560 updateSoScHomeParams::state = 2, last_state = 2, needAnim = false, lotBounds = Rect(0, 0 - 1170, 1672), robBounds = Rect(1194, 0 - 2364, 1672), soscHomeCenterX=0.0, soscHomeShowing
+  [x3] 09-21 18:29:03.560 onRootTaskInfoChanged
+  [x1] 09-21 18:29:04.353 onGestureStart::state = 2
+  [x1] 09-21 18:29:04.354 setRootTaskCaptionVisibilty:: state = 2, visible = false
+  [x1] 09-21 18:29:08.303 onPreMultiWindowChanged
+  [x1] 09-21 18:29:08.303 updateSoScHomeParams::state = -7, last_state = 2, needAnim = false, lotBounds = null, robBounds = null, soscHomeCenterX=0.0, soscHomeShowingWidth=0, needRelayout = true
+  [x1] 09-21 18:29:08.303 onMultiWindowStateChanged
+########################## MiuiSoScManager
+  [x1] 09-21 18:29:00.859 commit minimized change : ChangeInfo{e28cf29 container=Task{ce9aeea #7690 name=side type=undefined} flags=0x0}, preMinimized : false, requestedMinimized : false, minimizedChange : 
+  [x1] 09-21 18:29:00.859 commit minimized change : ChangeInfo{ea80ff3 container=Task{b5476d5 #7689 name=main type=undefined} flags=0x820}, preMinimized : false, requestedMinimized : false, minimizedChange 
+  [x1] 09-21 18:29:00.859 commit minimized change : ChangeInfo{e28cf29 container=Task{ce9aeea #7690 name=side type=undefined} flags=0x0}, preMinimized : false, requestedMinimized : false, minimizedChange : 
+  [x1] 09-21 18:29:00.859 commit minimized change : ChangeInfo{ea80ff3 container=Task{b5476d5 #7689 name=main type=undefined} flags=0x820}, preMinimized : false, requestedMinimized : false, minimizedChange 
+  [x1] 09-21 18:29:02.939 resetSoScRootTaskFocusable.
+  [x1] 09-21 18:29:02.939 collect old parent, avoid flicker
+  [x2] 09-21 18:29:02.989 commit minimized change : ChangeInfo{9a8904a container=Task{ce9aeea #7690 name=side type=undefined} flags=0x820}, preMinimized : false, requestedMinimized : false, minimizedChange 
+  [x2] 09-21 18:29:04.303 commit minimized change : ChangeInfo{e7c1382 container=Task{b5476d5 #7689 name=main type=undefined} flags=0x820}, preMinimized : false, requestedMinimized : false, minimizedChange 
+  [x2] 09-21 18:29:08.310 commit minimized change : ChangeInfo{2cc320a container=Task{b5476d5 #7689 name=main type=undefined} flags=0x820}, preMinimized : false, requestedMinimized : false, minimizedChange 
+  [x2] 09-21 18:29:08.311 make sure task Task{ce9aeea #7690 name=side type=undefined} play transition.
+  [x1] 09-21 18:29:09.655 collect sosc stage task0 : ChangeInfo{3f9f78d container=Task{ce9aeea #7690 name=side type=undefined} flags=0x800}
+  [x1] 09-21 18:29:09.655 collect sosc stage task1 : ChangeInfo{2a6bb6 container=Task{b5476d5 #7689 name=main type=undefined} flags=0x800}
+  [x1] 09-21 18:29:09.655 commit minimized change : ChangeInfo{3f9f78d container=Task{ce9aeea #7690 name=side type=undefined} flags=0x800}, preMinimized : false, requestedMinimized : false, minimizedChange 
+  [x1] 09-21 18:29:09.655 commit minimized change : ChangeInfo{2a6bb6 container=Task{b5476d5 #7689 name=main type=undefined} flags=0x800}, preMinimized : false, requestedMinimized : false, minimizedChange :
+  [x1] 09-21 18:29:09.655 commit minimized change : ChangeInfo{3f9f78d container=Task{ce9aeea #7690 name=side type=undefined} flags=0x800}, preMinimized : false, requestedMinimized : false, minimizedChange 
+  [x1] 09-21 18:29:09.655 commit minimized change : ChangeInfo{2a6bb6 container=Task{b5476d5 #7689 name=main type=undefined} flags=0x800}, preMinimized : false, requestedMinimized : false, minimizedChange :
+  [x1] 09-21 18:29:16.897 make sure task Task{d137622 #7695 name=stage_d type=undefined} play transition.
+  [x1] 09-21 18:29:16.897 make sure task Task{f21a5e9 #7693 name=stage_b type=undefined} play transition.
+  [x2] 09-21 18:29:16.897 make sure task Task{f93d8b3 #7692 name=stage_a type=undefined} play transition.
+  [x1] 09-21 18:29:16.897 make sure task Task{f21a5e9 #7693 name=stage_b type=undefined} play transition.
+########################## SoScSplitScreenController
+  [x1] 09-21 18:28:40.243 updateDividerFixedState isFixed:false
+  [x1] 09-21 18:28:46.112 updateDividerFixedState isFixed:true
+  [x2] 09-21 18:28:46.333 updateDividerFixedState isFixed:false
+  [x1] 09-21 18:28:58.195 updateDividerFixedState isFixed:true
+  [x1] 09-21 18:28:58.389 updateDividerFixedState isFixed:false
+  [x1] 09-21 18:29:01.852 startSingleTaskByGesture transition end.
+  [x1] 09-21 18:29:01.887 updateDividerFixedState isFixed:true
+  [x1] 09-21 18:29:03.531 updateDividerFixedState isFixed:false
+  [x1] 09-21 18:29:04.366 updateDividerFixedState isFixed:true
+  [x2] 09-21 18:29:04.642 updateDividerFixedState isFixed:false
+  [x1] 09-21 18:29:14.724 updateDividerFixedState isFixed:true
+  [x2] 09-21 18:29:14.947 updateDividerFixedState isFixed:false
+########################## MultipleSplitStageOrderOperator
+  [x1] 09-21 18:29:10.600 onEnteringSplit
+  [x1] 09-21 18:29:10.600 java.lang.Throwable
+  [x1] 09-21 18:29:10.600 	at com.android.wm.shell.multiplesplit.MultipleSplitStageOrderOperator.onEnteringSplit(go/retraceme 56a62e231b6a9b8f4b7c830da878a208e3d78e9b7dcaebeb7041ec26c1b0b959:9)
+  [x2] 09-21 18:29:10.600 	at com.android.wm.shell.multiplesplit.MultipleSplitRootTaskOrganizer.finishEnterMultipleSplit(go/retraceme 56a62e231b6a9b8f4b7c830da878a208e3d78e9b7dcaebeb7041ec26c1b0b959:81)
+  [x1] 09-21 18:29:10.600 	at com.android.wm.shell.multiplesplit.MultipleSplitUtilsImpl.lambda$animateOpenWithExitDockMode$0(go/retraceme 56a62e231b6a9b8f4b7c830da878a208e3d78e9b7dcaebeb7041ec26c1b0b959:73)
+  [x1] 09-21 18:29:10.600 	at com.android.wm.shell.multiplesplit.MultipleSplitUtilsImpl.$r8$lambda$jgrDAZENBYM_loF2yuOLPaHY0Jw(go/retraceme 56a62e231b6a9b8f4b7c830da878a208e3d78e9b7dcaebeb7041ec26c1b0b959:0
+  [x1] 09-21 18:29:10.600 	at com.android.wm.shell.multiplesplit.MultipleSplitUtilsImpl$$ExternalSyntheticLambda3.onTransitionFinished(go/retraceme 56a62e231b6a9b8f4b7c830da878a208e3d78e9b7dcaebeb7041ec26c1
+  [x1] 09-21 18:29:10.600 	at com.android.wm.shell.transition.RemoteTransitionHandler$1$$ExternalSyntheticLambda0.run(go/retraceme 56a62e231b6a9b8f4b7c830da878a208e3d78e9b7dcaebeb7041ec26c1b0b959:17)
+  [x1] 09-21 18:29:10.600 	at android.os.Handler.handleCallback(Handler.java:1129)
+  [x1] 09-21 18:29:10.600 	at android.os.Handler.dispatchMessageImpl(Handler.java:139)
+  [x1] 09-21 18:29:10.600 	at android.os.Handler.dispatchMessage(Handler.java:129)
+  [x1] 09-21 18:29:10.600 	at android.os.Looper.loopOnce(Looper.java:315)
+  [x1] 09-21 18:29:10.600 	at android.os.Looper.loop(Looper.java:419)
+  [x1] 09-21 18:29:10.600 	at android.os.HandlerThread.run(HandlerThread.java:139)
+########################## SplitUtilsImpl
+  [x2] 09-21 18:29:00.716 updateBoundsFor1_1_9, position=1170, bounds1=Rect(0, 0 - 1170, 1672), bounds2=Rect(1194, 0 - 2364, 1672)
+  [x2] 09-21 18:29:00.718 applyTaskChanges1, bounds=Rect(0, 0 - 1170, 1672), contentBounds=Rect(0, 0 - 0, 0), equals=false, minimizedPos=-1, endRect=Rect(0, 0 - 0, 0)
+  [x1] 09-21 18:29:00.719 SplitLayout.applyTaskChanges, bounds1=Rect(0, 0 - 1170, 1672), bounds2=Rect(1194, 0 - 2364, 1672), contentBounds1=Rect(0, 0 - 1170, 1672), contentBounds2=Rect(1194, 0 - 2364, 1672)
+  [x1] 09-21 18:29:00.719 java.lang.Throwable
+  [x1] 09-21 18:29:00.719 	at com.android.wm.shell.common.split.SplitUtilsImpl.applyTaskChanges(go/retraceme 56a62e231b6a9b8f4b7c830da878a208e3d78e9b7dcaebeb7041ec26c1b0b959:488)
+  [x1] 09-21 18:29:00.719 	at com.android.wm.shell.sosc.SoScStageCoordinator.updateWindowBounds(go/retraceme 56a62e231b6a9b8f4b7c830da878a208e3d78e9b7dcaebeb7041ec26c1b0b959:63)
+  [x2] 09-21 18:29:00.719 	at com.android.wm.shell.sosc.SoScStageCoordinator.prepareEnterSoSc(go/retraceme 56a62e231b6a9b8f4b7c830da878a208e3d78e9b7dcaebeb7041ec26c1b0b959:45)
+  [x1] 09-21 18:29:00.719 	at com.android.wm.shell.sosc.SoScStageCoordinator.prepareDragDropTaskToSoSc(go/retraceme 56a62e231b6a9b8f4b7c830da878a208e3d78e9b7dcaebeb7041ec26c1b0b959:109)
+  [x1] 09-21 18:29:00.719 	at com.android.wm.shell.sosc.SoScStageCoordinator.lambda$startSingleTaskByGesture$110(go/retraceme 56a62e231b6a9b8f4b7c830da878a208e3d78e9b7dcaebeb7041ec26c1b0b959:2)
+  [x1] 09-21 18:29:00.719 	at com.android.wm.shell.sosc.SoScStageCoordinator.$r8$lambda$0ux4Yn4mFnfx1z9Nvinqv0U5ybc(go/retraceme 56a62e231b6a9b8f4b7c830da878a208e3d78e9b7dcaebeb7041ec26c1b0b959:0)
+  [x1] 09-21 18:29:00.719 	at com.android.wm.shell.sosc.SoScStageCoordinator$$ExternalSyntheticLambda91.run(go/retraceme 56a62e231b6a9b8f4b7c830da878a208e3d78e9b7dcaebeb7041ec26c1b0b959:8)
+  [x1] 09-21 18:29:00.719 	at android.os.Handler.handleCallback(Handler.java:1129)
+  [x1] 09-21 18:29:00.719 	at android.os.Handler.dispatchMessageImpl(Handler.java:139)
+  [x1] 09-21 18:29:00.719 	at android.os.Handler.dispatchMessage(Handler.java:129)
+  [x1] 09-21 18:29:00.719 	at android.os.Looper.loopOnce(Looper.java:315)
+  [x1] 09-21 18:29:00.719 	at android.os.Looper.loop(Looper.java:419)
+  [x1] 09-21 18:29:00.719 	at android.os.HandlerThread.run(HandlerThread.java:139)
+  [x2] 09-21 18:29:00.719 updateConfig snapMode:5
+  [x1] 09-21 18:29:01.340 populateTouchZonesForSoSc, branch=none, pos=1, size=0, zones=[], callers=com.android.wm.shell.sosc.common.split.SplitLayout.populateTouchZones:8 com.android.wm.shell.sosc.common.sp
+  [x4] 09-21 18:29:01.341 updateConfig snapMode:5
+  [x1] 09-21 18:29:08.877 populateTouchZonesForSoSc, branch=exitDockedState, pos=1, size=1, zones=[#1/BottomRight], callers=com.android.wm.shell.sosc.common.split.SplitLayout.populateTouchZones:8 com.androi
+  [x1] 09-21 18:29:08.891 updateConfig snapMode:5
+  [x1] 09-21 18:29:10.582 updateBoundsFor1_1_9, position=1170, bounds1=Rect(0, 0 - 1170, 1672), bounds2=Rect(1194, 0 - 2364, 1672)
+########################## MultipleSplitSwitchEventHandler
+  [x1] 09-21 18:29:12.507 onEvent down mIsInterceptEventForQuickViewMode: false mIsInterceptEventForEnterExitQuickViewMode: false
+  [x1] 09-21 18:29:12.507 dispatchToSplitBottomView, i = 1, bottomViewTouchableRegion = Rect(826, 1551 - 1534, 1623)
+  [x2] 09-21 18:29:14.636 onEvent down mIsInterceptEventForQuickViewMode: false mIsInterceptEventForEnterExitQuickViewMode: false
+  [x1] 09-21 18:29:33.605 dispatched To StageBounds, but not to dot, dotViewTouchableRegion = Rect(388, 36 - 508, 88)
+  [x1] 09-21 18:29:33.618 handleActionDown: new swipe, mBaselineLeft = -638.0, mBaselineRight = 2266.0
+  [x1] 09-21 18:29:33.619 handleActionDown: this=ThreeFingerSwipeHandler[ state=DETECTING, directionConfirmed=false, pendingSnappingInterrupt=false, fourFingerRejected=false, firstMove=true, generation=0, s
+  [x5] 09-21 18:29:33.627 handleActionMove: during four fingers wait, ignoring
+  [x1] 09-21 18:29:33.693 handleActionMove: direction confirmed horizontal, angle=2.1650247943062118
+  [x1] 09-21 18:29:33.708 handleActionMove firstMove: mBaselineLeft=-638.0, mBaselineRight=2266.0, activeCount=4
+  [x8] 09-21 18:29:33.709 handleActionMove: rawOffset=26, this=ThreeFingerSwipeHandler[ state=FOLLOWING, directionConfirmed=true, pendingSnappingInterrupt=false, fourFingerRejected=false, firstMove=false, g
+  [x1] 09-21 18:29:33.767 handleActionUp: velocity=3124.605, predictedDistance=495, mRealOffset=205, mBaseOffset=0.0
+  [x1] 09-21 18:29:33.767 handleActionUp: leftBound=708, rightBound=0, predictedOffset=700, reboundOffset=0
+  [x1] 09-21 18:29:33.767 handleActionUp: executing snap, targetOffset=700.0, finalRebound=0, velocity=3124.605, needRebound=true, generation=1, this=ThreeFingerSwipeHandler[ state=SNAPPING, directionConfir
+  [x1] 09-21 18:29:34.280 resetState: this=ThreeFingerSwipeHandler[ state=SNAPPING, directionConfirmed=true, pendingSnappingInterrupt=false, fourFingerRejected=false, firstMove=false, generation=1, startPoi
+  [x1] 09-21 18:29:34.493 onEvent down mIsInterceptEventForQuickViewMode: false mIsInterceptEventForEnterExitQuickViewMode: false
+  [x1] 09-21 18:29:34.493 dispatched To StageBounds, but not to dot, dotViewTouchableRegion = Rect(388, 36 - 508, 88)
+  [x1] 09-21 18:29:35.079 onEvent down mIsInterceptEventForQuickViewMode: false mIsInterceptEventForEnterExitQuickViewMode: false
+  [x1] 09-21 18:29:35.079 dispatched To StageBounds, but not to dot, dotViewTouchableRegion = Rect(388, 36 - 508, 88)
+  [x1] 09-21 18:29:36.148 onEvent down mIsInterceptEventForQuickViewMode: false mIsInterceptEventForEnterExitQuickViewMode: false
+  [x1] 09-21 18:29:36.149 dispatched To StageBounds, but not to dot, dotViewTouchableRegion = Rect(1120, 36 - 1240, 88)
+  [x1] 09-21 18:29:36.787 onEvent down mIsInterceptEventForQuickViewMode: false mIsInterceptEventForEnterExitQuickViewMode: false
+  [x1] 09-21 18:29:36.787 dispatched To StageBounds, but not to dot, dotViewTouchableRegion = Rect(1120, 36 - 1240, 88)
+  [x1] 09-21 18:29:37.309 onEvent down mIsInterceptEventForQuickViewMode: false mIsInterceptEventForEnterExitQuickViewMode: false
+  [x1] 09-21 18:29:37.309 dispatched To StageBounds, but not to dot, dotViewTouchableRegion = Rect(1120, 36 - 1240, 88)
+  [x1] 09-21 18:29:37.940 onEvent down mIsInterceptEventForQuickViewMode: false mIsInterceptEventForEnterExitQuickViewMode: false
+  [x1] 09-21 18:29:37.940 dispatchToSplitDividerView, i = 2, dividerBounds = Rect(1482, 600 - 1586, 1072)
+  [x1] 09-21 18:29:37.947 handleActionDown: new swipe, mBaselineLeft = 94.0, mBaselineRight = 2998.0
+  [x1] 09-21 18:29:37.947 handleActionDown: this=ThreeFingerSwipeHandler[ state=DETECTING, directionConfirmed=false, pendingSnappingInterrupt=false, fourFingerRejected=false, firstMove=true, generation=1, s
+  [x4] 09-21 18:29:37.989 handleActionMove: during four fingers wait, ignoring
+  [x1] 09-21 18:29:38.021 handleActionMove: direction confirmed horizontal, angle=4.898770055930668

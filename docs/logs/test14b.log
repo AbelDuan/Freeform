@@ -1,0 +1,89 @@
+[18:04:18] === TEST14 START ===
+[18:04:40] --- FW: (openWindowFromFullscreen on 前台 calendar) ---
+[18:04:51]   focus=  mCurrentFocus=null
+[18:04:53]   log: 09-21 18:04:40.796 19733 19733 I OS4FreeFromX: 进分屏: 已投递到 Transitions.mainExecutor（task=7568 pkg=com.android.calendar） 09-21 18:04:40.834 19733 20061 I OS4FreeFromX: 进分屏: 已请求 openWindowFromFullscreen(task=7568 pkg=com.android.calendar) 
+[18:04:54] --- DRAGADD:1|com.miui.calculator ---
+[18:05:08]   focus=  mCurrentFocus=null  fwin=  FocusedWindows:     displayId=0, name='f24710f NotificationShade' 
+[18:05:10]   log: 09-21 18:04:55.836 19733 19733 I OS4FreeFromX: 加分屏(drag): 已投递到 Transitions.mainExecutor（hot=1 target=com.miui.calculator） 09-21 18:04:55.861 19733 20061 I OS4FreeFromX: 加分屏(drag): startIconDragSplitScreen(hot=1 target=com.miui.calculator) 已调用 
+[18:05:19] --- DRAGADD:9|com.miui.calculator ---
+[18:05:30]   focus=  fwin=
+[18:05:33]   log: 09-21 18:05:20.001 22515 22515 I OS4FreeFromX: 加分屏(drag): 已投递到 Transitions.mainExecutor（hot=9 target=com.miui.calculator） 09-21 18:05:20.010 22515 22579 I OS4FreeFromX: 加分屏(drag): startIconDragSplitScreen(hot=9 target=com.miui.calculator) 已调用 
+[18:05:41] --- DRAGADD:7|com.miui.calculator ---
+[18:05:55]   focus=  mCurrentFocus=Window{7d25447 u0 NotificationShade}  fwin=  FocusedWindows:     displayId=0, name='7d25447 NotificationShade' 
+[18:05:59]   log: 09-21 18:05:46.493 25187 25187 I OS4FreeFromX: 加分屏(drag): 已投递到 Transitions.mainExecutor（hot=7 target=com.miui.calculator） 09-21 18:05:46.544 25187 26423 I OS4FreeFromX: 加分屏(drag): startIconDragSplitScreen(hot=7 target=com.miui.calculator) 已调用 
+----- MODLOG -----
+--------- beginning of crash
+09-21 18:04:55.905 E/AndroidRuntime(19733): FATAL EXCEPTION: wmshell.main
+09-21 18:04:55.905 E/AndroidRuntime(19733): Process: com.android.systemui, PID: 19733
+09-21 18:04:55.905 E/AndroidRuntime(19733): java.lang.NullPointerException: Attempt to invoke virtual method 'int android.graphics.Rect.width()' on a null object reference
+09-21 18:04:55.905 E/AndroidRuntime(19733): 	at com.android.wm.shell.multitasking.miuimultiwinswitch.MulWinSwitchTransitionAnim.animateDropToSplitScreen(go/retraceme 56a62e231b6a9b8f4b7c830da878a208e3d78e9b7dcaebeb7041ec26c1b0b959:248)
+09-21 18:04:55.905 E/AndroidRuntime(19733): 	at com.android.wm.shell.multitasking.miuimultiwinswitch.MulWinSwitchTransition.startAnimation(go/retraceme 56a62e231b6a9b8f4b7c830da878a208e3d78e9b7dcaebeb7041ec26c1b0b959:333)
+09-21 18:04:55.905 E/AndroidRuntime(19733): 	at com.android.wm.shell.multitasking.common.animation.MultiTaskingTransitionHandler.startAnimation(go/retraceme 56a62e231b6a9b8f4b7c830da878a208e3d78e9b7dcaebeb7041ec26c1b0b959:74)
+09-21 18:04:55.905 E/AndroidRuntime(19733): 	at com.android.wm.shell.transition.Transitions.playTransition(go/retraceme 56a62e231b6a9b8f4b7c830da878a208e3d78e9b7dcaebeb7041ec26c1b0b959:156)
+09-21 18:04:55.905 E/AndroidRuntime(19733): 	at com.android.wm.shell.transition.Transitions.playTransitionWithTracing(go/retraceme 56a62e231b6a9b8f4b7c830da878a208e3d78e9b7dcaebeb7041ec26c1b0b959:35)
+09-21 18:04:55.905 E/AndroidRuntime(19733): 	at com.android.wm.shell.transition.Transitions.processReadyQueue(go/retraceme 56a62e231b6a9b8f4b7c830da878a208e3d78e9b7dcaebeb7041ec26c1b0b959:195)
+09-21 18:04:55.905 E/AndroidRuntime(19733): 	at com.android.wm.shell.transition.Transitions.dispatchReady(go/retraceme 56a62e231b6a9b8f4b7c830da878a208e3d78e9b7dcaebeb7041ec26c1b0b959:708)
+09-21 18:04:55.905 E/AndroidRuntime(19733): 	at com.android.wm.shell.transition.Transitions.onTransitionReadyInner(go/retraceme 56a62e231b6a9b8f4b7c830da878a208e3d78e9b7dcaebeb7041ec26c1b0b959:233)
+09-21 18:04:55.905 E/AndroidRuntime(19733): 	at com.android.wm.shell.transition.Transitions.onTransitionReady(go/retraceme 56a62e231b6a9b8f4b7c830da878a208e3d78e9b7dcaebeb7041ec26c1b0b959:7)
+09-21 18:04:55.905 E/AndroidRuntime(19733): 	at com.android.wm.shell.transition.Transitions$TransitionPlayerImpl.lambda$onTransitionReady$0(go/retraceme 56a62e231b6a9b8f4b7c830da878a208e3d78e9b7dcaebeb7041ec26c1b0b959:2)
+09-21 18:04:55.905 E/AndroidRuntime(19733): 	at com.android.wm.shell.transition.Transitions$TransitionPlayerImpl.$r8$lambda$E1Ms2CLuO14YRHZa6uUNycRrU-A(go/retraceme 56a62e231b6a9b8f4b7c830da878a208e3d78e9b7dcaebeb7041ec26c1b0b959:0)
+09-21 18:04:55.905 E/AndroidRuntime(19733): 	at com.android.wm.shell.transition.Transitions$TransitionPlayerImpl$$ExternalSyntheticLambda3.run(go/retraceme 56a62e231b6a9b8f4b7c830da878a208e3d78e9b7dcaebeb7041ec26c1b0b959:10)
+09-21 18:04:55.905 E/AndroidRuntime(19733): 	at android.os.Handler.handleCallback(Handler.java:1129)
+09-21 18:04:55.905 E/AndroidRuntime(19733): 	at android.os.Handler.dispatchMessageImpl(Handler.java:139)
+09-21 18:04:55.905 E/AndroidRuntime(19733): 	at android.os.Handler.dispatchMessage(Handler.java:129)
+09-21 18:04:55.905 E/AndroidRuntime(19733): 	at android.os.Looper.loopOnce(Looper.java:315)
+09-21 18:04:55.905 E/AndroidRuntime(19733): 	at android.os.Looper.loop(Looper.java:419)
+09-21 18:04:55.905 E/AndroidRuntime(19733): 	at android.os.HandlerThread.run(HandlerThread.java:139)
+09-21 18:05:15.175 E/AndroidRuntime( 2373): *** FATAL EXCEPTION IN SYSTEM PROCESS: android.display
+09-21 18:05:15.175 E/AndroidRuntime( 2373): java.lang.NullPointerException: Attempt to invoke virtual method 'boolean android.app.PendingIntent.isActivity()' on a null object reference
+09-21 18:05:15.175 E/AndroidRuntime( 2373): 	at com.android.server.wm.WindowOrganizerController.hasActivityLaunch(WindowOrganizerController.java:629)
+09-21 18:05:15.175 E/AndroidRuntime( 2373): 	at com.android.server.wm.WindowOrganizerController.setAllReadyIfNeeded(WindowOrganizerController.java:657)
+09-21 18:05:15.175 E/AndroidRuntime( 2373): 	at com.android.server.wm.WindowOrganizerController.lambda$startTransition$4(WindowOrganizerController.java:548)
+09-21 18:05:15.175 E/AndroidRuntime( 2373): 	at com.android.server.wm.WindowOrganizerController.$r8$lambda$r_byULnBdvHRNzXdwKClv-fKiHM(WindowOrganizerController.java:0)
+09-21 18:05:15.175 E/AndroidRuntime( 2373): 	at com.android.server.wm.WindowOrganizerController$$ExternalSyntheticLambda19.onCollectStarted(D8$$SyntheticClass:0)
+09-21 18:05:15.175 E/AndroidRuntime( 2373): 	at com.android.server.wm.TransitionController.lambda$tryStartCollectFromQueue$4(TransitionController.java:1740)
+09-21 18:05:15.175 E/AndroidRuntime( 2373): 	at com.android.server.wm.TransitionController.$r8$lambda$WNpVl0LuKNnWcI5WnjVuynh0ucM(TransitionController.java:0)
+09-21 18:05:15.175 E/AndroidRuntime( 2373): 	at com.android.server.wm.TransitionController$$ExternalSyntheticLambda6.run(D8$$SyntheticClass:0)
+09-21 18:05:15.175 E/AndroidRuntime( 2373): 	at android.os.Handler.handleCallback(Handler.java:1129)
+09-21 18:05:15.175 E/AndroidRuntime( 2373): 	at android.os.Handler.dispatchMessageImpl(Handler.java:139)
+09-21 18:05:15.175 E/AndroidRuntime( 2373): 	at android.os.Handler.dispatchMessage(Handler.java:129)
+09-21 18:05:15.175 E/AndroidRuntime( 2373): 	at android.os.Looper.loopOnce(Looper.java:315)
+09-21 18:05:15.175 E/AndroidRuntime( 2373): 	at android.os.Looper.loop(Looper.java:419)
+09-21 18:05:15.175 E/AndroidRuntime( 2373): 	at android.os.HandlerThread.run(HandlerThread.java:139)
+09-21 18:05:15.175 E/AndroidRuntime( 2373): 	at com.android.server.ServiceThread.run(ServiceThread.java:46)
+--------- beginning of main
+09-21 18:05:46.493 I/OS4FreeFromX(25187): 测试入口: dragAddSplit(hot=7 target=com.miui.calculator) SoSc=false 多分屏=false 组内=[]
+09-21 18:05:46.493 I/OS4FreeFromX(25187): 加分屏(drag): 已投递到 Transitions.mainExecutor（hot=7 target=com.miui.calculator）
+09-21 18:05:46.544 I/OS4FreeFromX(25187): 加分屏(drag): startIconDragSplitScreen(hot=7 target=com.miui.calculator) 已调用
+09-21 18:05:55.594 I/OS4FreeFromX(25187): 小窗布局: task=7591 mode=6 pkg=com.miui.calculator bounds=Rect(1194, 0 - 2364, 1672)
+09-21 18:05:55.594 I/OS4FreeFromX(25187): 沉浸: 不再为顶部三点栏预留 insets（task=7591）
+09-21 18:05:55.605 I/OS4FreeFromX(25187): 小窗布局: task=7577 mode=1 pkg=com.miui.calculator bounds=Rect(0, 0 - 2364, 1672)
+09-21 18:05:55.637 I/OS4FreeFromX(25187): 关闭时兜底记录: task=7591 pkg=com.miui.calculator bounds=Rect(1194, 0 - 2364, 1672)
+09-21 18:05:55.638 I/OS4FreeFromX(25187): 记录跳过：非手势来源（hidden）
+09-21 18:05:55.639 I/OS4FreeFromX(25187): 关闭时兜底记录: task=7577 pkg=com.miui.calculator bounds=Rect(0, 0 - 2364, 1672)
+09-21 18:06:03.315 I/OS4FreeFromX(25187): 测试入口: 收到请求「FW:」
+09-21 18:06:03.318 I/OS4FreeFromX(25187): 测试入口: openWindowFromFullscreen(top taskId=-1 pkg=?)
+09-21 18:06:03.318 I/OS4FreeFromX(25187): 进分屏: 已投递到 Transitions.mainExecutor（task=-1 pkg=?）
+09-21 18:06:03.337 E/OS4FreeFromX(25187): 进分屏失败: java.lang.NullPointerException: Attempt to invoke virtual method 'boolean android.app.PendingIntent.isActivity()' on a null object reference
+09-21 18:06:03.337 E/OS4FreeFromX(25187): java.lang.NullPointerException: Attempt to invoke virtual method 'boolean android.app.PendingIntent.isActivity()' on a null object reference
+09-21 18:06:03.337 E/OS4FreeFromX(25187): 	at android.os.Parcel.createExceptionOrNull(Parcel.java:3420)
+09-21 18:06:03.337 E/OS4FreeFromX(25187): 	at android.os.Parcel.createException(Parcel.java:3398)
+09-21 18:06:03.337 E/OS4FreeFromX(25187): 	at android.os.Parcel.readException(Parcel.java:3381)
+09-21 18:06:03.337 E/OS4FreeFromX(25187): 	at android.os.Parcel.readException(Parcel.java:3323)
+09-21 18:06:03.337 E/OS4FreeFromX(25187): 	at android.window.IWindowOrganizerController$Stub$Proxy.startMiuiNewTransition(IWindowOrganizerController.java:798)
+09-21 18:06:03.337 E/OS4FreeFromX(25187): 	at android.window.WindowOrganizer.startMiuiNewTransition(WindowOrganizer.java:140)
+09-21 18:06:03.337 E/OS4FreeFromX(25187): 	at com.android.wm.shell.transition.Transitions.startTransition(go/retraceme 56a62e231b6a9b8f4b7c830da878a208e3d78e9b7dcaebeb7041ec26c1b0b959:136)
+09-21 18:06:03.337 E/OS4FreeFromX(25187): 	at com.android.wm.shell.multitasking.miuimultiwinswitch.MulWinSwitchTransition.startTransition(go/retraceme 56a62e231b6a9b8f4b7c830da878a208e3d78e9b7dcaebeb7041ec26c1b0b959:100)
+09-21 18:06:03.337 E/OS4FreeFromX(25187): 	at com.android.wm.shell.multitasking.miuimultiwinswitch.MulWinSwitchTransition.openWindowFromFullscreen(go/retraceme 56a62e231b6a9b8f4b7c830da878a208e3d78e9b7dcaebeb7041ec26c1b0b959:27)
+09-21 18:06:03.337 E/OS4FreeFromX(25187): 	at java.lang.reflect.Method.invoke(Native Method)
+09-21 18:06:03.337 E/OS4FreeFromX(25187): 	at com.abel.os4freeformx.Gestures.dragToSplitInternal(Gestures.kt:512)
+09-21 18:06:03.337 E/OS4FreeFromX(25187): 	at com.abel.os4freeformx.Gestures.dragToSplit$lambda$25(Gestures.kt:483)
+09-21 18:06:03.337 E/OS4FreeFromX(25187): 	at com.abel.os4freeformx.Gestures.$r8$lambda$Et6mapoVb1dUA4T-JaAXD-B6jRo(Gestures.kt:0)
+09-21 18:06:03.337 E/OS4FreeFromX(25187): 	at com.abel.os4freeformx.Gestures$$ExternalSyntheticLambda1.run(D8$$SyntheticClass:0)
+09-21 18:06:03.337 E/OS4FreeFromX(25187): 	at android.os.Handler.handleCallback(Handler.java:1129)
+09-21 18:06:03.337 E/OS4FreeFromX(25187): 	at android.os.Handler.dispatchMessageImpl(Handler.java:139)
+09-21 18:06:03.337 E/OS4FreeFromX(25187): 	at android.os.Handler.dispatchMessage(Handler.java:129)
+09-21 18:06:03.337 E/OS4FreeFromX(25187): 	at android.os.Looper.loopOnce(Looper.java:315)
+09-21 18:06:03.337 E/OS4FreeFromX(25187): 	at android.os.Looper.loop(Looper.java:419)
+09-21 18:06:03.337 E/OS4FreeFromX(25187): 	at android.os.HandlerThread.run(HandlerThread.java:139)
+[18:06:09] === TEST14 END ===

@@ -49,6 +49,8 @@ object Hooks {
         installSplitRatio(m, cl)
         // 新手势：全局输入（MulWinSwitchEventController$EventReceiver）+ 手势动作
         installGestures(m, cl)
+        // 诊断探针：抓"双分屏 → 三分屏"真实手势调用的入口（方法名 + 参数）
+        runCatching { SplitTrace.install(m, cl) }.onFailure { Logx.e("SplitTrace 安装失败", it) }
     }
 
     /** 手势总入口（幂等：安装期挂全局输入，动作见 [Gestures]）。 */
@@ -257,7 +259,9 @@ object Hooks {
     }.getOrDefault(false)
 
     /**
-     * 隐藏分屏（2~6 个应用都算）里每个应用顶部的三点栏与底部手势/导航条。
+     * 隐藏**多分屏（3 个及以上应用）**里每个应用顶部的三点栏与底部手势/导航条。
+     * 2 分屏保持官方原样（用户明确要求，见 line 126）；且 2 分屏若抑制装饰 surface 的 show
+     * 会让 dissolve 重组卡死 shell 主线程，故此处用 [multiSplitActive] 门控。
      *
      * 两层一起处理：
      *  视图层：mTextView（"上/下分屏"文字）、mVeilIconView（圆角遮罩+应用图标）、mViewHost 根布局 → GONE
@@ -266,6 +270,11 @@ object Hooks {
      */
     private fun hideSoScDecor(decor: Any, chain: XposedInterface.Chain) {
         runCatching {
+            // ⚠️ 只处理**真·多分屏（3+）**：2 分屏按用户要求保持官方原样（line 126）。
+            // 之前没门控，导致 2 分屏的装饰被藏、且 show hook 抑制其装饰 surface，
+            // 退出 2 分屏(dissolve)时重组 transition 卡死 shell 主线程 → 第二次四指被系统
+            // MultiTaskSwitch 监视器接管后死锁 → SystemUI 重启（2026-09-21 真机复现）。
+            if (!multiSplitActive()) return@runCatching
             (field(decor, "mVeilIconView") as? android.view.View)?.let {
                 it.visibility = android.view.View.GONE
             }
@@ -276,8 +285,11 @@ object Hooks {
             (host?.javaClass?.getMethod("getView")?.invoke(host) as? android.view.View)?.visibility =
                 android.view.View.GONE
 
-            val tx = (chain.getArg(2) as? android.view.SurfaceControl.Transaction)
-                ?: (chain.getArg(3) as? android.view.SurfaceControl.Transaction)
+            // 安全取参：部分被 hook 的方法参数不足 3 个，直接 getArg(2)/(3) 会抛
+            // ArrayIndexOutOfBoundsException: length=2; index=2（已被 runCatching 兜住，
+            // 但会导致装饰 surface 没藏掉）。这里用 runCatching 兜底，越界就当没有 Transaction。
+            val tx = runCatching { chain.getArg(2) }.getOrNull() as? android.view.SurfaceControl.Transaction
+                ?: runCatching { chain.getArg(3) }.getOrNull() as? android.view.SurfaceControl.Transaction
             if (tx != null) {
                 val hide = tx.javaClass.getMethod("hide", android.view.SurfaceControl::class.java)
                 // 注意：**不要** hide mHostLeash（拖动时快照/覆盖层的宿主，藏了会两侧黑屏——已踩）。
@@ -555,8 +567,13 @@ object Hooks {
                 arrayOf(android.view.SurfaceControl::class.java),
                 XposedInterface.Hooker { chain ->
                     val name = chain.getArg(0)?.toString() ?: ""
-                    // 多分屏栏 UI + SoSc 镜像栏（都是"栏"，不是分隔条宿主）
-                    if (name.contains("MultipleSplitUIController") || name.contains("SoScSplitDecorManager")) {
+                    // ⚠️ **只拦真·多分屏（3+）的 UI 栏 MultipleSplitUIController**。
+                    // 不再拦 SoScSplitDecorManager —— 那是 **2 分屏** 的装饰管理器。
+                    // 用户明确要求"两分屏保持官方原样"，且 2 分屏退出(dissolve)时若抑制其装饰
+                    // surface 的 show，会让重组 transition 卡在 shell 主线程（内核态 CPU 打满、
+                    // 音频刺啦），进而第二次四指被系统 MultiTaskSwitch 监视器接管后死锁 →
+                    // 5 秒不响应 → SystemUI 被杀重启（2026-09-21 真机复现）。
+                    if (name.contains("MultipleSplitUIController")) {
                         Logx.once("ms-show", "多分屏栏: 拦截 show($name)")
                         // show() 返回的是 Transaction 本身（调用方会链式 .show(..).show(..)），
                         // 这里必须返回 it，返回 null 会 NPE 崩掉 SystemUI（刚踩过）。

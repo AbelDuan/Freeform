@@ -1,0 +1,202 @@
+========================== dockSoScTasks()
+  type          : '()Landroid/os/Bundle;'
+  new-instance v0, Landroid/os/Bundle;
+  invoke-direct {v0}, Landroid/os/Bundle;.<init>:()V
+  const-string v1, "multiple_split_dock_support"
+  invoke-virtual {v0, v1, v2}, Landroid/os/Bundle;.putBoolean:(Ljava/lang/String;Z)V
+  iget-object v1, v9, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer;.mMultiTaskingTemperatureObserver:Lcom/android/wm/shell/multitasking/common/pe
+  invoke-virtual {v1}, Lcom/android/wm/shell/multitasking/common/performance/MultiTaskingTemperatureObserver;.isHighTemperature:()Z
+  invoke-static {}, Lcom/android/wm/shell/multiplesplit/MultipleSplitUtils;.getInstance:()Lcom/android/wm/shell/multiplesplit/MultipleSplitUtils;
+  invoke-virtual {v9}, Lcom/android/wm/shell/multiplesplit/MultipleSplitUtils;.toastNotSupportForTemperature:()V
+  iget-object v1, v9, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer;.mMultiTaskingMemoryObserver:Lcom/android/wm/shell/multitasking/common/perform
+  invoke-virtual {v1}, Lcom/android/wm/shell/multitasking/common/performance/MultiTaskingMemoryObserver;.isLowMemory:()Z
+  invoke-static {}, Lcom/android/wm/shell/multiplesplit/MultipleSplitUtils;.getInstance:()Lcom/android/wm/shell/multiplesplit/MultipleSplitUtils;
+  invoke-virtual {v9}, Lcom/android/wm/shell/multiplesplit/MultipleSplitUtils;.toastNotSupportForMemory:()V
+  new-instance v0, Landroid/window/WindowContainerTransaction;
+  invoke-direct {v0}, Landroid/window/WindowContainerTransaction;.<init>:()V
+  invoke-static {}, Lcom/android/wm/shell/sosc/SoScUtilsImpl;.getInstance:()Lcom/android/wm/shell/sosc/SoScUtilsImpl;
+  invoke-virtual {v1}, Lcom/android/wm/shell/sosc/SoScUtilsImpl;.getTaskRootLeash:()Landroid/view/SurfaceControl;
+  new-instance v3, Landroid/graphics/Rect;
+  invoke-direct {v3}, Landroid/graphics/Rect;.<init>:()V
+  iput v4, v9, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer;.mRecordDockStageSize:I
+  invoke-direct {v9, v0}, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer;.buildHomeToFront:(Landroid/window/WindowContainerTransaction;)V
+  invoke-static {}, Lcom/android/wm/shell/sosc/SoScUtilsImpl;.getInstance:()Lcom/android/wm/shell/sosc/SoScUtilsImpl;
+  invoke-virtual {v5}, Lcom/android/wm/shell/sosc/SoScUtilsImpl;.getSplitRootTaskInfo:()Landroid/app/ActivityManager$RunningTaskInfo;
+  iget-object v5, v5, Landroid/app/ActivityManager$RunningTaskInfo;.token:Landroid/window/WindowContainerToken;
+  invoke-virtual {v0, v5, v6}, Landroid/window/WindowContainerTransaction;.reorder:(Landroid/window/WindowContainerToken;Z)Landroid/window/WindowContainerTransaction;
+  invoke-static {}, Lcom/android/wm/shell/sosc/SoScUtils;.getInstance:()Lcom/android/wm/shell/sosc/SoScUtils;
+  invoke-virtual {v5, v6, v0}, Lcom/android/wm/shell/sosc/SoScUtils;.setSoScRootForceTranslucent:(ZLandroid/window/WindowContainerTransaction;)V
+  invoke-static {}, Lcom/android/wm/shell/sosc/SoScUtilsImpl;.getInstance:()Lcom/android/wm/shell/sosc/SoScUtilsImpl;
+  invoke-virtual {v5}, Lcom/android/wm/shell/sosc/SoScUtilsImpl;.getRootBounds:()Landroid/graphics/Rect;
+  invoke-virtual {v3, v5}, Landroid/graphics/Rect;.set:(Landroid/graphics/Rect;)V
+  invoke-static {}, Lcom/android/wm/shell/sosc/SoScUtils;.getInstance:()Lcom/android/wm/shell/sosc/SoScUtils;
+  invoke-virtual {v5, v7}, Lcom/android/wm/shell/sosc/SoScUtils;.onPreSoScStateChangedForMultipleSplit:(I)V
+  invoke-static {}, Lcom/android/wm/shell/sosc/SoScUtils;.getInstance:()Lcom/android/wm/shell/sosc/SoScUtils;
+  invoke-virtual {v5, v2}, Lcom/android/wm/shell/sosc/SoScUtils;.sendMultiWindowStateChangedForMultipleSplit:(Z)V
+  invoke-static {}, Lcom/android/wm/shell/sosc/SoScUtilsImpl;.getInstance:()Lcom/android/wm/shell/sosc/SoScUtilsImpl;
+  invoke-virtual {v5}, Lcom/android/wm/shell/sosc/SoScUtilsImpl;.getSplitRootTaskInfo:()Landroid/app/ActivityManager$RunningTaskInfo;
+  iget-object v5, v5, Landroid/app/ActivityManager$RunningTaskInfo;.token:Landroid/window/WindowContainerToken;
+  invoke-virtual {v0, v5, v2}, Landroid/window/WindowContainerTransaction;.setFocusable:(Landroid/window/WindowContainerToken;Z)Landroid/window/WindowContainerTransact
+  iget-object v5, v9, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer;.mSplitLayout:Lcom/android/wm/shell/multiplesplit/MultipleSplitLayout;
+  invoke-virtual {v5, v2, v4}, Lcom/android/wm/shell/multiplesplit/MultipleSplitLayout;.getOffsetWithDockedState:(II)I
+  new-instance v7, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer$DockedState;
+  iget v8, v9, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer;.mRecordDockStageSize:I
+  invoke-direct {v7, v9, v2, v8, v5}, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer$DockedState;.<init>:(Lcom/android/wm/shell/multiplesplit/Multi
+  iput-object v7, v9, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer;.mDockedState:Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganiz
+  iget-object v7, v9, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer;.mStageOrderOperator:Lcom/android/wm/shell/multiplesplit/MultipleSplitStageOrd
+  invoke-virtual {v7, v4}, Lcom/android/wm/shell/multiplesplit/MultipleSplitStageOrderOperator;.getStageBySplitIndex:(I)Lcom/android/wm/shell/multiplesplit/MultipleSpl
+  iget-object v4, v4, Lcom/android/wm/shell/multiplesplit/MultipleSplitStageTaskListener;.mRootTaskInfo:Landroid/app/ActivityManager$RunningTaskInfo;
+  iget-object v4, v4, Landroid/app/ActivityManager$RunningTaskInfo;.token:Landroid/window/WindowContainerToken;
+  invoke-virtual {v0, v4, v6}, Landroid/window/WindowContainerTransaction;.setDockedState:(Landroid/window/WindowContainerToken;I)Landroid/window/WindowContainerTransa
+  invoke-virtual {v3, v5, v2}, Landroid/graphics/Rect;.offset:(II)V
+  new-instance v2, Ljava/lang/StringBuilder;
+  const-string v4, "dock sosc to "
+  invoke-direct {v2, v4}, Ljava/lang/StringBuilder;.<init>:(Ljava/lang/String;)V
+  invoke-virtual {v2, v3}, Ljava/lang/StringBuilder;.append:(Ljava/lang/Object;)Ljava/lang/StringBuilder;
+  invoke-virtual {v2}, Ljava/lang/StringBuilder;.toString:()Ljava/lang/String;
+  const-string v4, "MultipleSplitRootTaskOrganizer"
+  invoke-static {v4, v2}, Lcom/android/wm/shell/multiplesplit/MultipleSplitOrganizer$Slog;.i:(Ljava/lang/String;Ljava/lang/String;)I
+  iget-object v2, v9, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer;.mMainExecutor:Lcom/android/wm/shell/common/ShellExecutor;
+  new-instance v4, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer$$ExternalSyntheticLambda85;
+  invoke-direct {v4}, Ljava/lang/Object;.<init>:()V
+  iput-object v9, v4, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer$$ExternalSyntheticLambda85;.f$0:Lcom/android/wm/shell/multiplesplit/MultipleSp
+  iput-object v0, v4, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer$$ExternalSyntheticLambda85;.f$1:Landroid/window/WindowContainerTransaction;
+  iput-object v1, v4, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer$$ExternalSyntheticLambda85;.f$2:Landroid/view/SurfaceControl;
+  iput-object v3, v4, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer$$ExternalSyntheticLambda85;.f$3:Landroid/graphics/Rect;
+  invoke-static {}, Ljava/lang/invoke/VarHandle;.storeStoreFence:()V
+  invoke-interface {v2, v4}, Lcom/android/wm/shell/common/ShellExecutor;.execute:(Ljava/lang/Runnable;)V
+  invoke-static {}, Lcom/android/wm/shell/sosc/SoScUtilsImpl;.getInstance:()Lcom/android/wm/shell/sosc/SoScUtilsImpl;
+  invoke-virtual {v0}, Lcom/android/wm/shell/sosc/SoScUtilsImpl;.getRootBounds:()Landroid/graphics/Rect;
+  sget v2, Lcom/android/wm/shell/multitasking/miuimultiwinswitch/MulWinSwitchInteractUtil;.SPLIT_CORNER_RADIUS:F
+  invoke-direct {v9, v0, v1, v2}, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer;.providerParamsForHome:(Landroid/graphics/Rect;FF)Landroid/os/Bund
+  name          : 'enterMultipleSplitForDeviceUnfoldedIfNeed'
+  type          : '()V'
+  invoke-virtual {v4}, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer;.isMultipleSplitActive:()Z
+  const-string v1, "MultipleSplitRootTaskOrganizer"
+  invoke-static {}, Lcom/android/wm/shell/sosc/SoScUtilsImpl;.getInstance:()Lcom/android/wm/shell/sosc/SoScUtilsImpl;
+  invoke-virtual {v0}, Lcom/android/wm/shell/sosc/SoScUtilsImpl;.isFold:()Z
+  iget-object v0, v4, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer;.mSavedMultipleSplitTasks:[I
+  invoke-static {}, Lcom/android/wm/shell/multiplesplit/MultipleSplitUtilsImpl;.getInstance:()Lcom/android/wm/shell/multiplesplit/MultipleSplitUtilsImpl;
+  invoke-virtual {v0}, Lcom/android/wm/shell/multiplesplit/MultipleSplitUtilsImpl;.isFullscreenAppChanged:()Z
+  const-string v4, "enterSoScForDeviceUnfoldedIfNeed isFullscreenAppChanged: true"
+  invoke-static {v1, v4}, Lcom/android/wm/shell/multiplesplit/MultipleSplitOrganizer$Slog;.i:(Ljava/lang/String;Ljava/lang/String;)I
+  iget-object v0, v4, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer;.mSavedMultipleSplitTasks:[I
+  iget-object v1, v4, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer;.mSavedMultipleSplitStageBounds:[Landroid/graphics/Rect;
+  invoke-virtual {v4, v0, v1, v3, v2}, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer;.startTasks:([I[Landroid/graphics/Rect;Landroid/os/Bundle;Z)Z
+  iput-object v3, v4, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer;.mSavedMultipleSplitTasks:[I
+  iput-object v3, v4, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer;.mSavedMultipleSplitStageBounds:[Landroid/graphics/Rect;
+  new-instance v0, Ljava/lang/StringBuilder;
+  const-string v2, "enterSoScForDeviceUnfoldedIfNeed mSavedMultipleSplitTasks: "
+  invoke-direct {v0, v2}, Ljava/lang/StringBuilder;.<init>:(Ljava/lang/String;)V
+  iget-object v4, v4, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer;.mSavedMultipleSplitTasks:[I
+  invoke-virtual {v0, v4}, Ljava/lang/StringBuilder;.append:(Ljava/lang/Object;)Ljava/lang/StringBuilder;
+  invoke-virtual {v0}, Ljava/lang/StringBuilder;.toString:()Ljava/lang/String;
+  invoke-static {v1, v4}, Lcom/android/wm/shell/multiplesplit/MultipleSplitOrganizer$Slog;.i:(Ljava/lang/String;Ljava/lang/String;)I
+  new-instance v0, Ljava/lang/StringBuilder;
+
+========================== dockMultipleTasks()
+  type          : '()Landroid/os/Bundle;'
+  new-instance v0, Landroid/os/Bundle;
+  invoke-direct {v0}, Landroid/os/Bundle;.<init>:()V
+  const-string v1, "multiple_split_dock_support"
+  invoke-virtual {v0, v1, v2}, Landroid/os/Bundle;.putBoolean:(Ljava/lang/String;Z)V
+  iget-object v1, v12, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer;.mMultiTaskingTemperatureObserver:Lcom/android/wm/shell/multitasking/common/p
+  invoke-virtual {v1}, Lcom/android/wm/shell/multitasking/common/performance/MultiTaskingTemperatureObserver;.isHighTemperature:()Z
+  invoke-static {}, Lcom/android/wm/shell/multiplesplit/MultipleSplitUtils;.getInstance:()Lcom/android/wm/shell/multiplesplit/MultipleSplitUtils;
+  invoke-virtual {v12}, Lcom/android/wm/shell/multiplesplit/MultipleSplitUtils;.toastNotSupportForTemperature:()V
+  iget-object v1, v12, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer;.mMultiTaskingMemoryObserver:Lcom/android/wm/shell/multitasking/common/perfor
+  invoke-virtual {v1}, Lcom/android/wm/shell/multitasking/common/performance/MultiTaskingMemoryObserver;.isLowMemory:()Z
+  invoke-static {}, Lcom/android/wm/shell/multiplesplit/MultipleSplitUtils;.getInstance:()Lcom/android/wm/shell/multiplesplit/MultipleSplitUtils;
+  invoke-virtual {v12}, Lcom/android/wm/shell/multiplesplit/MultipleSplitUtils;.toastNotSupportForMemory:()V
+  iget-object v0, v12, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer;.mRootTaskLeash:Landroid/view/SurfaceControl;
+  new-instance v1, Landroid/graphics/Rect;
+  invoke-direct {v1}, Landroid/graphics/Rect;.<init>:()V
+  new-instance v3, Landroid/graphics/Rect;
+  invoke-direct {v3}, Landroid/graphics/Rect;.<init>:()V
+  iget-boolean v4, v12, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer;.mInQuickViewMode:Z
+  iget-object v5, v12, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer;.mStageOrderOperator:Lcom/android/wm/shell/multiplesplit/MultipleSplitStageOr
+  invoke-virtual {v5}, Lcom/android/wm/shell/multiplesplit/MultipleSplitStageOrderOperator;.getRightmostActiveStageIndex:()I
+  iput v5, v12, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer;.mRecordDockStageSize:I
+  iget-object v7, v12, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer;.mSplitLayout:Lcom/android/wm/shell/multiplesplit/MultipleSplitLayout;
+  invoke-virtual {v7, v2, v5}, Lcom/android/wm/shell/multiplesplit/MultipleSplitLayout;.getOffsetWithDockedState:(II)I
+  new-instance v7, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer$DockedState;
+  iget v8, v12, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer;.mRecordDockStageSize:I
+  invoke-direct {v7, v12, v2, v8, v5}, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer$DockedState;.<init>:(Lcom/android/wm/shell/multiplesplit/Mult
+  iput-object v7, v12, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer;.mDockedState:Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrgani
+  iget-object v7, v12, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer;.mSplitLayout:Lcom/android/wm/shell/multiplesplit/MultipleSplitLayout;
+  invoke-virtual {v7}, Lcom/android/wm/shell/multiplesplit/MultipleSplitLayout;.getRootBounds:()Landroid/graphics/Rect;
+  invoke-virtual {v1, v7}, Landroid/graphics/Rect;.set:(Landroid/graphics/Rect;)V
+  iget-object v7, v12, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer;.mStageOrderOperator:Lcom/android/wm/shell/multiplesplit/MultipleSplitStageOr
+  invoke-virtual {v7}, Lcom/android/wm/shell/multiplesplit/MultipleSplitStageOrderOperator;.getRightmostActiveStageIndex:()I
+  iget-object v8, v12, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer;.mSplitLayout:Lcom/android/wm/shell/multiplesplit/MultipleSplitLayout;
+  invoke-virtual {v8}, Lcom/android/wm/shell/multiplesplit/MultipleSplitLayout;.getRootBounds:()Landroid/graphics/Rect;
+  iget v8, v8, Landroid/graphics/Rect;.top:I
+  iget-object v9, v12, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer;.mSplitLayout:Lcom/android/wm/shell/multiplesplit/MultipleSplitLayout;
+  invoke-virtual {v9}, Lcom/android/wm/shell/multiplesplit/MultipleSplitLayout;.getRootBounds:()Landroid/graphics/Rect;
+  iget v9, v9, Landroid/graphics/Rect;.bottom:I
+  iget-object v10, v12, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer;.mSplitLayout:Lcom/android/wm/shell/multiplesplit/MultipleSplitLayout;
+  invoke-virtual {v10}, Lcom/android/wm/shell/multiplesplit/MultipleSplitLayout;.getRootBounds:()Landroid/graphics/Rect;
+  invoke-virtual {v10}, Landroid/graphics/Rect;.width:()I
+  iget-object v11, v12, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer;.mSplitLayout:Lcom/android/wm/shell/multiplesplit/MultipleSplitLayout;
+  invoke-virtual {v11}, Lcom/android/wm/shell/multiplesplit/MultipleSplitLayout;.getLastAnchorPosition:()I
+  iget-object v11, v12, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer;.mSplitLayout:Lcom/android/wm/shell/multiplesplit/MultipleSplitLayout;
+  invoke-virtual {v11, v7}, Lcom/android/wm/shell/multiplesplit/MultipleSplitLayout;.getStageBounds:(I)Landroid/graphics/Rect;
+  iget v7, v7, Landroid/graphics/Rect;.right:I
+  iget-object v10, v12, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer;.mSplitLayout:Lcom/android/wm/shell/multiplesplit/MultipleSplitLayout;
+  invoke-virtual {v10}, Lcom/android/wm/shell/multiplesplit/MultipleSplitLayout;.getRootBounds:()Landroid/graphics/Rect;
+  invoke-virtual {v10}, Landroid/graphics/Rect;.width:()I
+  invoke-static {v10}, Ljava/lang/Math;.abs:(I)I
+  invoke-virtual {v3, v10, v8, v7, v9}, Landroid/graphics/Rect;.set:(IIII)V
+  invoke-static {}, Lcom/android/wm/shell/sosc/SoScUtils;.getInstance:()Lcom/android/wm/shell/sosc/SoScUtils;
+  invoke-virtual {v7, v8}, Lcom/android/wm/shell/sosc/SoScUtils;.onPreSoScStateChangedForMultipleSplit:(I)V
+  invoke-static {}, Lcom/android/wm/shell/sosc/SoScUtils;.getInstance:()Lcom/android/wm/shell/sosc/SoScUtils;
+  invoke-virtual {v7, v2}, Lcom/android/wm/shell/sosc/SoScUtils;.sendMultiWindowStateChangedForMultipleSplit:(Z)V
+  invoke-virtual {v1, v5, v2}, Landroid/graphics/Rect;.offset:(II)V
+  new-instance v7, Ljava/lang/StringBuilder;
+  const-string v8, "dock "
+  invoke-direct {v7, v8}, Ljava/lang/StringBuilder;.<init>:(Ljava/lang/String;)V
+  iget v8, v12, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer;.mRecordDockStageSize:I
+  invoke-virtual {v7, v8}, Ljava/lang/StringBuilder;.append:(I)Ljava/lang/StringBuilder;
+  const-string v8, " multiple tasks to "
+  invoke-virtual {v7, v8}, Ljava/lang/StringBuilder;.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+  invoke-virtual {v7, v1}, Ljava/lang/StringBuilder;.append:(Ljava/lang/Object;)Ljava/lang/StringBuilder;
+  const-string v8, ", wasInQuickViewMode="
+  invoke-virtual {v7, v8}, Ljava/lang/StringBuilder;.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+  invoke-virtual {v7, v4}, Ljava/lang/StringBuilder;.append:(Z)Ljava/lang/StringBuilder;
+  invoke-virtual {v7}, Ljava/lang/StringBuilder;.toString:()Ljava/lang/String;
+  const-string v8, "MultipleSplitRootTaskOrganizer"
+  invoke-static {v8, v7}, Lcom/android/wm/shell/multiplesplit/MultipleSplitOrganizer$Slog;.i:(Ljava/lang/String;Ljava/lang/String;)I
+  iget-object v4, v12, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer;.mSplitLayout:Lcom/android/wm/shell/multiplesplit/MultipleSplitLayout;
+  invoke-virtual {v12}, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer;.getActiveStageList:()Ljava/util/List;
+  invoke-virtual {v12, v2}, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer;.setInQuickViewMode:(Z)V
+  invoke-direct {v12, v2}, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer;.buildDockMultipleWct:(Z)Landroid/window/WindowContainerTransaction;
+  iget-object v7, v12, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer;.mSplitLayout:Lcom/android/wm/shell/multiplesplit/MultipleSplitLayout;
+  invoke-virtual {v7, v2}, Lcom/android/wm/shell/multiplesplit/MultipleSplitLayout;.updateUIVisibility:(Z)V
+  iget-object v2, v12, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer;.mMainExecutor:Lcom/android/wm/shell/common/ShellExecutor;
+  new-instance v7, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer$$ExternalSyntheticLambda7;
+  invoke-direct {v7}, Ljava/lang/Object;.<init>:()V
+  iput-object v12, v7, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer$$ExternalSyntheticLambda7;.f$0:Lcom/android/wm/shell/multiplesplit/MultipleSp
+  iput-object v4, v7, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer$$ExternalSyntheticLambda7;.f$1:Ljava/util/List;
+  iput-object v6, v7, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer$$ExternalSyntheticLambda7;.f$2:Landroid/window/WindowContainerTransaction;
+  iput-object v0, v7, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer$$ExternalSyntheticLambda7;.f$3:Landroid/view/SurfaceControl;
+  iput v5, v7, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer$$ExternalSyntheticLambda7;.f$4:I
+  iput-object v1, v7, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer$$ExternalSyntheticLambda7;.f$5:Landroid/graphics/Rect;
+  invoke-static {}, Ljava/lang/invoke/VarHandle;.storeStoreFence:()V
+  invoke-interface {v2, v7}, Lcom/android/wm/shell/common/ShellExecutor;.execute:(Ljava/lang/Runnable;)V
+  invoke-direct {v12, v6}, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer;.buildDockMultipleWct:(Z)Landroid/window/WindowContainerTransaction;
+  iget-object v6, v12, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer;.mSplitLayout:Lcom/android/wm/shell/multiplesplit/MultipleSplitLayout;
+  invoke-virtual {v6, v2}, Lcom/android/wm/shell/multiplesplit/MultipleSplitLayout;.updateUIVisibility:(Z)V
+  iget-object v2, v12, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer;.mMainExecutor:Lcom/android/wm/shell/common/ShellExecutor;
+  new-instance v6, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer$$ExternalSyntheticLambda8;
+  invoke-direct {v6}, Ljava/lang/Object;.<init>:()V
+  iput-object v12, v6, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer$$ExternalSyntheticLambda8;.f$0:Lcom/android/wm/shell/multiplesplit/MultipleSp
+  iput-object v4, v6, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer$$ExternalSyntheticLambda8;.f$1:Landroid/window/WindowContainerTransaction;
+  iput-object v0, v6, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer$$ExternalSyntheticLambda8;.f$2:Landroid/view/SurfaceControl;
+  iput v5, v6, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer$$ExternalSyntheticLambda8;.f$3:I
+  iput-object v1, v6, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer$$ExternalSyntheticLambda8;.f$4:Landroid/graphics/Rect;
+  invoke-static {}, Ljava/lang/invoke/VarHandle;.storeStoreFence:()V
+  invoke-interface {v2, v6}, Lcom/android/wm/shell/common/ShellExecutor;.execute:(Ljava/lang/Runnable;)V
+  invoke-virtual {v12}, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer;.getStageRootCornerRadius:()I
+  invoke-direct {v12, v3, v0, v1}, Lcom/android/wm/shell/multiplesplit/MultipleSplitRootTaskOrganizer;.providerParamsForHome:(Landroid/graphics/Rect;FF)Landroid/os/Bun
+  name          : 'dockSoScTasks'
+  type          : '()Landroid/os/Bundle;'

@@ -1,0 +1,17 @@
+﻿
+[16:02:06] === NATIVE 3+ TEST START ===
+[16:02:06] BASELINE SystemUI pid=
+[16:02:08] calendar taskId=
+[16:02:10] coolapk taskId=
+[16:02:10] --- MAKEPAIR:| ---
+[16:02:14] BASELINE SystemUI pid=
+[16:02:14] module log dumped [makepair]
+[16:02:14] xhs taskId=
+[16:02:14] --- ADDSPLIT:com.xingin.xhs| ---
+[16:02:19] BASELINE SystemUI pid=
+[16:02:19] module log dumped [addsplit]
+[16:02:19] edge taskId=
+[16:02:19] --- ADDSPLIT:com.microsoft.emmx| ---
+[16:02:24] BASELINE SystemUI pid=
+[16:02:24] module log dumped [addsplit2]
+[16:02:24] === NATIVE 3+ TEST END restarts=0 ===

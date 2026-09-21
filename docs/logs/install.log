@@ -1,0 +1,11 @@
+﻿=== apk exists ===
+True
+=== install -r ===
+Performing Incremental Install
+Performing Streamed Install
+Success
+=== SystemUI pid before ===
+4512
+=== kill SystemUI ===
+=== SystemUI pid after ===
+10892

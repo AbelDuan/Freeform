@@ -1,0 +1,22 @@
+[17:50:45] === TEST11 START ===
+[17:50:46] --- restart SystemUI to reload cfg ---
+[17:50:58] sysui pid=20924
+[17:51:00] hook immersive line: 09-21 17:50:48.343 20924 20924 I OS4FreeFromX: installSystemUi: immersive=true remember=true
+[17:51:22] ids cal=7568 coolapk=7575 desk=7571
+[17:51:23] --- MULTIQ:7568|7575|7571 (immersive=false) ---
+[17:51:31] focused windows:
+[17:51:33]   FocusedWindows: <none>
+  FocusRequests:
+    displayId=0, name='2909074 com.android.deskclock/com.android.deskclock.DeskClockTabActivity' result='NO_WINDOW'
+  Pointer Capture Mode Requested: UNCAPTURED
+--
+[17:51:36] mCurrentFocus:   mCurrentFocus=null   mCurrentFocus=null 
+[17:51:39] --- now tap calendar center to see if focus moves ---
+[17:51:44] after tap, mCurrentFocus:   mCurrentFocus=null   mCurrentFocus=null 
+[17:51:45] after tap, focused windows:
+[17:51:47]   FocusedWindows: <none>
+  FocusRequests:
+    displayId=0, name='2909074 com.android.deskclock/com.android.deskclock.DeskClockTabActivity' result='NO_WINDOW'
+  Pointer Capture Mode Requested: UNCAPTURED
+--
+[17:51:48] === TEST11 END ===

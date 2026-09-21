@@ -13,6 +13,11 @@ HyperOS 4（Android 17 / API 37）**小窗（freeform）与分屏体验增强** 
 
 > 实现细节、失败尝试、真机日志证据全部记录在 **[`NOTES-resize-handle.md`](NOTES-resize-handle.md)**；
 > 测试期用到的设备操作（含锁屏解锁）在 [`NOTES-device-ops.md`](NOTES-device-ops.md)。
+>
+> **多分屏（3/4 分屏）开发交接** → **[`HANDOFF.md`](HANDOFF.md)**（当前进度、已证实结论、
+> 待验证的 Dock 路径、关键 API 签名、设备约束）。
+> 逆向产物与测试日志在 [`docs/`](docs/)（`recon/` 反汇编与链路、`logs/` 窗口 dump、
+> `notes/` 逐日开发笔记）。
 
 ---
 

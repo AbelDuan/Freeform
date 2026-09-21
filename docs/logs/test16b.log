@@ -1,0 +1,107 @@
+[18:10:40] === TEST16 START pid=25187 -- 重建原生2分屏 ===
+[18:10:47] --- 建基座: DRAGADD:1|com.coolapk.market (全屏→SoSc2分屏) ---
+[18:10:57]   pid=13808 fwin=    displayId=0, name='e416fdc NotificationShade'
+[18:11:03]   基座状态: 09-21 18:10:49.017 25187 25187 I OS4FreeFromX: 加分屏(drag): 已投递到 Transitions.mainExecutor（hot=1 target=com.coolapk.market）|09-21 18:10:49.064 25187 26423 I OS4FreeFromX: 加分屏(drag): startIconDragSplitScreen(hot=1 target=com.coolapk.market) 已调用|
+[18:11:03] --- DRAGADD:1|com.android.deskclock (在2分屏上叠加) ---
+[18:11:13]   pid=13808 fwin=    displayId=0, name='e416fdc NotificationShade'
+[18:11:15]   log: 09-21 18:11:04.178 13808 13808 I OS4FreeFromX: 加分屏(drag): 已投递到 Transitions.mainExecutor（hot=1 target=com.android.deskclock）|09-21 18:11:04.216 13808 14003 I OS4FreeFromX: 加分屏(drag): startIconDragSplitScreen(hot=1 target=com.android.deskclock) 已调用|
+[18:11:19] --- DRAGADD:6|com.android.deskclock (在2分屏上叠加) ---
+[18:11:29]   pid=13808 fwin=    displayId=0, name='446b669 com.android.deskclock/com.android.deskclock.DeskClockTabActivity'
+[18:11:31]   log: 09-21 18:11:20.722 13808 13808 I OS4FreeFromX: 加分屏(drag): 已投递到 Transitions.mainExecutor（hot=6 target=com.android.deskclock）|09-21 18:11:20.762 13808 14003 I OS4FreeFromX: 加分屏(drag): startIconDragSplitScreen(hot=6 target=com.android.deskclock) 已调用|
+[18:11:35] --- DRAGADD:8|com.android.deskclock (在2分屏上叠加) ---
+[18:11:45]   pid=13808 fwin=    displayId=0, name='446b669 com.android.deskclock/com.android.deskclock.DeskClockTabActivity'
+[18:11:47]   log: 09-21 18:11:37.262 13808 13808 I OS4FreeFromX: 加分屏(drag): 已投递到 Transitions.mainExecutor（hot=8 target=com.android.deskclock）|09-21 18:11:37.292 13808 14003 I OS4FreeFromX: 加分屏(drag): startIconDragSplitScreen(hot=8 target=com.android.deskclock) 已调用|
+[18:11:52] --- DRAGADD:9|com.android.deskclock (在2分屏上叠加) ---
+[18:12:01]   pid=13808 fwin=    displayId=0, name='446b669 com.android.deskclock/com.android.deskclock.DeskClockTabActivity'
+[18:12:04]   log: 09-21 18:11:53.803 13808 13808 I OS4FreeFromX: 加分屏(drag): 已投递到 Transitions.mainExecutor（hot=9 target=com.android.deskclock）|09-21 18:11:53.867 13808 14003 I OS4FreeFromX: 加分屏(drag): startIconDragSplitScreen(hot=9 target=com.android.deskclock) 已调用|
+[18:12:08] --- DRAGADD:10|com.android.deskclock (在2分屏上叠加) ---
+[18:12:17]   pid=13808 fwin=    displayId=0, name='b7d81ea com.miui.home/com.miui.home.launcher.Launcher'
+[18:12:20]   log: 09-21 18:12:08.849 13808 13808 I OS4FreeFromX: 加分屏(drag): 已投递到 Transitions.mainExecutor（hot=10 target=com.android.deskclock）|09-21 18:12:08.909 13808 14003 I OS4FreeFromX: 加分屏(drag): startIconDragSplitScreen(hot=10 target=com.android.deskclock) 已调用|
+[18:12:24] --- DRAGADD:7|com.android.deskclock (在2分屏上叠加) ---
+[18:12:34]   pid=16603 fwin=    displayId=0, name='f5b7283 NotificationShade'
+[18:12:36]   log: 09-21 18:12:25.387 13808 13808 I OS4FreeFromX: 加分屏(drag): 已投递到 Transitions.mainExecutor（hot=7 target=com.android.deskclock）|09-21 18:12:25.434 13808 14003 I OS4FreeFromX: 加分屏(drag): startIconDragSplitScreen(hot=7 target=com.android.deskclock) 已调用|
+[18:12:41] --- DRAGADD:19|com.android.deskclock (在2分屏上叠加) ---
+[18:12:51]   pid=17382 fwin=    displayId=0, name='c33a3f3 NotificationShade'
+[18:12:53]   log: 09-21 18:12:41.900 16603 16603 I OS4FreeFromX: 加分屏(drag): 已投递到 Transitions.mainExecutor（hot=19 target=com.android.deskclock）|09-21 18:12:41.944 16603 16667 I OS4FreeFromX: 加分屏(drag): startIconDragSplitScreen(hot=19 target=com.android.deskclock) 已调用|
+----- MODLOG -----
+09-21 18:12:43.462 I/OS4FreeFromX(17382): hook 成功 com.android.wm.shell.multitasking.miuimultiwinswitch.miuiwindowdecor.decoration.MiuiDecorationDot#addWindow
+09-21 18:12:43.473 I/OS4FreeFromX(17382): hook 成功 com.android.wm.shell.multitasking.miuimultiwinswitch.miuiwindowdecor.decoration.MiuiDecorationDot#createHandleMenu
+09-21 18:12:43.484 I/OS4FreeFromX(17382): hook 成功 com.android.wm.shell.multitasking.common.taskmanager.MiuiFreeformModeTaskInfo#getResizeOriFreeformScale
+09-21 18:12:43.495 I/OS4FreeFromX(17382): hook 成功 com.android.wm.shell.multitasking.miuifreeform.MiuiFreeformModeMiniStateHandler#getRestoredBounds
+09-21 18:12:43.507 I/OS4FreeFromX(17382): hook 成功 com.android.wm.shell.multitasking.miuimultiwinswitch.miuiwindowdecor.handlemenu.MiuiCaptionContainerView#initButtonAndBg
+09-21 18:12:43.518 I/OS4FreeFromX(17382): hook 成功 com.android.wm.shell.multitasking.miuimultiwinswitch.miuiwindowdecor.MulWinSwitchDecorViewModel#dispatchDownToDecoration
+09-21 18:12:43.529 I/OS4FreeFromX(17382): hook 成功 com.android.wm.shell.multitasking.miuimultiwinswitch.miuiwindowdecor.MulWinSwitchDecorViewModel#dispatchMoveToDecoration
+09-21 18:12:43.540 I/OS4FreeFromX(17382): hook 成功 com.android.wm.shell.multitasking.miuimultiwinswitch.miuiwindowdecor.MulWinSwitchDecorViewModel#dispatchUpToDecoration
+09-21 18:12:43.551 I/OS4FreeFromX(17382): hook 成功 com.android.wm.shell.multitasking.miuimultiwinswitch.miuiwindowdecor.decoration.MiuiDecorationController#handleDownEvent
+09-21 18:12:43.562 I/OS4FreeFromX(17382): hook 成功 com.android.wm.shell.multitasking.miuimultiwinswitch.miuiwindowdecor.decoration.MiuiDecorationController#handleUpEvent
+09-21 18:12:43.573 I/OS4FreeFromX(17382): hook 成功 com.android.wm.shell.multitasking.miuimultiwinswitch.miuiwindowdecor.decoration.MiuiDecorationController#onMiuiFreeformResizeEnd
+09-21 18:12:43.584 I/OS4FreeFromX(17382): hook 成功 com.android.wm.shell.multitasking.miuimultiwinswitch.miuiwindowdecor.decoration.MiuiDecorationController#relayout
+09-21 18:12:43.595 I/OS4FreeFromX(17382): hook 成功 com.android.wm.shell.common.split.DividerSnapAlgorithm#snap
+09-21 18:12:43.606 I/OS4FreeFromX(17382): hook 成功 com.android.wm.shell.sosc.common.split.DividerSnapAlgorithm#snap
+09-21 18:12:43.619 I/OS4FreeFromX(17382): hook 成功 com.android.wm.shell.sosc.SoScUtilsImpl#findSnapTarget
+09-21 18:12:43.632 I/OS4FreeFromX(17382): hook 成功 com.android.wm.shell.sosc.SoScStageCoordinator#onLayoutSizeChanged
+09-21 18:12:43.644 I/OS4FreeFromX(17382): hook 成功 com.android.wm.shell.sosc.SoScSplitDecorManager#drawNextVeilFrameForSwapAnimation
+09-21 18:12:43.655 I/OS4FreeFromX(17382): hook 成功 com.android.wm.shell.sosc.SoScSplitDecorManager#inflate
+09-21 18:12:43.666 I/OS4FreeFromX(17382): hook 成功 com.android.wm.shell.sosc.SoScSplitDecorManager#onResized
+09-21 18:12:43.677 I/OS4FreeFromX(17382): hook 成功 com.android.wm.shell.sosc.SoScSplitDecorManager#onResizing
+09-21 18:12:43.688 I/OS4FreeFromX(17382): hook 成功 com.android.wm.shell.sosc.SoScSplitDecorManager#onResizing
+09-21 18:12:43.699 I/OS4FreeFromX(17382): hook 成功 com.android.wm.shell.sosc.SoScSplitDecorManager#screenshotIfNeeded
+09-21 18:12:43.709 I/OS4FreeFromX(17382): hook 成功 com.android.wm.shell.sosc.SoScSplitDecorManager#setScreenshotIfNeeded
+09-21 18:12:43.723 E/OS4FreeFromX(17382): onPackageLoaded(com.android.systemui) 失败
+09-21 18:12:43.723 E/OS4FreeFromX(17382): java.lang.NullPointerException: getDefaultClassLoader(...) must not be null
+09-21 18:12:43.723 E/OS4FreeFromX(17382): 	at com.abel.os4freeformx.MainHook.onPackageLoaded(MainHook.kt:41)
+09-21 18:12:43.723 E/OS4FreeFromX(17382): 	at y0.callOnPackageLoaded(r8-map-id-efedc8ef6b9cd7d537819847e799f758499ba1eef7352b6bb5ce6846c9bf2c4f:43)
+09-21 18:12:43.723 E/OS4FreeFromX(17382): 	at u.intercept(r8-map-id-efedc8ef6b9cd7d537819847e799f758499ba1eef7352b6bb5ce6846c9bf2c4f:166)
+09-21 18:12:43.723 E/OS4FreeFromX(17382): 	at l.proceed(r8-map-id-efedc8ef6b9cd7d537819847e799f758499ba1eef7352b6bb5ce6846c9bf2c4f:35)
+09-21 18:12:43.723 E/OS4FreeFromX(17382): 	at android.hardware.Joundth.createAppFactory(Joundth.java)
+09-21 18:12:43.723 E/OS4FreeFromX(17382): 	at android.app.LoadedApk.<init>(LoadedApk.java:223)
+09-21 18:12:43.723 E/OS4FreeFromX(17382): 	at android.app.ActivityThread.getPackageInfo(ActivityThread.java:3876)
+09-21 18:12:43.723 E/OS4FreeFromX(17382): 	at android.app.ActivityThread.getPackageInfo(ActivityThread.java:3828)
+09-21 18:12:43.723 E/OS4FreeFromX(17382): 	at android.app.ActivityThread.getPackageInfo(ActivityThread.java:3796)
+09-21 18:12:43.723 E/OS4FreeFromX(17382): 	at android.app.ActivityThread.getPackageInfo(ActivityThread.java:3767)
+09-21 18:12:43.723 E/OS4FreeFromX(17382): 	at android.app.ContextImpl.createPackageContextAsUser(ContextImpl.java:2970)
+09-21 18:12:43.723 E/OS4FreeFromX(17382): 	at android.app.ContextImpl.createPackageContext(ContextImpl.java:2956)
+09-21 18:12:43.723 E/OS4FreeFromX(17382): 	at android.content.ContextWrapper.createPackageContext(ContextWrapper.java:1172)
+09-21 18:12:43.723 E/OS4FreeFromX(17382): 	at com.abel.os4freeformx.AppCtx.fixPackage(AppCtx.kt:64)
+09-21 18:12:43.723 E/OS4FreeFromX(17382): 	at com.abel.os4freeformx.AppCtx.get(AppCtx.kt:37)
+09-21 18:12:43.723 E/OS4FreeFromX(17382): 	at com.abel.os4freeformx.Gestures.refreshDisplay(Gestures.kt:1197)
+09-21 18:12:43.723 E/OS4FreeFromX(17382): 	at com.abel.os4freeformx.Gestures.install(Gestures.kt:103)
+09-21 18:12:43.723 E/OS4FreeFromX(17382): 	at com.abel.os4freeformx.Hooks.installGestures(Hooks.kt:61)
+09-21 18:12:43.723 E/OS4FreeFromX(17382): 	at com.abel.os4freeformx.Hooks.installSystemUi(Hooks.kt:51)
+09-21 18:12:43.723 E/OS4FreeFromX(17382): 	at com.abel.os4freeformx.MainHook.onPackageLoaded(MainHook.kt:41)
+09-21 18:12:43.723 E/OS4FreeFromX(17382): 	at y0.callOnPackageLoaded(r8-map-id-efedc8ef6b9cd7d537819847e799f758499ba1eef7352b6bb5ce6846c9bf2c4f:43)
+09-21 18:12:43.723 E/OS4FreeFromX(17382): 	at u.intercept(r8-map-id-efedc8ef6b9cd7d537819847e799f758499ba1eef7352b6bb5ce6846c9bf2c4f:166)
+09-21 18:12:43.723 E/OS4FreeFromX(17382): 	at l.proceed(r8-map-id-efedc8ef6b9cd7d537819847e799f758499ba1eef7352b6bb5ce6846c9bf2c4f:35)
+09-21 18:12:43.723 E/OS4FreeFromX(17382): 	at android.hardware.Joundth.createAppFactory(Joundth.java)
+09-21 18:12:43.723 E/OS4FreeFromX(17382): 	at android.app.LoadedApk.createOrUpdateClassLoaderLocked(LoadedApk.java:1266)
+09-21 18:12:43.723 E/OS4FreeFromX(17382): 	at android.app.LoadedApk.getClassLoader(LoadedApk.java:1362)
+09-21 18:12:43.723 E/OS4FreeFromX(17382): 	at android.app.LoadedApk.getResourcesInner(LoadedApk.java:1657)
+09-21 18:12:43.723 E/OS4FreeFromX(17382): 	at android.app.LoadedApk.getResources(LoadedApk.java:1632)
+09-21 18:12:43.723 E/OS4FreeFromX(17382): 	at android.app.ContextImpl.createAppContext(ContextImpl.java:3697)
+09-21 18:12:43.723 E/OS4FreeFromX(17382): 	at android.app.ContextImpl.createAppContext(ContextImpl.java:3687)
+09-21 18:12:43.723 E/OS4FreeFromX(17382): 	at android.app.ActivityThread.handleBindApplication(ActivityThread.java:9207)
+09-21 18:12:43.723 E/OS4FreeFromX(17382): 	at android.app.ActivityThread.-$$Nest$mhandleBindApplication(ActivityThread.java:0)
+09-21 18:12:43.723 E/OS4FreeFromX(17382): 	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:3208)
+09-21 18:12:43.723 E/OS4FreeFromX(17382): 	at android.os.Handler.dispatchMessageImpl(Handler.java:146)
+09-21 18:12:43.723 E/OS4FreeFromX(17382): 	at android.os.Handler.dispatchMessage(Handler.java:129)
+09-21 18:12:43.723 E/OS4FreeFromX(17382): 	at android.os.Looper.loopOnce(Looper.java:315)
+09-21 18:12:43.723 E/OS4FreeFromX(17382): 	at android.os.Looper.loop(Looper.java:419)
+09-21 18:12:43.723 E/OS4FreeFromX(17382): 	at android.app.ActivityThread.main(ActivityThread.java:10832)
+09-21 18:12:43.723 E/OS4FreeFromX(17382): 	at java.lang.reflect.Method.invoke(Native Method)
+09-21 18:12:43.723 E/OS4FreeFromX(17382): 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:598)
+09-21 18:12:43.723 E/OS4FreeFromX(17382): 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:1150)
+09-21 18:12:43.755 I/OS4FreeFromX(17382): hook 成功 com.android.wm.shell.multitasking.miuimultiwinswitch.miuiwindowdecor.MulWinSwitchEventController$EventReceiver#onInputEvent
+09-21 18:12:43.755 I/OS4FreeFromX(17382): installGestures: onInputEvent 挂载=true（gestures=true 屏=2364x1672 密度=2.75）
+09-21 18:12:44.741 I/OS4FreeFromX(17382): 分屏吸附: 824 -> 自定义档 position=824
+09-21 18:12:44.752 E/OS4FreeFromX(17382): 多分屏占位: 顶栏 77 / 底栏 44 -> 0
+09-21 18:12:44.753 E/OS4FreeFromX(17382): 多分屏满屏: mDividerInsets 142 -> 0
+09-21 18:12:44.753 I/OS4FreeFromX(17382): AppCtx: application com.android.systemui/op=com.android.systemui
+09-21 18:12:44.753 E/OS4FreeFromX(17382): 多分屏满屏: mRootBounds Rect(0, 0 - 2364, 1672) -> Rect(0, 0 - 2364, 1672)
+09-21 18:12:44.754 I/OS4FreeFromX(17382): 多分屏满屏: displayStableInsets -> 空
+09-21 18:12:44.769 I/OS4FreeFromX(17382): installGestures: EventHandler 已注册，receiver 已确保存在
+09-21 18:12:44.770 I/OS4FreeFromX(17382): 分屏比例记忆: 取不到应用组合（跳过记录）
+09-21 18:12:44.793 E/OS4FreeFromX(17382): 多分屏占位: 顶栏 77 / 底栏 44 -> 0
+09-21 18:12:44.793 E/OS4FreeFromX(17382): 多分屏满屏: mDividerInsets 142 -> 0
+09-21 18:12:50.975 I/OS4FreeFromX(17382): 钩子已收到事件（onInputEvent 生效）
+09-21 18:12:53.074 I/OS4FreeFromX(17382): 沉浸: 不再为底部手势条预留 insets（task=1）
+[18:12:59] === TEST16 END pid=17382 ===

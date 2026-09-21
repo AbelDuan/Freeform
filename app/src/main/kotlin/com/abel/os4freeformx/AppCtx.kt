@@ -13,27 +13,35 @@ object AppCtx {
     @Volatile private var cached: Context? = null
 
     fun get(): Context? {
-        cached?.let { return it }
-        // system_server：systemContext 的 package=android 与 uid 1000 匹配，provider 调用合法
-        if (procName() == "system") {
-            val sys = runCatching { systemContext() }.getOrNull()
-            if (sys != null) {
-                cached = sys
-                return sys
+        return try {
+            cached?.let { return it }
+            // system_server：systemContext 的 package=android 与 uid 1000 匹配，provider 调用合法
+            if (procName() == "system") {
+                val sys = runCatching { systemContext() }.getOrNull()
+                if (sys != null) {
+                    cached = sys
+                    return sys
+                }
             }
+            // 优先 currentApplication()：SystemUI 的 Application context 的 opPackageName 是正确的
+            // com.android.systemui。模块加载时它可能还是 null，所以只有拿到真值才缓存（不能缓存兜底的
+            // systemContext，否则整个进程生命周期里 op=android，provider/广播全被 SecurityException 拒掉）。
+            val app = runCatching {
+                Class.forName("android.app.ActivityThread").getMethod("currentApplication").invoke(null)
+            }.getOrNull()
+            if (app is Context) {
+                cached = app
+                Logx.once("appctx", "AppCtx: application ${app.packageName}/op=${runCatching { app.opPackageName }.getOrNull()}")
+                return app
+            }
+            runCatching { fixPackage(fromActivityThread()) }.getOrNull()
+        } catch (t: Throwable) {
+            // 早期启动兜底：SystemUI 刚起来时 ClassLoader/包管理尚未就绪，取 Context 可能抛
+            // NullPointerException(getDefaultClassLoader must not be null)。绝不让它冒泡到 onPackageLoaded，
+            // 否则 install() 中断、手势挂钩失败。返回 null，install 会延后重试。
+            Logx.once("appctx-early", "AppCtx.get 早期启动失败（稍后重试）: ${t.javaClass.simpleName}")
+            null
         }
-        // 优先 currentApplication()：SystemUI 的 Application context 的 opPackageName 是正确的
-        // com.android.systemui。模块加载时它可能还是 null，所以只有拿到真值才缓存（不能缓存兜底的
-        // systemContext，否则整个进程生命周期里 op=android，provider/广播全被 SecurityException 拒掉）。
-        val app = runCatching {
-            Class.forName("android.app.ActivityThread").getMethod("currentApplication").invoke(null)
-        }.getOrNull()
-        if (app is Context) {
-            cached = app
-            Logx.once("appctx", "AppCtx: application ${app.packageName}/op=${runCatching { app.opPackageName }.getOrNull()}")
-            return app
-        }
-        return runCatching { fixPackage(fromActivityThread()) }.getOrNull()
     }
 
     private fun procName(): String? = runCatching {

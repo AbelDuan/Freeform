@@ -1,0 +1,26 @@
+[17:17:48] === TEST6 REV START ===
+[17:17:48] BASELINE SystemUI pid=28517,
+[17:18:01] calendar=7568
+[17:18:01] deskclock=7571
+[17:18:01] calculator=7570
+[17:18:02] --- MULTIQ:7568|7571|7570 ---
+[17:18:05] after-multi: pid=28517, (stable)
+----- MODLOG (multi) -----
+--------- beginning of main
+09-21 17:18:02.372 I/OS4FreeFromX(28517): 沉浸: task=7570 栏隐藏=true (MiuiDotView#108294101)
+09-21 17:18:02.406 I/OS4FreeFromX(28517): 沉浸: task=7570 栏隐藏=true (MiuiDotView#108294101)
+09-21 17:18:02.562 I/OS4FreeFromX(28517): 测试入口: 收到请求「MULTIQ:7568|7571|7570」
+09-21 17:18:02.575 I/OS4FreeFromX(28517): 测试入口: 直接 startMultipleSplits(ids=[7568, 7571, 7570], quickView=false)
+09-21 17:18:02.575 I/OS4FreeFromX(28517): 四指上滑: 多分屏 taskIds=[7568, 7571, 7570]（去重后 3 个，不补位）
+09-21 17:18:02.576 I/OS4FreeFromX(28517): 四指上滑: DIAG getMultiTaskingStateManager 存在=true impl=com.android.wm.shell.multitasking.common.MultiTaskingStateManager implNull=false iface=com.android.wm.shell.multitasking.common.IMultiTaskingStateManager isInstance=false implIfaces=[com.android.wm.shell.common.RemoteCallable]
+09-21 17:18:02.576 I/OS4FreeFromX(28517): 四指上滑: startMultipleSplits 调用成功（enter_quick_view_mode=false）
+09-21 17:18:02.576 I/OS4FreeFromX(28517): 四指上滑: 已请求进入多分屏 startMultipleSplits(taskIds=[7568, 7571, 7570]) ok=true
+09-21 17:18:02.664 I/OS4FreeFromX(28517): 沉浸: task=7570 栏隐藏=true (MiuiDotView#108294101)
+09-21 17:18:02.756 I/OS4FreeFromX(28517): 小窗布局: task=7571 mode=6 pkg=com.android.deskclock bounds=Rect(826, 66 - 1534, 1606)
+09-21 17:18:02.769 I/OS4FreeFromX(28517): 沉浸: task=7530 栏隐藏=true (MiuiDotView#266971686)
+09-21 17:18:02.776 I/OS4FreeFromX(28517): 沉浸: task=7570 栏隐藏=true (MiuiDotView#108294101)
+09-21 17:18:02.776 I/OS4FreeFromX(28517): 沉浸: task=7570 栏隐藏=true (MiuiBottomBarView#52778331)
+09-21 17:18:02.835 E/OS4FreeFromX(28517): 多分屏栏: MultipleSplitUIContainer 置 INVISIBLE(onLayout)
+[17:18:08] === window dumps saved (win1/win2) ===
+[17:18:08] after-late: pid=28517, (stable)
+[17:18:09] === TEST6 REV END restarts=0 ===
