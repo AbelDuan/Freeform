@@ -709,3 +709,30 @@ adb shell 'am start -n com.abel.os4freeformx/.PickActivity --es test "MAKEPAIR:<
 5. **判定时机从 UP 改到 MOVE**（本节的根因）。
 
 **通用教训**：MIUI 的多指监视通道**不保证**投递 ACTION_UP，凡是多指手势，判定都要放在 MOVE 上并自带防重复。
+
+### 19. 功能②真机验证通过（2026-09-21）✅
+四指手势修完第 5 处（MOVE 上判定）之后，用户一次四指上滑就跑通了整条链：
+```
+手势: 四指起手 pointers=4 @…
+手势: 四指移动 pc=4 dy=0/‑18 used=17/66ms
+手势: 四指上滑命中(MOVE) 行程=127px 用时=191ms 手指数=4
+四指上滑: SoSc=false 多分屏=false 组内=[] shell已知=18
+四指上滑: 选中 pkg=com.tencent.mm task=5805（候选池 18）
+四指上滑: 已请求系统分屏吸附（openWindowFromFullscreen task=5805 pkg=com.tencent.mm）
+```
+`dumpsys activity activities` 取证（**真分屏结构**）：
+```
+rootTaskId=6661
+  Task #6662 name=main → Task #5805 com.tencent.mm    visible=true mode=multi-window
+  Task #6663 name=side → Task #6546 top.funcun.dshfolk visible=true mode=multi-window
+```
+SystemUI PID 15547 全程未变（无崩溃）。
+
+**结论**：`openWindowFromFullscreen(taskId, null)` 这条官方入口**是可用的** —— 之前失败是因为判定没触发
+（四指手势那 5 个 bug），不是入口本身的问题。候选池 18 个、`supportSplit` 过滤后选中了微信。
+
+**两个功能的最终状态**
+| 功能 | 状态 | 取证 |
+| --- | --- | --- |
+| ① 角落斜滑 → 小窗 | ✅ 真机通过 | `角滑命中 … 开关=true` → `mode=freeform`（dumpsys） |
+| ② 四指上滑 → 加分屏 | ✅ 真机通过 | `四指上滑命中(MOVE)` → `openWindowFromFullscreen` → main/side 双 stage（dumpsys） |
