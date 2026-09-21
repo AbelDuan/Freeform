@@ -869,3 +869,39 @@ rootTaskId=6724
 3. 等 450ms 转场落地
 4. `insertMultipleSplitByIntent(wct, PendingIntent(候选包), index)` —— 由系统启动应用进新 stage
 5. `ShellTaskOrganizer#applyTransaction(wct)` 提交
+
+### 26. 原生多分屏的真实调用链（2026-09-21，抓用户原生操作日志）
+用户实测反馈两条：
+1. 四指从全屏→分屏**能实现**，但那一侧有时放应用、有时直接翻桌面（不像原生"半屏应用 + 半屏让用户选"）；
+2. 双分屏后四指上滑，**双分屏会向左变小、右侧多出一个黑块**，不是系统多分屏逻辑。
+
+抓原生操作（双分屏→三分屏）的完整日志，拿到系统真实路径：
+```
+SoScUtilsImpl.prepareDragDropTaskToSoSc
+  → SoScSplitScreenController.prepareDragDropTaskToSoSc
+  → SoScStageCoordinator.prepareDragDropTaskToSoSc
+  → SoScStageCoordinator.onPreSoScStateChanged rootBounds:Rect(0,0-2364,1672)
+       lotBounds:Rect(0,0-1170,1672) robBounds:Rect(1194,0-2364,1672)
+RecentTasksController: addSplitPair taskId1:6813 taskId2:6749
+SoScStageTaskListener: activate: stage=MAIN … prepareEnterSoSc
+
+进入多分屏时：
+MultipleSplitUtils: extractAndAddMultipleSplitGroupedTask
+    taskId: 6815, pairedTaskIds: [6548, 6814, 6815], splitBounds: mIsMultipleSplit: true …
+hyper_launcher_app(3778): grouped_recent_task_info → created MultipleSplitTask
+MultipleSplitTransitionHandler: Transition requested: type = TO_FRONT, triggerTask = TaskId 6546
+RecentsTransitionHandler$RecentsController.finishInner
+MultipleSplitTransitionHandler.onRecentsInSplitAnimationFinishing
+MultipleSplitRootTaskOrganizer.prepareExitMultipleSplit
+```
+
+**结论（下一轮的正确做法）**：
+1. **多分屏是"一组任务 id"整体构建的**（`pairedTaskIds` 列表 → `extractAndAddMultipleSplitGroupedTask`），
+   不是"先 `transferSoScToMultipleSplit` 再逐个 `insertMultipleSplitBy*`" ——
+   后者把原分屏重新布局却没填内容，用户看到的就是"左半屏变小 + 右侧黑块"。
+2. 进入多分屏的转场是**伴随 recents 动画**完成的
+   （`RecentsTransitionHandler` → `onRecentsInSplitAnimationFinishing`），
+   说明系统是从**桌面/最近任务**侧发起"把这组任务铺成多分屏"。
+3. **"那一侧留空让用户选应用"是系统原生行为**（半屏应用 + 半屏桌面），
+   我们不该自作主张塞候选应用 —— 应改成"把当前任务 + 一个空位"交给系统，
+   由系统拉起选择界面（这才是用户最初的需求："弹出应用列表让我点"）。
