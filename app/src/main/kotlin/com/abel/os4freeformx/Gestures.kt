@@ -345,41 +345,82 @@ object Gestures {
      * 只在**分屏进行中**才动作（本 AOSP/MIUI 的分屏与自由小窗是互斥的场景）。
      * 候选来自 shell 已知的运行任务（`MultiTaskingTaskRepository`），过滤掉已在分屏里的。
      */
+    /**
+     * 四指上滑 → **调用系统自己的分屏吸附**（等价于把应用甩到屏幕角落、系统自动吸进分屏）。
+     *
+     * 系统入口（真机反编译确认，`com.android.wm.shell.sosc.SoScUtils`）：
+     * - `enterSplitScreen(RunningTaskInfo, WindowContainerTransaction, boolean)` —— 把任务送进分屏；
+     * - `addSplitPair(int, int)` —— 把两个任务配成一组 SoSc 分屏；
+     * 收尾 `finishEnterSplitScreen(Transaction)`（取不到就退回 `ShellTaskOrganizer#applyTransaction`）。
+     *
+     * 这里**不弹任何自建窗口** —— 选哪个应用由 shell 已知任务决定（排除已在分屏内与自由小窗），
+     * 与"把应用上滑到角落、系统自动吸附"走的是同一条系统路径。
+     */
     private fun fourFingerAddSplit() {
-        Logx.always("四指上滑: 进入加分屏流程")
         runCatching {
-            val ctx = AppCtx.get() ?: return@runCatching
-            val inSplit = splitActive() || soScActive()
             val group = splitTaskIds()
             val all = allTasks()
             Logx.always(
-                "四指上滑: 分屏中=${splitActive()} SoSc=${soScActive()} 组内任务=$group shell已知任务=${all.size}"
+                "四指上滑: SoSc=${soScActive()} 多分屏=${splitActive()} 组内=$group shell已知=${all.size}"
             )
-            val cands = all.filter { id -> !group.contains(id) }
-            if (inSplit && cands.isEmpty()) {
-                Logx.always("四指上滑: 没有可加入的任务（shell 已知任务都被分屏占用）")
+            val cand = all.firstOrNull { info ->
+                val id = taskIdOf(info)
+                id > 0 && !group.contains(id) && modeOf(info) != MODE_FREEFORM
+            }
+            if (cand == null) {
+                Logx.always("四指上滑: 没有可加入分屏的候选任务")
                 return@runCatching
             }
-            val items = cands.mapNotNull { info ->
-                pkgOf(info)?.let { "$it|${taskIdOf(info)}" }
-            }.distinct()
-            if (items.isEmpty()) {
-                Logx.always("四指上滑: 候选任务都取不到包名，放弃")
+            val pkg = pkgOf(cand) ?: "?"
+            val id = taskIdOf(cand)
+            val soc = socUtils() ?: run {
+                Logx.e("四指上滑: 取不到 SoScUtils")
                 return@runCatching
             }
-            showPicker(ctx, items, group.size)
+            val wctCls = Class.forName("android.window.WindowContainerTransaction", false, uiLoader)
+            val wct = wctCls.getDeclaredConstructor().newInstance()
+            val rtiCls = Class.forName("android.app.ActivityManager\$RunningTaskInfo")
+            Logx.always("四指上滑: 走系统分屏吸附 pkg=$pkg task=$id（组内 ${group.size} 个）")
+            val ok = runCatching {
+                (soc.javaClass.getMethod("enterSplitScreen", rtiCls, wctCls, java.lang.Boolean.TYPE)
+                    .invoke(soc, cand, wct, java.lang.Boolean.TRUE) as? Boolean) ?: false
+            }.getOrElse {
+                Logx.e("enterSplitScreen 调用失败", it)
+                false
+            }
+            Logx.always("四指上滑: enterSplitScreen -> $ok")
+            // 收尾：enterSplitScreen 之后必须给 SoSc 一个 Transaction 才真正落地
+            runCatching {
+                val txCls = Class.forName("android.view.SurfaceControl\$Transaction")
+                val tx = txCls.getDeclaredConstructor().newInstance()
+                soc.javaClass.getMethod("finishEnterSplitScreen", txCls).invoke(soc, tx)
+                Logx.always("四指上滑: finishEnterSplitScreen 已调用")
+            }.onFailure {
+                Logx.e("finishEnterSplitScreen 失败，退回提交 WCT", it)
+                applyWct(wct, wctCls)
+            }
         }.onFailure { Logx.e("四指上滑处理失败", it) }
     }
 
-    /**
-     * 弹应用选择器（SystemUI 进程内直接建系统窗口）。
-     *
-     * 不能用 PopupWindow + 一个没附着到窗口的 View 当锚点：SystemUI 里那样拿不到 window token，
-     * 真机报 `WindowManager$BadTokenException: token null is not valid`。
-     * 正确做法是 `createWindowContext(TYPE_APPLICATION_OVERLAY, null)` 自己开一个窗口上下文，
-     * 再用 `WindowManager.addView` 挂上去（被 hook 进程里 addView 会走 LSPosed 的
-     * `InvocationTargetHandler` 自动补 token）。
-     */
+    /** 提交 WCT（ShellTaskOrganizer.applyTransaction）。 */
+    private fun applyWct(wct: Any, wctCls: Class<*>) {
+        runCatching {
+            val ctl = cls(Constants.CLS_MULTITASKING_CTL).getMethod("getInstance").invoke(null) ?: return@runCatching
+            val sc = ctl.javaClass.getMethod("getMultipleSplitController").invoke(ctl)
+            val org = orgOf(ctl) ?: orgOf(sc) ?: run {
+                Logx.e("提交 WCT: 找不到 ShellTaskOrganizer")
+                return@runCatching
+            }
+            org.javaClass.getMethod("applyTransaction", wctCls).invoke(org, wct)
+            Logx.always("四指上滑: WCT 已提交（ShellTaskOrganizer）")
+        }.onFailure { Logx.e("提交 WCT 失败", it) }
+    }
+
+    private fun socUtils(): Any? = runCatching {
+        Class.forName("com.android.wm.shell.sosc.SoScUtils", false, uiLoader)
+            .getMethod("getInstance").invoke(null)
+    }.getOrNull()
+
     private fun showPicker(ctx: Context, pkgs: List<String>, index: Int) {
         runCatching {
             val token = java.util.UUID.randomUUID().toString().take(8)

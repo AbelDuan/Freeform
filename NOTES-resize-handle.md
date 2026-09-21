@@ -449,3 +449,22 @@ MIUI 那圈"背景/阴影"与窗口几何经常对不上（真机：「一边内
    `ShellTaskOrganizer#applyTransaction`（帮助函数 `orgOf()` 按类型扫字段，名字随版本变）。
    双分屏（SoSc）先 `transferSoScToMultipleSplit(ids, types)` 转多分屏，再插第三个。
    **这一段还没在真机跑到**（等用户在真实分屏场景下用四指上滑触发）。
+
+### 7. 功能② 改走「系统自己的分屏吸附」（2026-09-21，用户指定方案）
+用户明确：**不要自建窗口让用户点选**，要调用系统自己的分屏吸附（等价于把应用上滑甩到角落、系统自动吸进分屏）。
+已按此改实现 `Gestures.fourFingerAddSplit()`，入口是 `com.android.wm.shell.sosc.SoScUtils`：
+
+| 方法 | 用途 |
+| --- | --- |
+| `enterSplitScreen(RunningTaskInfo, WindowContainerTransaction, boolean)` | 把任务送进分屏（**boolean 是"是否为拖拽进入"**，看它内部把 `wct` 当拖拽事务用） |
+| `finishEnterSplitScreen(SurfaceControl$Transaction)` | 收尾/落地（**参数是 SurfaceControl 的 Transaction，不是 WCT** —— 真机第一次按 WCT 猜，报 `NoSuchMethodException` 才纠正） |
+| `addSplitPair(int, int)` | 把两个任务配成一组 SoSc 分屏 |
+
+实现里：候选 = shell 已知任务里第一个不在当前分屏组、且不是自由小窗的任务；拿到候选后
+`enterSplitScreen(候选, wct, true)` → 自己 new 一个 `SurfaceControl$Transaction` 交给 `finishEnterSplitScreen`；
+任一环节失败都退回 `ShellTaskOrganizer#applyTransaction(wct)`。全程 `Logx.always` 打点。
+自建选择器（`PickActivity` + `pending_pick` 回传）已从动作路径移除，类保留但不再被调用。
+
+**待真机验证**：需要**真实分屏进行中**触发（四指上滑）。adb 造不出四指多点触控，也造不出分屏 UI 操作，
+只能由用户手动触发；日志关键字：`四指上滑: 走系统分屏吸附 pkg=… task=…` / `enterSplitScreen -> …` /
+`finishEnterSplitScreen 已调用`。
