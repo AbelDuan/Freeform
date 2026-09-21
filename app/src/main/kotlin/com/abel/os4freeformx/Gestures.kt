@@ -234,7 +234,7 @@ object Gestures {
             else if (dy > dp(30f)) cornerBad = true           // 明显下滑
         }
         if (ffArmed) {
-            if (ev.pointerCount < FF_MIN_POINTERS) ffArmed = false else ffPeak = maxOf(ffPeak, ev.pointerCount)
+            if (ev.pointerCount < 2) { ffArmed = false; Logx.once("ff-abandon", "手势: 四指放弃（指针剩 ${ev.pointerCount}）") } else { ffPeak = maxOf(ffPeak, ev.pointerCount); Logx.once("ff-move-${ev.eventTime / 300}", "手势: 四指移动 pc=${ev.pointerCount} dy=${(ev.rawY - ffY).toInt()} used=${ev.eventTime - ffStart}ms") }
         }
         return false
     }
@@ -280,6 +280,7 @@ object Gestures {
             val dy = ev.rawY - ffY
             val dx = ev.rawX - ffX
             val used = ev.eventTime - ffStart
+            // 判定用**峰值 ffPeak**，不用当前指针数（ACTION_UP 时通常只报 1 根）
             if (dy <= -ffMinTravel && kotlin.math.abs(dx) < dp(260f) && used <= FF_MAX_MS && ffPeak >= FF_MIN_POINTERS) {
                 Logx.always(
                     "手势: 四指上滑命中 行程=${(-dy).toInt()}px dx=${dx.toInt()} 用时=${used}ms " +

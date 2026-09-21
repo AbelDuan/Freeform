@@ -654,3 +654,12 @@ else if (Cfg.cornerFreeform) Logx.always("手势: 角滑命中但当前不是单
 因此它的判定**不加** `isPlainFullscreen()` 这类场景守卫（那是功能①角滑专用的约束，
 用来避让 MIUI 自己的分屏热区）；四指与任何官方手势都不冲突（官方没有四指手势），
 所以只需在动作分支里区分：多分屏走 `insertMultipleSplitByTask`，其它走 `openWindowFromFullscreen`。
+
+### 16. 四指手势的第四处隐患 + 一次自伤（2026-09-21）
+- **松手时不能用"当前指针数"判四指**：`ACTION_UP` 那一刻系统通常只报 1 根手指，
+  所以判定必须用**峰值 `ffPeak`**（已改为 `ffPeak >= FF_MIN_POINTERS`，并加注释说明原因）。
+  前面三处（`onMove` / `ACTION_POINTER_UP` / 阈值）已在第 14 节修过，四处合起来才是完整修复。
+- **自伤记录**：用 python 批量替换时把注释插到了 `if (...)` 与 `{` 之间，
+  注释把左花括号吞掉 → Kotlin 报 `unresolved reference 'dy'/'dx'/'used'`。
+  教训：批量改写代码时，注释要单独成行，**不要插在语句与花括号之间**。
+- 四指过程日志改为限频（`Logx.once("ff-move-<时间片>")`），避免四指滑动时刷屏。
