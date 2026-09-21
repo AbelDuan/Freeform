@@ -44,10 +44,12 @@ HyperOS 4（Android 17 / API 37）**小窗（freeform）与分屏体验增强** 
 `MulWinSwitchEventController$EventReceiver#onInputEvent`（MIUI 用 `InputManager.monitorGestureInput`
 建的全屏触摸监视器），挂它即可拿到全屏/桌面/小窗/分屏的触摸，无需额外权限。
 
-> ⚠️ **分屏内加分屏暂未开放**：真机实测「双分屏下四指上滑」会黑屏/卡顿/闪退 ——
-> SoSc 双分屏（一对 stage）与多分屏（多个 stage）结构不同，需要一个**专用转场**才能衔接，
-> 直接 `insertMultipleSplitByTask` 会与 SoSc 状态机冲突。现已**短路**（只识别、打日志、不做动作），
-> 不再闪退。接线方案见 NOTES 第 20 节（先抓真实"拖第三个应用进左上角"的日志，照抄参数）。
+> ⚠️ **分屏内加分屏（灰度）**：默认关闭（`four_finger_split_indoor=false`）。
+> 打开后走「`transferSoScToMultipleSplit`（**stage 列表 + 索引[0,1]**，参数语义照抄官方）
+> → `insertMultipleSplitByIntent`（由系统启动应用进新 stage）」。
+> 踩坑记录：① 早期误传 **taskId 列表**导致 SoSc 状态机崩（黑屏/闪退）；
+> ② 用 `insertMultipleSplitByTask` 塞已有任务时 stage 全为空（`sz=0`）→ 新那一侧黑屏。
+> 详见 NOTES 第 20~23 节。
 
 **四指手势的五处坑（真机逐条踩出来的，详见 NOTES 14/16/18 节）**：
 ① `onMove` 里"指针数<4 就撤销"→ 改为 <2 才放弃；② `ACTION_POINTER_UP` 抬一根就撤销 → 同上；
