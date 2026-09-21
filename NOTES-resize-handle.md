@@ -844,3 +844,16 @@ rootTaskId=6724
 
 **另外修掉的候选 bug**：候选池必须过滤掉"取不到包名"的任务
 （真机踩过 `选中 pkg=? task=6686`，这种任务既加不进分屏、日志也看不出是谁）。
+
+### 24. `soScActive()` 探测错类（2026-09-21，真机日志定位）
+用户验证日志里每一条都是 `四指上滑: SoSc=false 多分屏=false 组内=[]`，
+**明明是在分屏里滑的**。原因：`isSoScActive()` 定义在 **`SoScUtilsImpl`** 上，
+**不在** `MultipleSplitController` 上（反编译确认：`sosc/SoScUtilsImpl.smali:13415`）。
+之前按 `MultipleSplitController` 反射 → 静默失败 → 永远 false →
+于是在分屏里也走"重新起分屏"分支（`openWindowFromFullscreen`），
+表现就是"动作没效果 / 另一侧黑屏"。
+
+已改为经 `socUtils()`（即 `SoScUtils.getInstance()`）调 `isSoScActive()`。
+
+**教训**：反射探测方法时不要"猜类"，先去反编译产物里 `grep '\.method public <name>'`
+确认它到底在哪个类上；静默 `runCatching` 会把这类错误藏得很深。

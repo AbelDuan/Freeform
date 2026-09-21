@@ -491,7 +491,7 @@ object Gestures {
             val exec = tr.javaClass.getMethod("getMainExecutor").invoke(tr) as? java.util.concurrent.Executor
                 ?: return@runCatching false
             exec.execute(body)
-            Logx.always("进分屏: 已投递到 Transitions.mainExecutor")
+            Logx.always("进分屏: 已投递到 Transitions.mainExecutor（task=$taskId pkg=$pkg）")
             true
         }.getOrDefault(false)
         if (!posted) {
@@ -864,10 +864,16 @@ object Gestures {
         return emptyList()
     }
 
+    /**
+     * SoSc 双分屏是否在进行中。
+     *
+     * ⚠️ `isSoScActive()` 在 **`SoScUtilsImpl`** 上，**不在** `MultipleSplitController` 上
+     * （真机踩过：之前按 MultipleSplitController 反射，静默失败 → 一直报 `SoSc=false`，
+     *  于是在分屏里也走"重新起分屏"的分支，表现就是动作没效果/另一侧黑屏）。
+     */
     private fun soScActive(): Boolean = runCatching {
-        val ctl = cls(Constants.CLS_MULTITASKING_CTL).getMethod("getInstance").invoke(null) ?: return false
-        val sc = ctl.javaClass.getMethod("getMultipleSplitController").invoke(ctl) ?: return false
-        (sc.javaClass.getMethod("isSoScActive").invoke(sc) as? Boolean) ?: false
+        val soc = socUtils() ?: return false
+        (soc.javaClass.getMethod("isSoScActive").invoke(soc) as? Boolean) ?: false
     }.getOrDefault(false)
 
     /** shell 已知的全部运行任务（按 Z 序）。 */
