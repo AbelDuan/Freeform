@@ -663,3 +663,27 @@ else if (Cfg.cornerFreeform) Logx.always("手势: 角滑命中但当前不是单
   注释把左花括号吞掉 → Kotlin 报 `unresolved reference 'dy'/'dx'/'used'`。
   教训：批量改写代码时，注释要单独成行，**不要插在语句与花括号之间**。
 - 四指过程日志改为限频（`Logx.once("ff-move-<时间片>")`），避免四指滑动时刷屏。
+
+### 17. 功能②动作路径的最终优先级（2026-09-21）
+按"优先用真机已跑通的路径"重排：
+
+| 场景 | 走的路 | 真机状态 |
+| --- | --- | --- |
+| 双分屏（SoSc） | `transferSoScToMultipleSplit(ids, types)` → `insertMultipleSplitByTask(wct, taskId, index)` | 后者已跑通到 `applyTransaction` ✅ |
+| 多分屏（3+） | `insertMultipleSplitByTask` 直接插 | ✅ |
+| 全屏单任务 | `openWindowFromFullscreen(taskId, null)`（官方入口；线程断言已用 `Transitions.mainExecutor` 修掉） | 待真机确认 |
+
+`openWindowFromFullscreen` / `startIconDragSplitScreen` 都需要**真实拖拽会话**的 PendingIntent
+（`MiuiDragAndDropPolicy.mLaunchIntent`），模块自己造的 PendingIntent 会让转场只把桌面翻上来
+（第 10 节已记录），因此不作为首选。
+
+**候选**：过一遍 `MultiTaskingCommonUtils.supportSplit(RunningTaskInfo)`（系统自己的"能不能分屏"判断），
+日志会打 `候选池=N 其中支持分屏=M → 选中 <pkg>`；用户实测"设置"不支持分屏，测试请用小红书/酷安。
+
+**调试入口**（adb 可单独驱动，不必真手指做四指）：
+```bash
+# 加分屏：<pkg>|<taskId>
+adb shell 'am start -n com.abel.os4freeformx/.PickActivity --es test "com.xingin.xhs|<id>"'
+# 程序化配一组 SoSc 分屏：<idA>|<idB>（需要 test_hook=true）
+adb shell 'am start -n com.abel.os4freeformx/.PickActivity --es test "MAKEPAIR:<idA>|<idB>"'
+```

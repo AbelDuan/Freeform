@@ -407,12 +407,18 @@ object Gestures {
             val pkg = pkgOf(cand) ?: "?"
             Logx.always("四指上滑: 选中 pkg=$pkg task=${taskIdOf(cand)}（候选池 ${pool.size}）")
 
-            // 分支①：已经在多分屏（3~6 应用）→ 直接往组里插一个 stage
-            if (splitActive()) {
+            // 分支①：**已经在分屏**（双分屏 SoSc 或多分屏）→ 往组里插一个 stage。
+            // 这是本项目唯一在真机上跑通过 `applyTransaction` 的路径（见 NOTES 第 10 节），
+            // 优先级最高；openWindowFromFullscreen 那条需要真实拖拽会话，先不依赖它。
+            if (splitActive() || soScActive()) {
+                if (!splitActive() && soScActive()) {
+                    // 双分屏（SoSc）→ 先转成多分屏，再插第三个（launcher 拖第三个应用走的就是这个顺序）
+                    transferSoScToMulti(group)
+                }
                 insertPane(cand, group.size)
                 return@runCatching
             }
-            // 分支②：全屏/桌面 → 走系统"甩到左上角"的官方分发（MiuiDragAndDropPolicy 用的就是这个）
+            // 分支②：全屏单任务 → 走系统官方入口起一个分屏
             dragToSplit(taskIdOf(cand), pkg)
         }.onFailure { Logx.e("四指上滑处理失败", it) }
     }
@@ -460,6 +466,21 @@ object Gestures {
         }.onFailure { e ->
             val root = (e as? java.lang.reflect.InvocationTargetException)?.targetException ?: e
             Logx.e("进分屏失败: ${root.javaClass.name}: ${root.message}", root)
+        }
+    }
+
+    /** 双分屏（SoSc）→ 多分屏：`MultipleSplitController#transferSoScToMultipleSplit(List, List)`。 */
+    private fun transferSoScToMulti(group: List<Int>) {
+        runCatching {
+            val ctl = cls(Constants.CLS_MULTITASKING_CTL).getMethod("getInstance").invoke(null) ?: return@runCatching
+            val sc = ctl.javaClass.getMethod("getMultipleSplitController").invoke(ctl) ?: return@runCatching
+            sc.javaClass.getMethod(
+                "transferSoScToMultipleSplit", java.util.List::class.java, java.util.List::class.java
+            ).invoke(sc, ArrayList(group), ArrayList(group.map { Integer.valueOf(0) }))
+            Logx.always("四指上滑: 已请求 SoSc→多分屏转换（组内 ${group.size} 个）")
+        }.onFailure { e ->
+            val root = (e as? java.lang.reflect.InvocationTargetException)?.targetException ?: e
+            Logx.e("四指上滑: SoSc→多分屏转换失败 ${root.javaClass.simpleName}: ${root.message}", root)
         }
     }
 
