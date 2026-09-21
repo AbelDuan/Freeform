@@ -460,15 +460,14 @@ object Gestures {
                 // 双分屏 → 多分屏是一次**异步转场**：紧接着插 stage 往往在转场完成前执行，
                 // 结果就是"stage 建了但空的"（真机现象：另一侧黑屏）。
                 // 所以转分屏后延迟再插（450ms 足够官方转场落地）。
-                // ⚠️ 原生多分屏是"一组任务 id 整体构建"：
-                //   MultipleSplitUtils#extractAndAddMultipleSplitGroupedTask(taskId, pairedTaskIds, splitBounds)
-                // 我这条"先 transferSoScToMultipleSplit 再 insertMultipleSplitBy*"是自己拼的，
-                // 真机表现是**原分屏被重新布局、右侧留黑块**（用户实测反馈），所以先短路。
-                // 待接线：把 (当前分屏任务 + 新任务) 作为 pairedTaskIds 交给系统（见 NOTES 26 节）。
-                Logx.always(
-                    "四指上滑: 分屏内加窗暂未接线（原生需 groupedTaskIds 整体构建；" +
-                        "当前拼凑路径会留黑块）。组内=$group 多分屏=${splitActive()} SoSc=${soScActive()}"
-                )
+                // ✅ **进入系统多分屏模式**（而不是在双分屏里塞窗口）。
+                // 抓到的原生链（用户操作日志）：
+                //   hyper_launcher_app: TransitionAction.startMultipleSplits
+                //     → MultiTaskingStateManager$IMultiTaskingStateManagerImpl.lambda$startMultipleSplits$9
+                //     → MultipleSplitRootTaskOrganizer#startMultipleSplits(Bundle)
+                // Bundle 键（反编译确认）：multiple_launch_taskIds / multiple_launch_bounds /
+                //                          multiple_launch_way / multiple_launch_enter_quick_view_mode
+                startMultipleSplits(group, cand)
                 return@runCatching
             }
             // ⚠️ 分屏场景暂时**只识别不动作**：
@@ -527,6 +526,49 @@ object Gestures {
         }.onFailure { e ->
             val root = (e as? java.lang.reflect.InvocationTargetException)?.targetException ?: e
             Logx.e("进分屏失败: ${root.javaClass.name}: ${root.message}", root)
+        }
+    }
+
+    /**
+     * 进入系统**多分屏模式**（三分屏起、最多六应用）。
+     *
+     * Bundle 键照抄官方（`MultipleSplitRootTaskOrganizer#startMultipleSplits` 读的就是这几个）：
+     * `multiple_launch_taskIds`（任务 id 数组，含新加入那个）、`multiple_launch_bounds`（数组）、
+     * `multiple_launch_way`（字符串）、`multiple_launch_enter_quick_view_mode`（布尔）。
+     * 由系统自己去铺 stage、并**给出空位让用户选应用** —— 这才是原生行为。
+     */
+    private fun startMultipleSplits(group: List<Int>, cand: Any) {
+        runCatching {
+            val ids = ArrayList<Int>(group).apply { taskIdOf(cand).takeIf { it > 0 }?.let { add(it) } }
+            if (ids.size < 3) {
+                Logx.always("四指上滑: 当前只有 ${ids.size} 个任务，不足以进多分屏（需 ≥3）")
+                return@runCatching
+            }
+            val bounds = ArrayList<android.graphics.Rect>()
+            ids.forEach { _ -> bounds.add(android.graphics.Rect(0, 0, screenW, screenH)) }
+            val b = android.os.Bundle().apply {
+                putIntArray("multiple_launch_taskIds", ids.toIntArray())
+                putParcelableArray("multiple_launch_bounds", bounds.toTypedArray())
+                putString("multiple_launch_way", "gesture")
+                putBoolean("multiple_launch_enter_quick_view_mode", false)
+            }
+            val ctl = cls(Constants.CLS_MULTITASKING_CTL).getMethod("getInstance").invoke(null) ?: return@runCatching
+            val sc = ctl.javaClass.getMethod("getMultipleSplitController").invoke(ctl) ?: return@runCatching
+            val ok = runCatching {
+                sc.javaClass.getMethod("startMultipleSplits", android.os.Bundle::class.java).invoke(sc, b)
+                true
+            }.getOrElse { e1 ->
+                val root = (e1 as? java.lang.reflect.InvocationTargetException)?.targetException ?: e1
+                Logx.v("多分屏: controller 直调失败（${root.javaClass.simpleName}），改走 stateManager")
+                runCatching {
+                    val sm = ctl.javaClass.getMethod("getMultiTaskingStateManager").invoke(ctl) ?: return@runCatching
+                    sm.javaClass.getMethod("startMultipleSplits", android.os.Bundle::class.java).invoke(sm, b)
+                }.isSuccess
+            }
+            Logx.always("四指上滑: 已请求进入多分屏 startMultipleSplits(taskIds=${ids}) ok=$ok")
+        }.onFailure { e ->
+            val root = (e as? java.lang.reflect.InvocationTargetException)?.targetException ?: e
+            Logx.e("四指上滑: 进入多分屏失败 ${root.javaClass.simpleName}: ${root.message}", root)
         }
     }
 

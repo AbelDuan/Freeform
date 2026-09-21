@@ -952,3 +952,31 @@ MultipleSplitRootTaskOrganizer.prepareExitMultipleSplit
 **下一步**：需要用户配合抓一次"系统原生进入多分屏"的完整意图/参数
 （上次抓到的日志只到 `extractAndAddMultipleSplitGroupedTask` 的调用，没拿到上游的 Bundle/Intent 内容）。
 或者反过来：**hook 系统的多分屏入口**，让四指手势等价于用户手动触发那一个动作，而不是自己造调用。
+
+### 30. 找到「进入系统多分屏」的官方入口与参数（2026-09-21，用户完整演示时抓到）
+用户做完整演示（单任务→双分屏→三分屏→四分屏→五分屏）时的日志给出决定性证据：
+```
+hyper_launcher_app(3778): WindowTransitionCoordinator applyInputConsumer
+        action=TransitionAction.startMultipleSplits
+hyper_launcher_app: split_gesture_callback: enter half split / notify_split_mode_changed
+MultipleSplitLayout(29255): MultiTaskingStateManager$IMultiTaskingStateManagerImpl
+        .lambda$startMultipleSplits$9
+```
+即：**桌面进程（Flutter launcher）通过 Binder 调 SystemUI 的 `startMultipleSplits`**，
+它再走到 `MultipleSplitRootTaskOrganizer#startMultipleSplits(Bundle)`。
+
+**Bundle 键（反编译 `MultipleSplitRootTaskOrganizer#startMultipleSplits` 里读的）**：
+| key | 类型 | 含义 |
+| --- | --- | --- |
+| `multiple_launch_taskIds` | int[] | 要铺成多分屏的任务 id **整组** |
+| `multiple_launch_bounds` | Rect[] | 每个任务的 bounds |
+| `multiple_launch_way` | String | 来源（如 `recent`） |
+| `multiple_launch_enter_quick_view_mode` | boolean | 是否进快速查看模式 |
+
+**用户强调的系统行为**：每次新增分屏界面，**系统都是给出桌面让用户自己选应用** ——
+所以正确做法是"把一组 taskIds 交给系统 `startMultipleSplits`，由系统铺 stage 并留空位"，
+而不是自己 `insertMultipleSplitBy*` 往 stage 里塞已有任务（那会留黑块）。
+
+**本轮实现**：四指上滑在分屏状态下调用
+`getMultipleSplitController().startMultipleSplits(Bundle)`（失败回退 `getMultiTaskingStateManager()`），
+taskIds = 当前分屏组 + 选中候选，bounds 用整屏占位；日志 `已请求进入多分屏 startMultipleSplits(taskIds=[…]) ok=…`。
