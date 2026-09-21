@@ -45,9 +45,15 @@ object Gestures {
 
     private fun dp(v: Float): Float = v * density
 
-    /** 角滑起手区：左/右下角，离边缘与底边都要足够近。 */
-    private val cornerSide get() = dp(150f)
-    private val cornerBottom get() = dp(110f)
+    /**
+     * 角滑起手区：屏幕**下部的左右角**。
+     *
+     * 用**屏幕尺寸比例**而不是固定 dp：折叠屏内外屏 / 横竖屏切换时屏幕尺寸会变，
+     * 固定 dp 会出现"内屏能滑、外屏滑不动"（真机踩过：`input swipe` 落到 (1324,1709) 时
+     * 判定区却按另一组尺寸算，起手就被否掉）。
+     */
+    private const val CORNER_ZONE_W = 0.40f   // 左右各 40% 宽算"角"
+    private const val CORNER_ZONE_H = 0.45f   // 屏幕下 45% 高算"角"
 
     private val cornerMinTravel get() = dp(140f)
     private const val CORNER_MIN_RATIO = 0.6f
@@ -102,7 +108,7 @@ object Gestures {
 
         // ② 注册 EventHandler + 确保 receiver 存在（全屏场景下 MIUI 可能还没建 receiver）
         main.post { ensureReceiver() }
-        Logx.always("installGestures: 全局输入已挂钩（gestures=${Cfg.gestures} 屏=${screenW}x${screenH}）")
+        Logx.always("installGestures: 全局输入已挂钩（gestures=${Cfg.gestures} 屏=${screenW}x${screenH} 密度=$density）")
     }
 
     /**
@@ -164,15 +170,16 @@ object Gestures {
         val h = screenH.toFloat()
         val x = ev.rawX
         val y = ev.rawY
-        if (y >= h - cornerBottom && y <= h) {
-            val left = x <= cornerSide
-            val right = x >= w - cornerSide
+        if (y >= h * (1f - CORNER_ZONE_H) && y <= h) {
+            val left = x <= w * CORNER_ZONE_W
+            val right = x >= w * (1f - CORNER_ZONE_W)
             if (left || right) {
                 cornerArmed = true
                 cornerLeft = left
                 cornerX = x
                 cornerY = y
                 cornerTime = ev.eventTime
+                Logx.v("手势: 角滑起手 侧=${if (left) "左" else "右"} @${x.toInt()},${y.toInt()} 屏=${screenW}x$screenH")
             }
         }
         if (ev.pointerCount >= FF_MIN_POINTERS && !cornerArmed) armFourFinger(ev)
@@ -280,7 +287,7 @@ object Gestures {
                 return@runCatching
             }
             val pkg = pkgOf(info) ?: run {
-                Logx.e("角滑: 前台任务没有包名，放弃")
+                Logx.e("角滑: 前台任务没有包名，放弃 | ${describe(info)}")
                 return@runCatching
             }
             val id = taskIdOf(info)
@@ -354,11 +361,11 @@ object Gestures {
         val repo = taskRepo() ?: return null
         runCatching {
             val l = repo.javaClass.getMethod("getVisibleFullTaskInfo").invoke(repo) as? List<*>
-            l?.firstOrNull { it != null }?.let { return it }
+            l?.firstOrNull { it != null }?.let { return unwrap(it) }
         }
         runCatching {
             val l = repo.javaClass.getMethod("getMultiWindowTasksInZOrder").invoke(repo) as? List<*>
-            l?.lastOrNull { it != null }?.let { return it }
+            l?.lastOrNull { it != null }?.let { return unwrap(it) }
         }
         return null
     }
@@ -371,21 +378,77 @@ object Gestures {
         (info.javaClass.getMethod("getWindowingMode").invoke(info) as? Int) ?: -1
     }.getOrDefault(-1)
 
-    private fun pkgOf(info: Any): String? {
+    /**
+     * 把仓库对象解包成真正的 `ActivityManager$RunningTaskInfo`。
+     *
+     * `MultiTaskingTaskRepository.getVisibleFullTaskInfo()` 返回的是 **`MultiTaskingTaskInfo`**
+     * 包装对象（继承 `MultiTaskingBaseTaskInfo`），`topActivity`/`baseIntent` 都在它内层的
+     * `mTaskInfo` 上 —— 真机日志：`class=...MultiTaskingTaskInfo fields[topActivity=null ...]`。
+     * 解包入口：`getTaskInfo()`（→ `mTaskInfo` 字段）。
+     */
+    private fun unwrap(o: Any): Any {
         runCatching {
-            (info.javaClass.getMethod("getTopActivity").invoke(info) as? android.content.ComponentName)
-                ?.packageName?.let { if (it.isNotEmpty()) return it }
+            o.javaClass.getMethod("getTaskInfo").invoke(o)?.let { if (it !== o) return it }
+        }
+        declaredField(o, "mTaskInfo")?.let { if (it !== o) return it }
+        return o
+    }
+
+    /**
+     * 取任务包名。`RunningTaskInfo` 的 `topActivity` / `baseActivity` 是**公开字段**
+     * （真机反编译确认 `Landroid/app/ActivityManager$RunningTaskInfo;->topActivity:Landroid/content/ComponentName;`），
+     * 并没有对应 getter —— 只按 getter 找会拿到 null（真机日志：「前台任务没有包名」）。
+     */
+    private fun pkgOf(raw: Any): String? {
+        val info = unwrap(raw)
+        listOf("getTopActivity", "getBaseActivity", "getRealActivity").forEach { g ->
+            runCatching {
+                (info.javaClass.getMethod(g).invoke(info) as? android.content.ComponentName)
+                    ?.packageName?.let { if (it.isNotEmpty()) return it }
+            }
+        }
+        listOf("topActivity", "baseActivity", "realActivity").forEach { f ->
+            when (val v = declaredField(info, f)) {
+                is android.content.ComponentName -> v.packageName?.let { if (it.isNotEmpty()) return it }
+                is android.content.pm.ActivityInfo -> v.packageName?.let { if (it.isNotEmpty()) return it }
+                is String -> if (v.isNotEmpty()) return v
+            }
         }
         runCatching {
-            (info.javaClass.getMethod("getBaseActivity").invoke(info) as? android.content.ComponentName)
-                ?.packageName?.let { if (it.isNotEmpty()) return it }
-        }
-        runCatching {
-            val bi = info.javaClass.getMethod("getBaseIntent").invoke(info) as? Intent
+            val bi = (declaredField(info, "baseIntent")
+                ?: info.javaClass.getMethod("getBaseIntent").invoke(info)) as? Intent
             bi?.component?.packageName?.let { if (it.isNotEmpty()) return it }
             bi?.`package`?.let { if (it.isNotEmpty()) return it }
         }
         return null
+    }
+
+    /** 沿继承链找字段（私有字段也能读）。 */
+    private fun declaredField(o: Any, name: String): Any? = runCatching {
+        var c: Class<*>? = o.javaClass
+        while (c != null) {
+            val f = c.declaredFields.firstOrNull { it.name == name }
+            if (f != null) {
+                f.isAccessible = true
+                return f.get(o)
+            }
+            c = c.superclass
+        }
+        null
+    }.getOrNull()
+
+    /** 诊断：取不到包名时把对象的类名与候选字段/方法的存在性打出来（一次就能定位结构差异）。 */
+    private fun describe(raw: Any): String {
+        val o = unwrap(raw)
+        val cls = o.javaClass
+        val fields = listOf("topActivity", "baseActivity", "realActivity", "baseIntent", "taskDescription")
+            .joinToString(",") { f -> "$f=" + (declaredField(o, f)?.javaClass?.simpleName ?: "null") }
+        val methods = listOf("getTaskId", "getWindowingMode", "getTopActivity", "getBaseActivity", "getBaseIntent")
+            .joinToString(",") { m ->
+                val v = runCatching { cls.getMethod(m).invoke(o) }.getOrNull()
+                "$m=" + (v?.javaClass?.simpleName ?: "null")
+            }
+        return "class=${cls.name} fields[$fields] methods[$methods]"
     }
 
     /** 内外屏切换 / 旋转后刷新屏幕尺寸与密度。 */

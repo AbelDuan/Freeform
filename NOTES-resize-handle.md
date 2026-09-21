@@ -356,3 +356,72 @@ MIUI 那圈"背景/阴影"与窗口几何经常对不上（真机：「一边内
 - 若 relayout 在换屏时**不触发**（装饰被整段销毁重建、且新实例拿不到旧 `lastConfigKey` 之外还读不到新 displayId），
   需改挂 `DisplayManager` / `onConfigurationChanged` 广播或 `ShellTaskOrganizer` 的 task 变更回调。
 - 套用延迟 350ms 是否合适：若真机看到「先弹默认比例、再跳回记忆比例」的闪一下，可上调到 500~600ms。
+
+---
+
+## 新手势：全局输入挂钩的两个坑（2026-09-21，真机取证）
+
+### 0. LSPosed 重装后不注入模块（卡了整整一轮，务必先看这条）
+`adb install -r` 每次都会给应用**新的 codePath**，而 LSPosed v2.2.0 的
+`/data/adb/lspd/config/modules_config.db` **不会**跟着更新这三张表：
+
+| 表 | 症状 | 修法 |
+| --- | --- | --- |
+| `modules.apk_path` | 指向已删除的旧目录 | 改成 `pm path <pkg>` 的真实路径 |
+| `modules_state`（enabled） | 整行**消失** → 模块被当成"未启用" | 插回 `(pkg,0,1,0)` |
+| `scope` | 整行**消失** → 没有注入目标进程 | 插回 `system` + `com.android.systemui` |
+
+修完必须 **重启 lspd**（它把表读进内存）——`kill <lspd pid>` 之后 init 不会自动拉起，
+要手动 `cd /data/adb/modules/zygisk_lsposed && setsid ./daemon --force &`，再 `killall com.android.systemui`。
+**一键脚本：`tools/fix-lsposed-module.sh`**（每次 `adb install` 之后跑一次）。
+
+> 排查过程中的弯路（别再走）：`modules.apk_path` 是**旧值**时把新 APK 复制回旧路径**没用**；
+> 守护进程内存里的表才是权威。另外**不要**把 `modules_config.db` 的 WAL 删掉——
+> 新写入都在 WAL 里，删掉等于回滚到旧快照（真机踩过：`scope` 行凭空消失）。
+
+### 1. 全局输入源：`MulWinSwitchEventController$EventReceiver#onInputEvent`
+- MIUI 自己用 `InputManager.monitorGestureInput` 拿了一条 InputMonitor，全屏触摸都从这里过；
+  挂它的 `onInputEvent(MotionEvent)` 就等于拿到**全局触摸流**（全屏/桌面/小窗/分屏都能看到），
+  不需要任何额外权限。`Logx.v` 级别够用，命中才 `Logx.always`。
+- receiver 平时由 MIUI 在**第一个小窗/分屏装饰创建时**才建（`MulWinSwitchDecorViewModel` 里
+  `mWindowDecorByTaskId.isEmpty()` 分支）→ 全屏场景下可能还不存在。模块安装时主动
+  `createEventReceiver(ctx)`（方法内部幂等）+ `registerEventHandler(proxy)` 补一手，才稳定。
+  ⚠️ 必须在**主线程**调用（它用 `Looper.myLooper()`），安装期 `main.post {}` 里做。
+- 真机确认：`MulWinSwitchEventController: start handle ACTION_DOWN ...` 正常刷，
+  说明 receiver 活着、事件在流。
+
+### 2. 任务对象是**包装类**，不是 RunningTaskInfo
+`MultiTaskingTaskRepository.getVisibleFullTaskInfo()` 返回 **`MultiTaskingTaskInfo`**
+（继承 `MultiTaskingBaseTaskInfo`），`topActivity` / `baseIntent` 都在它内层的 `mTaskInfo` 上。
+只在这个包装上找 `topActivity` 永远是 null，日志表现是
+`class=...MultiTaskingTaskInfo fields[topActivity=null ...] methods[getTaskId=Integer, getTopActivity=null]`。
+**解包入口：`getTaskInfo()`**（→ 字段 `mTaskInfo`）。真机取证：解包后
+`角滑: 前台 pkg=com.tencent.mm task=5702 mode=1` 一次就对。
+
+### 3. 角滑判定区必须按**屏幕比例**算
+一开始用固定 dp（左右 150dp / 底下 110dp）标定角区，`input swipe` 打进 (1324,1709) 时
+起手就被否掉——折叠屏内外屏、横竖屏切换时屏幕尺寸会变，固定 dp 必然失真。
+改成 `y ≥ h*0.55 且 (x ≤ w*0.40 或 x ≥ w*0.60)` 后稳定命中。
+
+### 4. 功能①「角落斜滑 → 前台应用转小窗」已真机验证 ✅
+`input swipe 200 1600 → 900 900 300`（内屏 1168x1712）：
+```
+手势: 角滑命中 侧=左 行程=989px dx=700 dy=-700 用时=302ms
+角滑: 前台 pkg=com.tencent.mm task=5702 mode=1
+角滑: 已请求以小窗启动 com.tencent.mm（x=200 y=1600）
+```
+`dumpsys activity activities` 取证：该任务 `mode=freeform`、`mBounds=Rect(273, 426 - 1441, 2292)`
+—— 小窗就落在起手点附近。走的是官方 `MiuiMultiWindowUtils.getActivityOptions(ctx,pkg,true,x,y)`。
+分屏内的应用另有专门入口 `MulWinSwitchAnimStarter.switchSplitToFreeform(taskId)`（已接好，待测）。
+
+### 5. 功能②「四指上滑 → 加分屏」：识别已完成，动作待接线
+四指识别已实现并编译进包（≥4 指、上滑 ≥70dp、≤1.2s、水平漂移 <200dp）。动作侧已定位到的官方入口：
+- `MultipleSplitController#insertMultipleSplitByTask(WindowContainerTransaction, taskId, index)`
+  / `#insertMultipleSplitByIntent(wct, PendingIntent, index)`
+  / `#startMultipleSplits(Bundle)`（shell 命令 `startMultipleSplits recent <taskId>...` 走的也是它）；
+- `MultiTaskingStateManager#dockSplitFromRecent(Bundle)`（launcher 的"加进分屏"走这条，
+  `commands` 里对应 `dockSplitFromRecent options:` 日志）；
+- 查询侧：`MultipleSplitUtilsImpl#getAllStageTaskInfo / getMultipleSplitTaskIds / getActiveStageTaskIdByIndex`。
+
+用户选择的是**弹出应用列表让他点选**，所以下一步是：模块 App 侧加一个选择器 Activity
+（`showDialog` 认证或自绘悬浮列表）列出最近任务 → 选中后把 taskId 交给上面的入口。

@@ -12,6 +12,11 @@ KS=${KS:-$HERE/keystore/os4freeformx.jks}   # 必须放在 build/ 之外：build
 VER=$(sed -n 's/^version=//p' "$SRC/resources/META-INF/xposed/module.prop")
 VCODE=$(sed -n 's/^versionCode=//p' "$SRC/resources/META-INF/xposed/module.prop")
 
+# 容器没有 zip（/usr/local/bin 会被 app 更新/重建清掉）→ 自愈：从仓库里的 shim 装一份
+if ! command -v zip >/dev/null 2>&1 && [ -f "$HERE/tools/zip-shim.py" ]; then
+    cp -f "$HERE/tools/zip-shim.py" /usr/local/bin/zip && chmod +x /usr/local/bin/zip
+fi
+
 rm -rf "$OUT"; mkdir -p "$OUT/res" "$OUT/gen" "$OUT/kt" "$OUT/dex" "$OUT/stdlib" "$HERE/dist"
 
 echo "== 1/6 aapt2 compile =="
