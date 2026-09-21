@@ -617,3 +617,18 @@ else if (Cfg.cornerFreeform) Logx.always("手势: 角滑命中但当前不是单
 **演示取证（官方逻辑恢复正常）**：用户在被要求演示后完成"双分屏→三分屏→四分屏"全部操作，
 期间 SystemUI PID 恒定（无崩溃），官方 `MultipleSplitTransitionHandler` 转场全部成功；
 我们的角滑三次命中但都是 `开关=false`（放行），证明"先判开关再吞事件"的修复有效。
+
+### 13. 配置同步 bug + 收紧后功能①复验（2026-09-21）
+`Cfg` 平时走**节流异步刷新**（1500ms），手势判定用的往往是启动时的旧快照 ——
+真机表现：配置文件里 `corner_freeform=true`，日志却打 `开关=false`。
+**修法：`onUp` 里命中时 `Cfg.reload()` 强制同步读一次**（只在抬指时一次，不在热路径）。
+
+收紧判定区（22%×22%、方向比 0.75~1.35、≥200dp）+ 单应用全屏守卫之后，功能①复验通过：
+```
+手势: 角滑命中 侧=左 行程=1013px dx=760 dy=-670 用时=321ms 开关=true
+角滑: 前台 pkg=top.funcun.dshfolk task=6472 mode=1
+角滑: 已请求以小窗启动 top.funcun.dshfolk（x=140 y=1620）
+→ dumpsys: Task #6472 mode=freeform ✅
+```
+**当前设备开关状态**：`gestures=true`、`corner_freeform=true`、`four_finger_split=true`
+（三项全开，角滑已有全屏守卫，理论上不再抢官方分屏热区；若仍冲突可单独关 `corner_freeform`）。

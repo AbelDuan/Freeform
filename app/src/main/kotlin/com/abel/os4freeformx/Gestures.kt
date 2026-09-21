@@ -239,6 +239,10 @@ object Gestures {
     }
 
     private fun onUp(ev: MotionEvent): Boolean {
+        // 命中时**强制同步**读一次配置：`Cfg` 平时是节流异步刷新（1500ms），
+        // 否则用户刚改完开关、手势仍按旧快照执行（真机踩过：开关已开却报 开关=false）。
+        // 这里在抬指时才调用一次，不在热路径上，开销可接受。
+        runCatching { Cfg.reload() }
         var consumed = false
         if (cornerArmed && !cornerBad && !ffArmed) {
             val dx = ev.rawX - cornerX
