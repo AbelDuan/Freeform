@@ -120,7 +120,9 @@ object Gestures {
         // 在 SystemUI 启动早期 Context 还没就绪时会抛
         // `NullPointerException: getDefaultClassLoader(...) must not be null`，
         // 真机表现为分屏里滑动黑屏/闪退。只有显式打开测试开关才启动。
-        if (Cfg.testHook) main.post { watchTestHook() }
+        // 注意：必须在 post 的 lambda **内部**读取配置 —— 安装那一刻 Cfg 往往还没读到
+        // remote prefs（真机踩过：provider 里 test_hook=true，钩子却按默认 false 跳过）
+        main.post { if (runCatching { Cfg.reload() }.isSuccess && Cfg.testHook) watchTestHook() }
         Logx.always(
             "installGestures: onInputEvent 挂载=$hooked（gestures=${Cfg.gestures} " +
                 "屏=${screenW}x${screenH} 密度=$density）"
