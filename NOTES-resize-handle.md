@@ -569,3 +569,25 @@ installGestures: onInputEvent 挂载=true（gestures=true 屏=1672x2364 密度=2
 **给下一次的调试入口（已进包）**：`watchTestHook()` 每 1.5s 轮询 `pending_test_addsplit`，配合
 `am start -n com.abel.os4freeformx/.PickActivity --es test "<pkg>|<taskId>"`
 就能在 adb 里单独驱动"加分屏"这一段，不必真手指做四指手势。
+
+### 11. ⚠️ 严重冲突：角滑吃掉了 MIUI 自己的「底部中间上滑进多分屏」（2026-09-21）
+**用户实测反馈：改完之后连官方操作都做不了了。** 根因两条，都已修：
+
+1. **开关判断顺序错了（真 bug）**：命中角滑时先 `swallow = true`（吞掉整串触摸），**之后**才看
+   `if (Cfg.cornerFreeform)`。于是"把角滑关掉"根本不起作用 —— 事件照样被吃掉，
+   MIUI 的「底部中间上滑进多分屏」在这片区域起手就被掐死。
+   **修法：先判开关，关了就直接放行（既不吞事件也不做动作）**。四指分支同样改掉。
+2. **起手区与官方热区重叠**：角滑判定区原本是"屏幕下 45% 的左右各 40%"，与 MIUI 多分屏
+   上滑的起手位置冲突。**修法：给角滑加上「底部正中最下缘 120dp、中间 1/3 宽」的让位区**，
+   那片区域角滑不起手。
+
+**恢复官方逻辑的紧急开关**（已验证有效）：配置文件写 `gestures=false`（或只关 `corner_freeform`）
+后重启 SystemUI 即可；`onMotion` 顶部就有 `Cfg.gestures` 短路，**配置为 false 时完全不碰事件**
+（现场取证：单指上滑后我们的手势日志 0 条 = 不介入）。写入方式（容器内无 python 执行环境，
+用 `su -c sh` 写 XML，注意要同时写 CE 与 DE、并保持 `app_data_file` 上下文）：
+```
+/data/data/com.abel.os4freeformx/shared_prefs/os4freeformx_cfg.xml
+/data/user_de/0/com.abel.os4freeformx/shared_prefs/os4freeformx_cfg.xml
+```
+**教训**：以后新增"会吞事件"的手势，开关判断必须放在吞事件之前；起手区必须与系统自身热区
+（尤其底部中间、左右边缘返回手势）显式留出让位区。

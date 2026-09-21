@@ -178,7 +178,9 @@ object Gestures {
         val h = screenH.toFloat()
         val x = ev.rawX
         val y = ev.rawY
-        if (y >= h * (1f - CORNER_ZONE_H) && y <= h) {
+        // 底部正中最下缘留给 MIUI 自己的"底部中间上滑进多分屏"，角滑不在这里起手
+        val inBottomCenter = y >= h - dp(120f) && x > w * 0.33f && x < w * 0.67f
+        if (!inBottomCenter && y >= h * (1f - CORNER_ZONE_H) && y <= h) {
             val left = x <= w * CORNER_ZONE_W
             val right = x >= w * (1f - CORNER_ZONE_W)
             if (left || right) {
@@ -243,11 +245,17 @@ object Gestures {
             ) {
                 Logx.always(
                     "手势: 角滑命中 侧=${if (cornerLeft) "左" else "右"} 行程=${dist.toInt()}px " +
-                        "dx=${dx.toInt()} dy=${dy.toInt()} 用时=${ev.eventTime - cornerTime}ms"
+                        "dx=${dx.toInt()} dy=${dy.toInt()} 用时=${ev.eventTime - cornerTime}ms " +
+                        "开关=${Cfg.cornerFreeform}"
                 )
-                swallow = true
-                consumed = true
-                if (Cfg.cornerFreeform) cornerSwipeToFreeform()
+                // ⚠️ 开关关闭时必须**原样放行**：以前是先 swallow=true 再看开关，
+                // 结果"关掉角滑"仍然会把这串事件吃掉，把 MIUI 自己的「底部中间上滑进多分屏」掐死
+                // （真机反馈：角落上滑与多分屏中间底部上滑冲突，无法完成官方操作）。
+                if (Cfg.cornerFreeform) {
+                    swallow = true
+                    consumed = true
+                    cornerSwipeToFreeform()
+                }
             } else {
                 Logx.v("手势: 角滑未命中 行程=${dist.toInt()} dx=${dx.toInt()} dy=${dy.toInt()} bad=$cornerBad")
             }
@@ -261,9 +269,11 @@ object Gestures {
                     "手势: 四指上滑命中 行程=${(-dy).toInt()}px dx=${dx.toInt()} 用时=${used}ms " +
                         "手指数=$ffPeak 多分屏=${splitActive()}"
                 )
-                swallow = true
-                consumed = true
-                if (Cfg.fourFingerSplit) fourFingerAddSplit()
+                if (Cfg.fourFingerSplit) {
+                    swallow = true
+                    consumed = true
+                    fourFingerAddSplit()
+                }
             } else {
                 Logx.always("手势: 四指未命中 dy=${dy.toInt()} dx=${dx.toInt()} used=${used}ms peak=$ffPeak")
             }
@@ -386,7 +396,7 @@ object Gestures {
                 return@runCatching
             }
             // 分支②：全屏/桌面 → 走系统"甩到左上角"的官方分发（MiuiDragAndDropPolicy 用的就是这个）
-            dragToSplit(pkg)
+            dragToSplit(taskIdOf(cand), pkg)
         }.onFailure { Logx.e("四指上滑处理失败", it) }
     }
 
@@ -397,11 +407,11 @@ object Gestures {
      * hotAreaType 用 `HOT_AREA_TYPE_SPLIT_LEFT_OR_TOP = 1`（就是"甩到左上角"那个热区），
      * reason 传 0；PendingIntent 由包的启动 Intent 现造（MIUI 那边也是从拖拽会话里拿 `mLaunchIntent`）。
      */
-    private fun dragToSplit(pkg: String) {
+    private fun dragToSplit(taskId: Int, pkg: String) {
         // `MulWinSwitchTransition#startIconDragSplitScreen` 内部会调 `startTransition`，
         // 后者有线程断言（真机：`IllegalStateException: must be called on Handler {…}`），
         // 所以整段必须投到 MIUI 自己的 executor 上执行。
-        val body = Runnable { dragToSplitInternal(pkg) }
+        val body = Runnable { dragToSplitInternal(taskId, pkg) }
         val posted = runCatching {
             val ctl = cls(Constants.CLS_MULTITASKING_CTL).getMethod("getInstance").invoke(null) ?: return@runCatching false
             val trans = ctl.javaClass.getMethod("getMulWinSwitchTransition").invoke(ctl) ?: return@runCatching false
@@ -420,25 +430,16 @@ object Gestures {
         }
     }
 
-    private fun dragToSplitInternal(pkg: String) {
+    private fun dragToSplitInternal(taskId: Int, pkg: String) {
         runCatching {
-            val ctx = AppCtx.get() ?: return@runCatching
-            val launch = ctx.packageManager.getLaunchIntentForPackage(pkg) ?: run {
-                Logx.e("进分屏: 取不到 $pkg 的启动 Intent")
-                return@runCatching
-            }
-            launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            val pi = android.app.PendingIntent.getActivity(
-                ctx, 0, launch,
-                android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
-            )
             val ctl = cls(Constants.CLS_MULTITASKING_CTL).getMethod("getInstance").invoke(null) ?: return@runCatching
             val trans = ctl.javaClass.getMethod("getMulWinSwitchTransition").invoke(ctl) ?: return@runCatching
-            val piCls = android.app.PendingIntent::class.java
+            // 首选：官方"任务 → SoSc 分屏"入口（内部 prepareDragDropTaskToSoSc + startTransition(0x2b6f)）
+            // 签名是 (int taskId, PendingIntent intent)，taskId != -1 时走任务分支、忽略 intent
             trans.javaClass.getMethod(
-                "startIconDragSplitScreen", piCls, Integer.TYPE, Integer.TYPE
-            ).invoke(trans, pi, Integer.valueOf(HOT_AREA_SPLIT_LEFT_OR_TOP), Integer.valueOf(0))
-            Logx.always("四指上滑: 已请求系统分屏吸附（startIconDragSplitScreen pkg=$pkg hotArea=$HOT_AREA_SPLIT_LEFT_OR_TOP）")
+                "openWindowFromFullscreen", Integer.TYPE, android.app.PendingIntent::class.java
+            ).invoke(trans, Integer.valueOf(taskId), null)
+            Logx.always("四指上滑: 已请求系统分屏吸附（openWindowFromFullscreen task=$taskId pkg=$pkg）")
         }.onFailure { e ->
             val root = (e as? java.lang.reflect.InvocationTargetException)?.targetException ?: e
             Logx.e("进分屏失败: ${root.javaClass.name}: ${root.message}", root)
@@ -612,7 +613,7 @@ object Gestures {
             if (!splitActive() && !soScActive()) {
                 // 没有分屏在跑 → 走"甩到左上角"那条官方分发，从全屏起一个分屏
                 Logx.always("加分屏: 当前无分屏 → 走 startIconDragSplitScreen 起双分屏")
-                dragToSplit(pkg)
+                dragToSplit(taskId, pkg)
                 return@runCatching
             }
 
