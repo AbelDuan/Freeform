@@ -84,6 +84,8 @@ object Gestures {
     private var ffY = 0f
     private var ffStart = 0L
     private var ffPeak = 0
+    /** 四指手势本次是否已触发过（MOVE 上触发，防重复）。 */
+    private var ffFired = false
 
     /** 命中后本串事件不再交给 MIUI 自己的手势逻辑（避免它再解释一遍）。 */
     @Volatile private var swallow = false
@@ -234,7 +236,29 @@ object Gestures {
             else if (dy > dp(30f)) cornerBad = true           // 明显下滑
         }
         if (ffArmed) {
-            if (ev.pointerCount < 2) { ffArmed = false; Logx.once("ff-abandon", "手势: 四指放弃（指针剩 ${ev.pointerCount}）") } else { ffPeak = maxOf(ffPeak, ev.pointerCount); Logx.once("ff-move-${ev.eventTime / 300}", "手势: 四指移动 pc=${ev.pointerCount} dy=${(ev.rawY - ffY).toInt()} used=${ev.eventTime - ffStart}ms") }
+            if (ev.pointerCount < 2) {
+                ffArmed = false
+                Logx.once("ff-abandon", "手势: 四指放弃（指针剩 ${ev.pointerCount}）")
+            } else {
+                ffPeak = maxOf(ffPeak, ev.pointerCount)
+                val dy = ev.rawY - ffY
+                val used = ev.eventTime - ffStart
+                Logx.once(
+                    "ff-move-${ev.eventTime / 300}",
+                    "手势: 四指移动 pc=${ev.pointerCount} dy=${dy.toInt()} used=${used}ms"
+                )
+                // ⚠️ **在滑动中触发，不等 ACTION_UP**：真机取证 —— 四指抬起时 MIUI 的监视通道
+                // 不投递 ACTION_UP（日志里 8 次四指起手、若干次四指移动，但"命中/未命中"计数为 0），
+                // 所以把判定放在 MOVE 上：只要滑够距离且四指还在，立即触发一次。
+                if (!ffFired && ffPeak >= FF_MIN_POINTERS &&
+                    dy <= -ffMinTravel && used <= FF_MAX_MS &&
+                    Cfg.fourFingerSplit
+                ) {
+                    ffFired = true
+                    Logx.always("手势: 四指上滑命中(MOVE) 行程=${(-dy).toInt()}px 用时=${used}ms 手指数=$ffPeak")
+                    fourFingerAddSplit()
+                }
+            }
         }
         return false
     }
@@ -304,6 +328,7 @@ object Gestures {
         cornerBad = false
         ffArmed = false
         ffPeak = 0
+        ffFired = false
     }
 
     private fun hypot(dx: Float, dy: Float): Float =

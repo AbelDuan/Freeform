@@ -687,3 +687,25 @@ adb shell 'am start -n com.abel.os4freeformx/.PickActivity --es test "com.xingin
 # 程序化配一组 SoSc 分屏：<idA>|<idB>（需要 test_hook=true）
 adb shell 'am start -n com.abel.os4freeformx/.PickActivity --es test "MAKEPAIR:<idA>|<idB>"'
 ```
+
+### 18. 四指手势的最后一环：**不能在 ACTION_UP 上判定**（2026-09-21，有监视日志为证）
+加了后台 logcat 监视后拿到完整序列：
+```
+手势: 四指起手 pointers=4 @1664,1136
+手势: 四指移动 pc=4 dy=-6   used=16ms
+手势: 四指移动 pc=4 dy=-184 used=99ms      ← 滑动了、四指都在
+手势: 四指移动 pc=4 dy=-472 used=274ms     ← 行程早就超过 45dp 阈值
+（但全设备日志里 "四指上滑命中 / 四指未命中" 计数 = 0）  ← 说明 ACTION_UP 根本没到
+```
+**结论：MIUI 的 `monitorGestureInput` 通道在四指抬完时不给收尾事件**（单指时是正常的，
+功能①角滑就是靠 ACTION_UP 判定的）。所以四指手势**必须在 MOVE 上判定**：
+只要四指还在、行程够、时间窗内，**立即触发一次**（`ffFired` 防重复），不等松手。
+
+至此四指手势一共修了 **5 处**（都在 NOTES 14/16/18 节）：
+1. `onMove` 指针数 <4 就撤销 → 改为 <2 才放弃；
+2. `ACTION_POINTER_UP` 抬一根就撤销 → 同上；
+3. 阈值偏严：行程 70→45dp、窗口 1.2→2.6s；
+4. 松手判定误用"当前指针数" → 改用峰值 `ffPeak`（现已不依赖 UP，但保留以防万一）；
+5. **判定时机从 UP 改到 MOVE**（本节的根因）。
+
+**通用教训**：MIUI 的多指监视通道**不保证**投递 ACTION_UP，凡是多指手势，判定都要放在 MOVE 上并自带防重复。
