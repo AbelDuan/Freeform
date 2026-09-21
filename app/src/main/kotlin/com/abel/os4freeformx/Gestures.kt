@@ -65,8 +65,8 @@ object Gestures {
     private const val CORNER_MAX_RATIO = 1.35f
 
     private const val FF_MIN_POINTERS = 4
-    private val ffMinTravel get() = dp(70f)
-    private const val FF_MAX_MS = 1200L
+    private val ffMinTravel get() = dp(45f)   // 放宽：起手就有机会命中
+    private const val FF_MAX_MS = 2600L        // 放宽：慢一点的上滑也算
 
     @Volatile private var uiLoader: ClassLoader? = null
     private val main = Handler(Looper.getMainLooper())
@@ -209,7 +209,8 @@ object Gestures {
     }
 
     private fun onPointerUp(ev: MotionEvent): Boolean {
-        if (ffArmed && ev.pointerCount - 1 < FF_MIN_POINTERS) ffArmed = false
+        // 抬起一根手指不算放弃：4 指手势里手指本来就不会完全同步抬起
+        if (ffArmed && ev.pointerCount - 1 < 2) ffArmed = false
         if (cornerArmed) cornerBad = true
         return false
     }
@@ -279,7 +280,7 @@ object Gestures {
             val dy = ev.rawY - ffY
             val dx = ev.rawX - ffX
             val used = ev.eventTime - ffStart
-            if (dy <= -ffMinTravel && kotlin.math.abs(dx) < dp(200f) && used <= FF_MAX_MS && ffPeak >= FF_MIN_POINTERS) {
+            if (dy <= -ffMinTravel && kotlin.math.abs(dx) < dp(260f) && used <= FF_MAX_MS && ffPeak >= FF_MIN_POINTERS) {
                 Logx.always(
                     "手势: 四指上滑命中 行程=${(-dy).toInt()}px dx=${dx.toInt()} 用时=${used}ms " +
                         "手指数=$ffPeak 多分屏=${splitActive()}"
@@ -509,8 +510,14 @@ object Gestures {
                         )
                         val v = b?.getString(Constants.K_TEST_ADDSPLIT)
                         if (!v.isNullOrEmpty()) {
-                            Logx.always("测试入口: 收到 addSplit 请求「$v」")
-                            main.post { addToSplit(v) }
+                            Logx.always("测试入口: 收到请求「$v」")
+                            main.post {
+                                when {
+                                    v.startsWith("MAKEPAIR:") -> makeSplitPair(v.removePrefix("MAKEPAIR:"))
+                                    v.startsWith("ADDSPLIT:") -> addToSplit(v.removePrefix("ADDSPLIT:"))
+                                    else -> addToSplit(v)
+                                }
+                            }
                             runCatching {
                                 ctx.contentResolver.call(
                                     android.net.Uri.parse("content://${Constants.AUTHORITY}"),
@@ -527,6 +534,33 @@ object Gestures {
                 }
             }
         }.apply { isDaemon = true }.start()
+    }
+
+    /**
+     * 测试用：把两个任务程序化配成一组 SoSc 分屏
+     * （`SoScUtils#addSplitPair(int, int)` —— 系统自己配对分屏用的就是它）。
+     * 用途：adb 造不出四指触控、也造不出分屏手势时，先把"分屏状态"造出来，再验加分屏。
+     */
+    private fun makeSplitPair(sel: String) {
+        runCatching {
+            val a = sel.substringBefore('|').toIntOrNull()
+            val b = sel.substringAfter('|', "").toIntOrNull()
+            if (a == null || b == null) {
+                Logx.e("测试入口: MAKEPAIR 参数需为 <idA>|<idB>，收到「$sel」")
+                return@runCatching
+            }
+            val soc = socUtils() ?: run {
+                Logx.e("测试入口: 取不到 SoScUtils")
+                return@runCatching
+            }
+            Logx.always("测试入口: addSplitPair($a, $b) 之前 SoSc=${soScActive()} 多分屏=${splitActive()}")
+            soc.javaClass.getMethod("addSplitPair", Integer.TYPE, Integer.TYPE)
+                .invoke(soc, Integer.valueOf(a), Integer.valueOf(b))
+            Logx.always("测试入口: addSplitPair 已调用")
+        }.onFailure { e ->
+            val root = (e as? java.lang.reflect.InvocationTargetException)?.targetException ?: e
+            Logx.e("测试入口: addSplitPair 失败 ${root.javaClass.name}: ${root.message}", root)
+        }
     }
 
     /** 提交 WCT（ShellTaskOrganizer.applyTransaction）。 */

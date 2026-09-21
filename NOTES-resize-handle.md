@@ -632,3 +632,25 @@ else if (Cfg.cornerFreeform) Logx.always("手势: 角滑命中但当前不是单
 ```
 **当前设备开关状态**：`gestures=true`、`corner_freeform=true`、`four_finger_split=true`
 （三项全开，角滑已有全屏守卫，理论上不再抢官方分屏热区；若仍冲突可单独关 `corner_freeform`）。
+
+### 14. 功能②不生效的真因：四指手势起手后被自己撤销（2026-09-21）
+真机日志（用户实际操作）：
+```
+手势: 四指起手 pointers=4 @2301,772     ← 四指识别到了（8 次）
+（一条「四指移动」都没有）                ← 起手后立刻被撤销
+```
+**三个 bug（都在判定条件上写得太严）**：
+1. `ACTION_POINTER_UP` 里 `if (ev.pointerCount - 1 < FF_MIN_POINTERS) ffArmed = false`
+   —— 4 指手势里手指不可能完全同步抬起，抬一根就把整个手势判死；
+2. `onMove` 里 `if (ev.pointerCount < FF_MIN_POINTERS) ffArmed = false`
+   —— 同因；两根以上就继续算，掉到 2 根以下才放弃；
+3. 阈值本身偏严，一并放宽：最小行程 70dp→**45dp**、时间窗 1.2s→**2.6s**、水平漂移 200dp→260dp。
+
+**教训**：多指手势的"持续条件"不能写成"必须始终 ≥N 指"，要写成"掉到 <2 指才放弃"，
+否则真实手指的微小不同步就会把整条手势判死。
+
+### 15. 功能②的生效范围（用户明确要求）
+用户要求四指上滑在**全屏单任务 / 双分屏 / 三分屏…所有场景**都生效。
+因此它的判定**不加** `isPlainFullscreen()` 这类场景守卫（那是功能①角滑专用的约束，
+用来避让 MIUI 自己的分屏热区）；四指与任何官方手势都不冲突（官方没有四指手势），
+所以只需在动作分支里区分：多分屏走 `insertMultipleSplitByTask`，其它走 `openWindowFromFullscreen`。
