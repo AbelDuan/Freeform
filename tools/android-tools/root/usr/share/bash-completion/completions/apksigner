@@ -1,0 +1,96 @@
+# Debian apksigner completion                             -*- shell-script -*-
+
+_apksigner()
+{
+    local cur prev words cword
+    _init_completion || return
+
+    local GENERIC_OPTIONS='
+        --cert
+        -h --help
+        --in
+        --key
+        --key-pass
+        --ks
+        --ks-key-alias
+        --ks-pass
+        --ks-provider-arg
+        --ks-provider-class
+        --ks-provider-name
+        --ks-type
+        --max-sdk-version
+        --min-sdk-version
+        --next-signer
+        --out
+        --pass-encoding
+        --print-certs
+        --v1-signer-name
+        --v1-signing-enabled
+        --v2-signing-enabled
+        -v --verbose
+        --Werr
+    '
+
+    # see if the user selected a command already
+    local COMMANDS=(
+        "help"
+        "sign"
+        "verify"
+        "version")
+
+    local command i
+    for (( i=0; i < ${#words[@]}-1; i++ )); do
+        if [[ ${COMMANDS[@]} =~ ${words[i]} ]]; then
+            command=${words[i]}
+            break
+        fi
+    done
+
+    # Complete a --option<SPACE><TAB>
+    case $prev in
+        --in|--out)
+            _filedir '@(apk|jar)'
+            return 0
+            ;;
+        --ks)
+            _filedir '@(bks|jks|keystore)'
+            return 0
+            ;;
+    esac
+
+    # supported options per command
+    if [[ "$cur" == -* ]]; then
+        case $command in
+            sign|verify)
+                COMPREPLY=( $( compgen -W "$GENERIC_OPTIONS" -- "$cur" ) )
+                return 0
+                ;;
+            help)
+                return 0
+                ;;
+            version)
+                return 0
+                ;;
+        esac
+    fi
+
+    # specific command arguments
+    if [[ -n $command ]]; then
+        case $command in
+            sign|verify)
+                _filedir '@(apk|jar)'
+                return 0
+                ;;
+        esac
+    fi
+
+    # no command yet, show what commands we have
+    if [ "$command" = "" ]; then
+        COMPREPLY=( $( compgen -W '${COMMANDS[@]}' -- "$cur" ) )
+    fi
+
+    return 0
+} &&
+complete -F _apksigner apksigner
+
+# ex: ts=4 sw=4 et filetype=sh

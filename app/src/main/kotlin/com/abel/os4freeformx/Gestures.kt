@@ -797,6 +797,39 @@ object Gestures {
      *
      * @param pkg 第 N 个应用包名；为空则只做 dock（供手工选应用）。
      */
+    /**
+     * 取 dock 态下"等待填充"的那个 stage 的 WindowContainerToken。
+     *
+     * 原生成功链路的日志是 `requestOpenToExitDockMode … mode:6, stage:mId STAGE_C taskId:7694`，
+     * 而 dock 进入时 `playDockChangeAnimation: enteringIndex=2` —— 即**索引 2** 的那个 stage。
+     * 这里优先取"非活跃（空、等待填充）"的 stage，取不到就退回索引 2。
+     */
+    private fun dockStageToken(): Any? = runCatching {
+        val ctl = cls(Constants.CLS_MULTITASKING_CTL).getMethod("getInstance").invoke(null)
+            ?: return null
+        val sc = ctl.javaClass.getMethod("getMultipleSplitController").invoke(ctl) ?: return null
+        val org = sc.javaClass.getMethod("getMultipleSplitOrganizer").invoke(sc) ?: return null
+        var fallback: Any? = null
+        var idx = 0
+        while (idx <= 5) {
+            val tok = runCatching {
+                val st = org.javaClass.getMethod("getStageForIndex", Integer.TYPE)
+                    .invoke(org, Integer.valueOf(idx)) ?: return@runCatching null
+                val rti = st.javaClass.getMethod("getRootTaskInfo").invoke(st) ?: return@runCatching null
+                val active = runCatching {
+                    st.javaClass.getMethod("isActive").invoke(st) as? Boolean ?: false
+                }.getOrDefault(false)
+                val t = declaredField(rti, "token")
+                Logx.always("加分屏(dock): stage#$idx task=${taskIdOf(unwrap(rti))} active=$active token=${t != null}")
+                if (idx == 2) fallback = t
+                if (!active) t else null
+            }.getOrNull()
+            if (tok != null) return tok
+            idx++
+        }
+        fallback
+    }.getOrNull()
+
     private fun dockAddSplit(pkg: String?) {
         val info = dockParamTaskInfo()
         if (info == null) {
@@ -839,8 +872,29 @@ object Gestures {
                     android.content.Intent.FLAG_ACTIVITY_NEW_TASK or
                         android.content.Intent.FLAG_ACTIVITY_MULTIPLE_TASK
                 )
-                ctx.startActivity(it0)
-                Logx.always("加分屏(dock): 已启动 $pkg，等待系统 DOCK_EXIT_SOSC_TO_THREE")
+                // ★ 关键：必须把它启动到 **dock 的那个 stage**（stage_c）下，让新任务的
+                //   parentTaskId = stage_c。系统 `requestOpenToExitDockMode` 就是靠
+                //   `mOrganizer.getStageTaskListener(triggerTask.parentTaskId)` 解析 stage 的
+                //   （反编译确认）；不带 launch root 时 parentTaskId=-1、windowingMode=1
+                //   → 日志出现 "mode : 1, stage : null" → 系统不做 DOCK_EXIT_SOSC_TO_THREE。
+                val tok = dockStageToken()
+                if (tok != null) {
+                    runCatching {
+                        val optsCls = Class.forName("android.app.ActivityOptions")
+                        val opts = optsCls.getMethod("makeBasic").invoke(null)
+                        val tokCls = Class.forName("android.window.WindowContainerToken")
+                        optsCls.getMethod("setLaunchRootTask", tokCls).invoke(opts, tok)
+                        val b = optsCls.getMethod("toBundle").invoke(opts) as android.os.Bundle
+                        ctx.startActivity(it0, b)
+                        Logx.always("加分屏(dock): 已启动 $pkg（launchRootTask=dock stage），等待 DOCK_EXIT_SOSC_TO_THREE")
+                    }.onFailure {
+                        Logx.e("加分屏(dock): setLaunchRootTask 失败，退回普通启动", it)
+                        ctx.startActivity(it0)
+                    }
+                } else {
+                    Logx.e("加分屏(dock): 取不到 dock stage token，退回普通启动（系统多半不会 exit dock）")
+                    ctx.startActivity(it0)
+                }
             }.onFailure { Logx.e("加分屏(dock): 启动 $pkg 失败", it) }
         }, 1200)
     }
@@ -857,10 +911,18 @@ object Gestures {
             val l = repo.javaClass.getMethod("getVisibleSplitChildTaskInfo").invoke(repo) as? List<*>
             l?.firstOrNull { it != null }?.let { return unwrap(it) }
         }
+        // 回退：SoSc 左右 **stage** 里的任务（注意不能用 getSplitRootTaskInfo —— 那是 SoSc 根任务，
+        // 真机拿到的是 pkg=null isRunning=false 的空壳，喂给 dockMultipleSplitTasks 只会返回 null）
         runCatching {
             val soc = socUtils() ?: return@runCatching
-            val t = soc.javaClass.getMethod("getSplitRootTaskInfo").invoke(soc)
-            if (t != null) return unwrap(t)
+            for (m in listOf("getLeftTopStage", "getRightBottomStage")) {
+                val st = runCatching { soc.javaClass.getMethod(m).invoke(soc) }.getOrNull() ?: continue
+                val rti = runCatching { st.javaClass.getMethod("getRunningTaskInfo").invoke(st) }.getOrNull()
+                if (rti != null) {
+                    val pkg = runCatching { pkgOf(unwrap(rti)) }.getOrNull()
+                    if (!pkg.isNullOrEmpty()) return unwrap(rti)
+                }
+            }
         }
         return topTask()
     }
@@ -1119,7 +1181,18 @@ object Gestures {
             val ids = l?.mapNotNull { it?.let { t -> taskIdOf(unwrap(t)).takeIf { id -> id > 0 } } } ?: emptyList()
             if (ids.isNotEmpty()) return ids
         }
-        // 兜底：多分屏的活跃 stage 列表
+        // 兜底 1：SoSc 左右 stage 里的任务
+        runCatching {
+            val soc = socUtils() ?: return@runCatching
+            val ids = ArrayList<Int>()
+            for (m in listOf("getLeftTopStage", "getRightBottomStage")) {
+                val st = runCatching { soc.javaClass.getMethod(m).invoke(soc) }.getOrNull() ?: continue
+                val rti = runCatching { st.javaClass.getMethod("getRunningTaskInfo").invoke(st) }.getOrNull() ?: continue
+                taskIdOf(unwrap(rti)).takeIf { it > 0 }?.let { ids.add(it) }
+            }
+            if (ids.isNotEmpty()) return ids
+        }
+        // 兜底 2：多分屏的活跃 stage 列表
         runCatching {
             val ctl = cls(Constants.CLS_MULTITASKING_CTL).getMethod("getInstance").invoke(null) ?: return emptyList()
             val sc = ctl.javaClass.getMethod("getMultipleSplitController").invoke(ctl) ?: return emptyList()

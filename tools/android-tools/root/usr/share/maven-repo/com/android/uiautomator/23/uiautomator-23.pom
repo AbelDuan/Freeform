@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<groupId>com.android</groupId>
+	<artifactId>uiautomator</artifactId>
+	<version>23</version>
+	<packaging>jar</packaging><properties>
+		
+			<debian.com.android.android.originalVersion>23</debian.com.android.android.originalVersion>
+		
+			<debian.originalVersion>23</debian.originalVersion>
+		
+			<debian.package>libandroid-uiautomator-23-java</debian.package>
+	</properties>
+	
+	<dependencies>
+		<dependency>
+			<groupId>com.android</groupId>
+			<artifactId>android</artifactId>
+			<version>debian</version>
+			<scope>compile</scope>
+		</dependency>
+	</dependencies>
+</project>
