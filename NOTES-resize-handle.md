@@ -736,3 +736,24 @@ SystemUI PID 15547 全程未变（无崩溃）。
 | --- | --- | --- |
 | ① 角落斜滑 → 小窗 | ✅ 真机通过 | `角滑命中 … 开关=true` → `mode=freeform`（dumpsys） |
 | ② 四指上滑 → 加分屏 | ✅ 真机通过 | `四指上滑命中(MOVE)` → `openWindowFromFullscreen` → main/side 双 stage（dumpsys） |
+
+---
+
+## 交付状态（2026-09-21 定稿）
+
+**两个功能全部真机验证通过**：
+| 功能 | 取证 |
+| --- | --- |
+| ① 左右下角斜滑 → 前台应用转小窗 | `角滑命中 … 开关=true` → `dumpsys` 该任务 `mode=freeform` |
+| ② 四指上滑 → 加进分屏 | `四指上滑命中(MOVE)` → `openWindowFromFullscreen` → `dumpsys` rootTaskId 下 main/side 双 stage 均 `mode=multi-window` |
+
+**代码与文档**：15 个提交，`README.md`（1.4 节）与本文档（19 节）均已定稿，工作区干净。
+
+**推送 GitHub**：remote 已配好（`https://github.com/AbelDuan/Freeform.git`），本地分支已改名 `main`，
+差**鉴权**（容器内无 SSH key / token）。两种交付方式：
+1. 提供 token 后由 agent 直接 `git push origin main`；
+2. 用 `dist/OS4FreeFromX-gestures.bundle` 在电脑上推：
+   `git clone OS4FreeFromX-gestures.bundle Freeform && cd Freeform && git remote set-url origin <repo> && git push origin main`
+
+**遗留调试入口**（默认关闭，`test_hook=false`）：`watchTestHook()` + `PickActivity --es test`
+可在 adb 里单独驱动"加分屏 / 配对分屏"，用于以后回归测试；确认不需要可删。
