@@ -95,11 +95,12 @@ object Gestures {
         uiLoader = cl
         refreshDisplay()
         // ① 全局输入：挂 MIUI 的 EventReceiver，拿到所有 MotionEvent
-        m.hookMethod(cl, CLS_EVENT_RECEIVER, "onInputEvent",
+        val hooked = m.hookMethod(cl, CLS_EVENT_RECEIVER, "onInputEvent",
             arrayOf(android.view.InputEvent::class.java),
             XposedInterface.Hooker { chain ->
                 var consumed = false
                 try {
+                    Logx.once("ev-first", "钩子已收到事件（onInputEvent 生效）")
                     val ev = chain.getArg(0) as? MotionEvent
                     if (ev != null && Cfg.gestures) consumed = onMotion(ev)
                 } catch (t: Throwable) {
@@ -111,7 +112,10 @@ object Gestures {
 
         // ② 注册 EventHandler + 确保 receiver 存在（全屏场景下 MIUI 可能还没建 receiver）
         main.post { ensureReceiver() }
-        Logx.always("installGestures: 全局输入已挂钩（gestures=${Cfg.gestures} 屏=${screenW}x${screenH} 密度=$density）")
+        Logx.always(
+            "installGestures: onInputEvent 挂载=$hooked（gestures=${Cfg.gestures} " +
+                "屏=${screenW}x${screenH} 密度=$density）"
+        )
     }
 
     /**
@@ -659,11 +663,21 @@ object Gestures {
      */
     private fun unwrap(o: Any): Any {
         runCatching {
-            o.javaClass.getMethod("getTaskInfo").invoke(o)?.let { if (it !== o) return it }
+            o.javaClass.getMethod("getTaskInfo").invoke(o)?.let { if (isRunningTaskInfo(it)) return it }
         }
-        declaredField(o, "mTaskInfo")?.let { if (it !== o) return it }
+        declaredField(o, "mTaskInfo")?.let { if (isRunningTaskInfo(it)) return it }
         return o
     }
+
+    /**
+     * 只在真的是 `ActivityManager$RunningTaskInfo` 时才认。
+     *
+     * 真机踩过：某些 `MultiTaskingTaskInfo` 的 `getTaskInfo()` 返回的是 **Integer**（不是任务对象），
+     * 不加判断就会把 Integer 当任务用，日志表现成
+     * `角滑: 前台任务没有包名 … class=java.lang.Integer`。
+     */
+    private fun isRunningTaskInfo(o: Any): Boolean =
+        o.javaClass.name == "android.app.ActivityManager\$RunningTaskInfo"
 
     /**
      * 取任务包名。`RunningTaskInfo` 的 `topActivity` / `baseActivity` 是**公开字段**

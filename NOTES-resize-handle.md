@@ -505,3 +505,34 @@ MIUI 那圈"背景/阴影"与窗口几何经常对不上（真机：「一边内
 —— 即"事件源活着、钩子没被调到"。前几轮同一份代码是能命中的（有 `手势: 角滑命中` 取证），
 怀疑与 `createEventReceiver` 的调用时机（主线程 post 与 receiver 创建竞争）有关，下一轮先加
 `hook 成功` 级日志确认钩子是否真的挂上，再决定是否改成"钩 DecorViewModel 的 createWindowDecoration"。
+
+### 9. 第 5-6 轮：钩子掉线的原因与最终状态（2026-09-21）
+
+**钩子掉线是假警报**：第 5 轮怀疑"事件源活着但 `onInputEvent` 钩子没被调到"，
+第 6 轮加了 `installGestures: onInputEvent 挂载=<bool>` + 钩子内 `Logx.once("ev-first", "钩子已收到事件")`
+两处取证后，一次就正常了：
+```
+installGestures: onInputEvent 挂载=true（gestures=true 屏=1672x2364 密度=2.75）
+钩子已收到事件（onInputEvent 生效）
+手势: 角滑命中 侧=左 行程=848px dx=600 dy=-600 用时=311ms
+角滑: 前台 pkg=top.funcun.dshfolk task=5653 mode=1
+角滑: 已请求以小窗启动 top.funcun.dshfolk（x=300 y=1500）
+```
+**功能① 再次真机确认**：`dumpsys` 里该任务 `mode=freeform`，SystemUI 无 FATAL、`pidof` 稳定。
+上一轮的"没反应"更可能是当时 SystemUI 刚被 `fix-lsposed-module.sh` 重启、我读的还是旧进程日志。
+
+**又修掉一个真 bug**：`unwrap()` 曾把 `getTaskInfo()` 返回的 **Integer** 当成任务对象返回，
+日志表现 `角滑: 前台任务没有包名 … class=java.lang.Integer`。
+现在只在 `o.javaClass.name == "android.app.ActivityManager$RunningTaskInfo"` 时才认。
+
+**四指识别在真实分屏下确认可达**：用户开好双分屏（小红书 `mode=multi-window`）后，
+用 MT 协议合成四指，hook 稳定报 `手势: 四指起手 pointers=4 @1374,953` ——
+**4 指同时按下确实能进到我们的钩子**，这条链不需要改架构。
+但合成手势的 MOVE/UP 传不完整（驱动把后续 SYN 拆成了多次 DOWN，`peak` 停在 4 就没了），
+所以"上滑完成 → 触发加分屏"这一段**只能由真手指触发**来验。
+
+**给下一次的抓手**：`/data/local/tmp/mt4c.sh`（慢速 5 步版合成四指上滑）保留在设备上；
+日志关键字按顺序应为
+`四指起手 pointers=4` → `手势: 四指上滑命中` → `四指上滑: SoSc=… 多分屏=… 组内=[…]` →
+`四指上滑: 候选池=N 其中支持分屏=M → 选中 <pkg>` → `四指上滑: 走系统分屏吸附 pkg=… task=…` →
+`enterSplitScreen -> …` → `finishEnterSplitScreen 已调用`。
