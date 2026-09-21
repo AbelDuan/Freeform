@@ -757,3 +757,30 @@ SystemUI PID 15547 全程未变（无崩溃）。
 
 **遗留调试入口**（默认关闭，`test_hook=false`）：`watchTestHook()` + `PickActivity --es test`
 可在 adb 里单独驱动"加分屏 / 配对分屏"，用于以后回归测试；确认不需要可删。
+
+### 20. ⚠️ 分屏场景闪退：已止血，接线方案待确认（2026-09-21）
+用户反馈：**双分屏状态下四指上滑 → 黑屏 / 卡顿 / 闪退**。
+（全屏场景正常：四指上滑起分屏已验证通过，见第 19 节。）
+
+**原因**：代码里"已在分屏"那一支走的是
+`transferSoScToMultipleSplit(...)` + `MultipleSplitController#insertMultipleSplitByTask(wct, taskId, index)`。
+但 **SoSc 双分屏是"一对 stage"的结构，多分屏是"多个 stage"的结构**，两者之间需要一个**专用转场**
+才能衔接 —— 直接往 SoSc 的 root 里插 stage 会与 SoSc 状态机（`SoScStageCoordinator` /
+`DividerSnapAlgorithm` / `SoScUtils` 的 state）冲突，表现为黑屏卡顿甚至 SystemUI 重启。
+`transferSoScToMultipleSplit(List, List)` 的两个入参语义（是"任务 id 列表"还是"stage 索引/类型"）
+**没有在真机上确认过**，之前是照签名猜的。
+
+**已做的止血（本轮已部署）**：分屏场景**只识别不动作**，命中后打日志立即返回：
+```
+四指上滑: 当前已在分屏（SoSc=… 多分屏=…），动作暂时短路（避免 SoSc/多分屏状态机冲突导致闪退）
+```
+这样全屏起分屏（已验证可用）保留，分屏内不再有任何动作、不会再闪退。
+
+**下一步接线方案（按风险从低到高）**：
+1. **先取证**：抓一次真实"双分屏里拖第三个应用进左上角"的完整 logcat，
+   看系统到底调了哪个方法、传了什么（重点看 `MultipleSplitTransitionHandler: setEnterTransition`、
+   `MultipleSplitController#transferSoScToMultipleSplit` 的真实入参、以及
+   `SoScUtils#prepareEnterTopBottomSplitFromMultiWindow` 这类"衔接"方法）；
+2. **照抄真实参数**再调用，而不是按签名猜；
+3. 若转场确实必须由拖拽会话发起，则退回"只在全屏场景加分屏"（已验证可用），
+   分屏内加窗交给系统原生手势。

@@ -424,7 +424,14 @@ object Gestures {
                 val id = taskIdOf(info)
                 id > 0 && !group.contains(id) && modeOf(info) != MODE_FREEFORM
             }
-            val cand = pool.filter { supportSplit(it) }.firstOrNull() ?: pool.firstOrNull()
+            // 候选优先级：① 系统认定支持分屏 ② 排除系统应用/桌面 ③ 取 Z 序最上（列表尾部）的那个
+            // 用户反馈：设置这类系统应用不支持分屏，测试要用三方应用（小红书/酷安等）
+            val sysPkgs = setOf("com.android.systemui", "com.miui.home", "android", "com.android.settings",
+                "com.android.settings.root", "com.miui.securitycenter", "com.android.permissioncontroller")
+            fun rank(info: Any) = supportSplit(info) && (pkgOf(info) ?: "") !in sysPkgs
+            val ranked = pool.filter { rank(it) }.ifEmpty { pool.filter { supportSplit(it) } }
+            val cand = ranked.lastOrNull() ?: pool.lastOrNull()
+            Logx.always("四指上滑: 候选池=${pool.size} 合格=${ranked.size}")
             if (cand == null) {
                 Logx.always("四指上滑: 没有可加入分屏的候选任务")
                 return@runCatching
@@ -432,17 +439,19 @@ object Gestures {
             val pkg = pkgOf(cand) ?: "?"
             Logx.always("四指上滑: 选中 pkg=$pkg task=${taskIdOf(cand)}（候选池 ${pool.size}）")
 
-            // 分支①：**已经在分屏**（双分屏 SoSc 或多分屏）→ 往组里插一个 stage。
-            // 这是本项目唯一在真机上跑通过 `applyTransaction` 的路径（见 NOTES 第 10 节），
-            // 优先级最高；openWindowFromFullscreen 那条需要真实拖拽会话，先不依赖它。
             if (splitActive() || soScActive()) {
-                if (!splitActive() && soScActive()) {
-                    // 双分屏（SoSc）→ 先转成多分屏，再插第三个（launcher 拖第三个应用走的就是这个顺序）
-                    transferSoScToMulti(group)
-                }
-                insertPane(cand, group.size)
+                Logx.always(
+                    "四指上滑: 当前已在分屏（SoSc=${soScActive()} 多分屏=${splitActive()}），" +
+                        "动作暂时短路（避免 SoSc/多分屏状态机冲突导致闪退）"
+                )
                 return@runCatching
             }
+            // ⚠️ 分屏场景暂时**只识别不动作**：
+            // 真机反馈（2026-09-21）——双分屏状态下四指上滑会黑屏/卡顿/闪退。
+            // 原因：在 SoSc 双分屏上直接 `insertMultipleSplitByTask` 插 stage，与 SoSc 状态机冲突
+            // （SoSc 是"一对 stage"，多分屏是"多个 stage"，两者需要一个**专用转场**才能衔接，
+            //   `transferSoScToMultipleSplit` 的入参语义还没在真机上确认过）。
+            // 因此这一支先短路，保证不再闪退；接线方案见 NOTES 第 20 节。
             // 分支②：全屏单任务 → 走系统官方入口起一个分屏
             dragToSplit(taskIdOf(cand), pkg)
         }.onFailure { Logx.e("四指上滑处理失败", it) }
