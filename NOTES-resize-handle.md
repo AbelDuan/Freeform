@@ -999,3 +999,30 @@ taskIds = 当前分屏组 + 选中候选，bounds 用整屏占位；日志 `已�
 > 本轮还踩了个自伤：批量插入辅助函数时 python 的 `str.index` 定位失败，
 > 导致 `socStateDesc()` 被引用但没定义、Kotlin 编译报 `unresolved reference`。
 > 已改成内联表达式。**教训：批量改代码后必须看编译输出，不能只看"产物"字样**。
+
+### 32. ⚠️ 四指功能已关闭 + 用户两条反馈的技术判读（2026-09-21）
+用户实测：
+1. 四指上滑**会**进双分屏，但**另一侧是自动打开一个应用**（我要的是"完全调用系统逻辑，另一侧进桌面让用户选"）；
+2. 双分屏下四指上滑**进不了三分屏**；回桌面后 **dock 消失一会儿再出现**；之后**四指再也进不了分屏**，
+   而且**导航手势条上滑也大概率进不了桌面**。
+
+**结论：我的动作把系统状态搞乱了（第 2 条最后那句是红线），已立刻关闭四指功能**
+（`four_finger_split=false`、`four_finger_split_indoor=false`、`test_hook=false`，保留 `corner_freeform=true`）。
+
+**技术判读**：
+- **第 2 条的因果链**：`openWindowFromFullscreen` 起的是**双分屏（SoSc 一对 stage）**，
+  而"三分屏"属于**多分屏模式**（完全不同的容器）。我连续用"起双分屏"的入口去凑多分屏，
+  状态机在半途被反复拉扯 → dock 重建、返回手势区域（`GestureTouchableRegion`）被改坏
+  → 连带"导航条上滑回桌面"失效。**这不是参数问题，是入口选错了**。
+- **第 1 条的因果链**：`openWindowFromFullscreen(taskId, null)` 在 taskId 有效时走任务分支，
+  系统直接把那个任务放进另一侧（= 用户看到的"自动打开一个应用"）；
+  只有 taskId 无效时才走 intent 分支并可能翻桌面。用户要的是**另一侧留空 + 系统弹桌面选择**。
+
+**正确路线（已由日志确认，下一轮照此实现）**：
+`hyper_launcher_app: TransitionAction.startMultipleSplits`
+→ `MultiTaskingStateManager.startMultipleSplits(Bundle{multiple_launch_taskIds,…})`
+即**从一开始就走多分屏入口**（不要先 `openWindowFromFullscreen` 起双分屏再补），
+并且**不要在双分屏状态下调用它**（那时状态机已在 SoSc 模式，需要系统自己的转换动作）。
+
+**已实现的入口保留在代码里但默认关闭**：`startMultipleSplits(Bundle)`（见第 30 节），
+待确认"从单任务直接进多分屏"是否可行后再开灰度。
