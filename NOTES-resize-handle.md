@@ -536,3 +536,36 @@ installGestures: onInputEvent 挂载=true（gestures=true 屏=1672x2364 密度=2
 `四指起手 pointers=4` → `手势: 四指上滑命中` → `四指上滑: SoSc=… 多分屏=… 组内=[…]` →
 `四指上滑: 候选池=N 其中支持分屏=M → 选中 <pkg>` → `四指上滑: 走系统分屏吸附 pkg=… task=…` →
 `enterSplitScreen -> …` → `finishEnterSplitScreen 已调用`。
+
+### 10. 四指加分屏接上官方分发点 + 线程断言修法（2026-09-21）
+
+用户澄清了系统原生的进分屏路径：**上滑当前任务到左上角 → 双分屏；双分屏里从底部中间上滑 → 多分屏；
+多分屏再上滑 → 继续加**。据此找到官方分发点（`com.android.wm.shell.multitasking.miuimultiwinswitch.miuidraganddrop.MiuiDragAndDropPolicy`）：
+
+| 场景 | 系统方法 | 备注 |
+| --- | --- | --- |
+| 全屏 → 双分屏 | `MulWinSwitchTransition#startIconDragSplitScreen(PendingIntent, hotAreaType, reason)` | hotAreaType 用 `HOT_AREA_TYPE_SPLIT_LEFT_OR_TOP=1` |
+| 多分屏加一个 | `MultipleSplitController#insertMultipleSplitByTask(wct, taskId, index)` | 已跑通到 `applyTransaction` |
+| 多分屏再加（inset 版） | `MultipleSplitTransitionHandler#startIconInsetMultipleSplit(wct)` | 备选 |
+| 角落热区判定 | `MultiTaskingHotAreaController#getHotAreaTypeForDrag` / `getHotAreaAtPosition` | 常量表见该类字段（SPLIT_LEFT_OR_TOP=1 / MULTIPLE_SPLIT_ADD=0x13 等） |
+
+**关键修法（可复用）**：`startIconDragSplitScreen` 内部会调 `startTransition`，而它对线程有断言 ——
+真机报 `java.lang.IllegalStateException: must be called on Handler (android.os.Handler) {7a5cc4f}`。
+这正是 NOTES 开头「未解决 / 待办」里那条老问题的同一个断言。**解法：把整段调用投到
+`Transitions#getMainExecutor()` 上执行**（`MulWinSwitchTransition.mTransitions` 字段拿 Transitions）。
+投递后调用成功、不再抛异常：
+```
+加分屏: 当前无分屏 → 走 startIconDragSplitScreen 起双分屏
+进分屏: 已投递到 Transitions.mainExecutor
+四指上滑: 已请求系统分屏吸附（startIconDragSplitScreen pkg=org.lsposed.manager hotArea=1）
+```
+**尚未成功落地分屏**：这次调用后没有出现分屏（回到了桌面）。原因分析：`startIconDragSplitScreen`
+的 `PendingIntent` 在 MIUI 那边来自**真实拖拽会话**（`MiuiDragAndDropPolicy.mLaunchIntent`），
+我们用 `getLaunchIntentForPackage` 现造的 PendingIntent 缺会话上下文，转场被消费后只把桌面翻上来。
+下一步应当：① 抓一次真实"上滑到左上角"的日志，看 `MiuiDragAndDropPolicy` 在 drop 时
+`mLaunchIntent` / `mCaller` / hotArea 各自是什么，按真实参数复刻；或
+② 改挂 `MiuiDragAndDropPolicy` 的 drop 处理，在它拿到真实会话参数后由我们重用（而不是自己起会话）。
+
+**给下一次的调试入口（已进包）**：`watchTestHook()` 每 1.5s 轮询 `pending_test_addsplit`，配合
+`am start -n com.abel.os4freeformx/.PickActivity --es test "<pkg>|<taskId>"`
+就能在 adb 里单独驱动"加分屏"这一段，不必真手指做四指手势。

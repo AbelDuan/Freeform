@@ -112,6 +112,7 @@ object Gestures {
 
         // ② 注册 EventHandler + 确保 receiver 存在（全屏场景下 MIUI 可能还没建 receiver）
         main.post { ensureReceiver() }
+        watchTestHook()
         Logx.always(
             "installGestures: onInputEvent 挂载=$hooked（gestures=${Cfg.gestures} " +
                 "屏=${screenW}x${screenH} 密度=$density）"
@@ -367,56 +368,105 @@ object Gestures {
             Logx.always(
                 "四指上滑: SoSc=${soScActive()} 多分屏=${splitActive()} 组内=$group shell已知=${all.size}"
             )
-            // 候选：不在分屏组、不是自由小窗，且**系统认为它支持分屏**
-            // （`MultiTaskingCommonUtils.supportSplit(RunningTaskInfo)` —— 设置这类系统应用会被它挡掉，
-            //   用户实测：设置不支持分屏，要挑小红书/酷安这类三方应用）
             val pool = all.filter { info ->
                 val id = taskIdOf(info)
                 id > 0 && !group.contains(id) && modeOf(info) != MODE_FREEFORM
             }
-            val splittable = pool.filter { supportSplit(it) }
-            val cand = splittable.firstOrNull() ?: pool.firstOrNull()
-            Logx.always(
-                "四指上滑: 候选池=${pool.size} 其中支持分屏=${splittable.size} → " +
-                    "选中 ${cand?.let { pkgOf(it) } ?: "无"}"
-            )
-            if (cand != null && splittable.isEmpty()) {
-                Logx.always("四指上滑: 没有系统认定支持分屏的候选，退而用第一个（可能被系统拒绝）")
-            }
+            val cand = pool.filter { supportSplit(it) }.firstOrNull() ?: pool.firstOrNull()
             if (cand == null) {
                 Logx.always("四指上滑: 没有可加入分屏的候选任务")
                 return@runCatching
             }
             val pkg = pkgOf(cand) ?: "?"
-            val id = taskIdOf(cand)
-            val soc = socUtils() ?: run {
-                Logx.e("四指上滑: 取不到 SoScUtils")
+            Logx.always("四指上滑: 选中 pkg=$pkg task=${taskIdOf(cand)}（候选池 ${pool.size}）")
+
+            // 分支①：已经在多分屏（3~6 应用）→ 直接往组里插一个 stage
+            if (splitActive()) {
+                insertPane(cand, group.size)
                 return@runCatching
             }
-            val wctCls = Class.forName("android.window.WindowContainerTransaction", false, uiLoader)
-            val wct = wctCls.getDeclaredConstructor().newInstance()
-            val rtiCls = Class.forName("android.app.ActivityManager\$RunningTaskInfo")
-            Logx.always("四指上滑: 走系统分屏吸附 pkg=$pkg task=$id（组内 ${group.size} 个）")
-            val ok = runCatching {
-                (soc.javaClass.getMethod("enterSplitScreen", rtiCls, wctCls, java.lang.Boolean.TYPE)
-                    .invoke(soc, cand, wct, java.lang.Boolean.TRUE) as? Boolean) ?: false
-            }.getOrElse {
-                Logx.e("enterSplitScreen 调用失败", it)
-                false
-            }
-            Logx.always("四指上滑: enterSplitScreen -> $ok")
-            // 收尾：enterSplitScreen 之后必须给 SoSc 一个 Transaction 才真正落地
-            runCatching {
-                val txCls = Class.forName("android.view.SurfaceControl\$Transaction")
-                val tx = txCls.getDeclaredConstructor().newInstance()
-                soc.javaClass.getMethod("finishEnterSplitScreen", txCls).invoke(soc, tx)
-                Logx.always("四指上滑: finishEnterSplitScreen 已调用")
-            }.onFailure {
-                Logx.e("finishEnterSplitScreen 失败，退回提交 WCT", it)
-                applyWct(wct, wctCls)
-            }
+            // 分支②：全屏/桌面 → 走系统"甩到左上角"的官方分发（MiuiDragAndDropPolicy 用的就是这个）
+            dragToSplit(pkg)
         }.onFailure { Logx.e("四指上滑处理失败", it) }
     }
+
+    /**
+     * 全屏 → 双分屏：复刻 MIUI 拖拽落点分发
+     * `MulWinSwitchTransition#startIconDragSplitScreen(PendingIntent, hotAreaType, reason)`。
+     *
+     * hotAreaType 用 `HOT_AREA_TYPE_SPLIT_LEFT_OR_TOP = 1`（就是"甩到左上角"那个热区），
+     * reason 传 0；PendingIntent 由包的启动 Intent 现造（MIUI 那边也是从拖拽会话里拿 `mLaunchIntent`）。
+     */
+    private fun dragToSplit(pkg: String) {
+        // `MulWinSwitchTransition#startIconDragSplitScreen` 内部会调 `startTransition`，
+        // 后者有线程断言（真机：`IllegalStateException: must be called on Handler {…}`），
+        // 所以整段必须投到 MIUI 自己的 executor 上执行。
+        val body = Runnable { dragToSplitInternal(pkg) }
+        val posted = runCatching {
+            val ctl = cls(Constants.CLS_MULTITASKING_CTL).getMethod("getInstance").invoke(null) ?: return@runCatching false
+            val trans = ctl.javaClass.getMethod("getMulWinSwitchTransition").invoke(ctl) ?: return@runCatching false
+            val tr = declaredField(trans, "mTransitions")
+                ?: declaredField(ctl, "mTransitions")
+                ?: return@runCatching false
+            val exec = tr.javaClass.getMethod("getMainExecutor").invoke(tr) as? java.util.concurrent.Executor
+                ?: return@runCatching false
+            exec.execute(body)
+            Logx.always("进分屏: 已投递到 Transitions.mainExecutor")
+            true
+        }.getOrDefault(false)
+        if (!posted) {
+            Logx.always("进分屏: 取不到 Transitions.mainExecutor，改在主线程执行")
+            main.post(body)
+        }
+    }
+
+    private fun dragToSplitInternal(pkg: String) {
+        runCatching {
+            val ctx = AppCtx.get() ?: return@runCatching
+            val launch = ctx.packageManager.getLaunchIntentForPackage(pkg) ?: run {
+                Logx.e("进分屏: 取不到 $pkg 的启动 Intent")
+                return@runCatching
+            }
+            launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            val pi = android.app.PendingIntent.getActivity(
+                ctx, 0, launch,
+                android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
+            )
+            val ctl = cls(Constants.CLS_MULTITASKING_CTL).getMethod("getInstance").invoke(null) ?: return@runCatching
+            val trans = ctl.javaClass.getMethod("getMulWinSwitchTransition").invoke(ctl) ?: return@runCatching
+            val piCls = android.app.PendingIntent::class.java
+            trans.javaClass.getMethod(
+                "startIconDragSplitScreen", piCls, Integer.TYPE, Integer.TYPE
+            ).invoke(trans, pi, Integer.valueOf(HOT_AREA_SPLIT_LEFT_OR_TOP), Integer.valueOf(0))
+            Logx.always("四指上滑: 已请求系统分屏吸附（startIconDragSplitScreen pkg=$pkg hotArea=$HOT_AREA_SPLIT_LEFT_OR_TOP）")
+        }.onFailure { e ->
+            val root = (e as? java.lang.reflect.InvocationTargetException)?.targetException ?: e
+            Logx.e("进分屏失败: ${root.javaClass.name}: ${root.message}", root)
+        }
+    }
+
+    /** 多分屏里再加一个 stage：`MultipleSplitController#insertMultipleSplitByTask(wct, taskId, index)`。 */
+    private fun insertPane(task: Any, index: Int) {
+        runCatching {
+            val ctl = cls(Constants.CLS_MULTITASKING_CTL).getMethod("getInstance").invoke(null) ?: return@runCatching
+            val sc = ctl.javaClass.getMethod("getMultipleSplitController").invoke(ctl) ?: return@runCatching
+            val wctCls = Class.forName("android.window.WindowContainerTransaction", false, uiLoader)
+            val wct = wctCls.getDeclaredConstructor().newInstance()
+            val id = taskIdOf(task)
+            sc.javaClass.getMethod("insertMultipleSplitByTask", wctCls, Integer.TYPE, Integer.TYPE)
+                .invoke(sc, wct, Integer.valueOf(id), Integer.valueOf(index))
+            val org = orgOf(ctl) ?: orgOf(sc)
+            if (org != null) {
+                org.javaClass.getMethod("applyTransaction", wctCls).invoke(org, wct)
+                Logx.always("四指上滑: 多分屏插桩已提交（task=$id index=$index）")
+            } else {
+                Logx.e("四指上滑: 找不到 ShellTaskOrganizer，WCT 未提交")
+            }
+        }.onFailure { Logx.e("多分屏插桩失败", it) }
+    }
+
+    /** `MultiTaskingHotAreaController.HOT_AREA_TYPE_SPLIT_LEFT_OR_TOP` —— "甩到左上角"。 */
+    private const val HOT_AREA_SPLIT_LEFT_OR_TOP = 1
 
     /** `MultiTaskingCommonUtils.supportSplit(RunningTaskInfo)` —— 系统自己的"这个应用能不能分屏"判断。 */
     private fun supportSplit(info: Any): Boolean = runCatching {
@@ -424,6 +474,44 @@ object Gestures {
         (c.getMethod("supportSplit", Class.forName("android.app.ActivityManager\$RunningTaskInfo"))
             .invoke(null, info) as? Boolean) ?: false
     }.getOrDefault(false)
+
+    /**
+     * 测试入口：轮询 `StoreProvider` 的 `pending_test_addsplit`。
+     *
+     * 用途：adb 造不出四指触控，但"加分屏"那一段可以单独驱动 ——
+     * `adb shell su -c "am start -a com.abel.os4freeformx.SETTEST --es pkg <pkg> --es id <id>"` 之类写进配置后，
+     * 这里取走并直接执行 [addToSplit]，用来验证 SoScUtils 那条系统路径本身通不通。
+     */
+    private fun watchTestHook() {
+        Thread {
+            while (true) {
+                runCatching {
+                    val ctx = AppCtx.get()
+                    if (ctx != null) {
+                        val b = ctx.contentResolver.call(
+                            android.net.Uri.parse("content://${Constants.AUTHORITY}"), "getCfg", null, null
+                        )
+                        val v = b?.getString(Constants.K_TEST_ADDSPLIT)
+                        if (!v.isNullOrEmpty()) {
+                            Logx.always("测试入口: 收到 addSplit 请求「$v」")
+                            main.post { addToSplit(v) }
+                            runCatching {
+                                ctx.contentResolver.call(
+                                    android.net.Uri.parse("content://${Constants.AUTHORITY}"),
+                                    "clearCfgKey", Constants.K_TEST_ADDSPLIT, null
+                                )
+                            }
+                        }
+                    }
+                }
+                try {
+                    Thread.sleep(1500)
+                } catch (ie: InterruptedException) {
+                    return@Thread
+                }
+            }
+        }.apply { isDaemon = true }.start()
+    }
 
     /** 提交 WCT（ShellTaskOrganizer.applyTransaction）。 */
     private fun applyWct(wct: Any, wctCls: Class<*>) {
@@ -521,6 +609,12 @@ object Gestures {
             val sc = ctl.javaClass.getMethod("getMultipleSplitController").invoke(ctl) ?: return@runCatching
             val group = splitTaskIds()
             Logx.always("加分屏: pkg=$pkg taskId=$taskId 组内=$group 多分屏=${splitActive()} SoSc=${soScActive()}")
+            if (!splitActive() && !soScActive()) {
+                // 没有分屏在跑 → 走"甩到左上角"那条官方分发，从全屏起一个分屏
+                Logx.always("加分屏: 当前无分屏 → 走 startIconDragSplitScreen 起双分屏")
+                dragToSplit(pkg)
+                return@runCatching
+            }
 
             if (!splitActive() && soScActive()) {
                 runCatching {

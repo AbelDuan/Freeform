@@ -25,6 +25,8 @@ object Constants {
     const val K_FOUR_FINGER_SPLIT = "four_finger_split" // 四指上滑 → 增加分屏
     /** 选择器回传：`<一次性 token>|<选中的包名>` */
     const val K_PICK = "pending_pick"
+    /** 测试入口：`<pkg>|<taskId>` —— 写进 CFG 后由 SystemUI 侧轮询取走并直接执行"加分屏" */
+    const val K_TEST_ADDSPLIT = "pending_test_addsplit"
 
     const val DEF_ENABLE_LOG = false
     const val DEF_IMMERSIVE = true

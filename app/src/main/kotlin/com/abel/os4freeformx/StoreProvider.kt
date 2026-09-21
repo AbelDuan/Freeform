@@ -35,6 +35,7 @@ class StoreProvider : ContentProvider() {
                 putBoolean(Constants.K_CORNER_FREEFORM, c?.getBoolean(Constants.K_CORNER_FREEFORM, Constants.DEF_CORNER_FREEFORM) ?: Constants.DEF_CORNER_FREEFORM)
                 putBoolean(Constants.K_FOUR_FINGER_SPLIT, c?.getBoolean(Constants.K_FOUR_FINGER_SPLIT, Constants.DEF_FOUR_FINGER_SPLIT) ?: Constants.DEF_FOUR_FINGER_SPLIT)
                 c?.getString(Constants.K_PICK, null)?.let { putString(Constants.K_PICK, it) }
+                c?.getString(Constants.K_TEST_ADDSPLIT, null)?.let { putString(Constants.K_TEST_ADDSPLIT, it) }
             }
             "put" -> {
                 val k = extras?.getString("k")
@@ -44,6 +45,18 @@ class StoreProvider : ContentProvider() {
             }
             "remove" -> {
                 arg?.let { p.edit().remove(it).apply() }
+                Bundle()
+            }
+            // 配置键（PREFS_CFG）是 CE+DE 双写的，remove 只清 BOUNDS 清不掉它
+            "clearCfgKey" -> {
+                val k = extras?.getString("k") ?: arg
+                if (k != null) {
+                    context?.getSharedPreferences(Constants.PREFS_CFG, Context.MODE_PRIVATE)?.edit()?.remove(k)?.apply()
+                    runCatching {
+                        context?.createDeviceProtectedStorageContext()
+                            ?.getSharedPreferences(Constants.PREFS_CFG, Context.MODE_PRIVATE)?.edit()?.remove(k)?.apply()
+                    }
+                }
                 Bundle()
             }
             "clear" -> {

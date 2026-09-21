@@ -21,6 +21,13 @@ class PickActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // 测试入口：am start -n com.abel.os4freeformx/.PickActivity --es test "pkg|taskId"
+        // 直接把"加分屏"请求交给 SystemUI 侧执行（adb 造不出四指触控时用它验证系统路径）
+        intent.getStringExtra("test")?.let { sel ->
+            AppPrefs.putString(this, Constants.K_TEST_ADDSPLIT, sel)
+            finish()
+            return
+        }
         val pkgs = intent.getStringArrayListExtra(EXTRA_PKGS) ?: arrayListOf()
         val token = intent.getStringExtra(EXTRA_TOKEN).orEmpty()
 
