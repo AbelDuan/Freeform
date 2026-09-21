@@ -363,9 +363,21 @@ object Gestures {
             Logx.always(
                 "四指上滑: SoSc=${soScActive()} 多分屏=${splitActive()} 组内=$group shell已知=${all.size}"
             )
-            val cand = all.firstOrNull { info ->
+            // 候选：不在分屏组、不是自由小窗，且**系统认为它支持分屏**
+            // （`MultiTaskingCommonUtils.supportSplit(RunningTaskInfo)` —— 设置这类系统应用会被它挡掉，
+            //   用户实测：设置不支持分屏，要挑小红书/酷安这类三方应用）
+            val pool = all.filter { info ->
                 val id = taskIdOf(info)
                 id > 0 && !group.contains(id) && modeOf(info) != MODE_FREEFORM
+            }
+            val splittable = pool.filter { supportSplit(it) }
+            val cand = splittable.firstOrNull() ?: pool.firstOrNull()
+            Logx.always(
+                "四指上滑: 候选池=${pool.size} 其中支持分屏=${splittable.size} → " +
+                    "选中 ${cand?.let { pkgOf(it) } ?: "无"}"
+            )
+            if (cand != null && splittable.isEmpty()) {
+                Logx.always("四指上滑: 没有系统认定支持分屏的候选，退而用第一个（可能被系统拒绝）")
             }
             if (cand == null) {
                 Logx.always("四指上滑: 没有可加入分屏的候选任务")
@@ -401,6 +413,13 @@ object Gestures {
             }
         }.onFailure { Logx.e("四指上滑处理失败", it) }
     }
+
+    /** `MultiTaskingCommonUtils.supportSplit(RunningTaskInfo)` —— 系统自己的"这个应用能不能分屏"判断。 */
+    private fun supportSplit(info: Any): Boolean = runCatching {
+        val c = Class.forName("com.android.wm.shell.multitasking.common.MultiTaskingCommonUtils", false, uiLoader)
+        (c.getMethod("supportSplit", Class.forName("android.app.ActivityManager\$RunningTaskInfo"))
+            .invoke(null, info) as? Boolean) ?: false
+    }.getOrDefault(false)
 
     /** 提交 WCT（ShellTaskOrganizer.applyTransaction）。 */
     private fun applyWct(wct: Any, wctCls: Class<*>) {
@@ -540,8 +559,19 @@ object Gestures {
         null
     }.getOrNull()
 
-    /** 当前分屏组里的任务 id（多分屏优先，其次 SoSc 双分屏）。 */
+    /**
+     * 当前分屏组里的任务 id。
+     *
+     * ⚠️ 只在**分屏真的在进行中**才返回内容：`getAllStageTaskInfo()` 会返回**历史遗留的 stage**
+     * （真机实测：没有分屏时报 `SoSc=false 多分屏=false` 却给出 6 个 id，都是上次多分屏留下的），
+     * 直接拿来当"当前分组"会导致候选被全部误排除、`enterSplitScreen` 拿到错参数返回 false。
+     */
     private fun splitTaskIds(): List<Int> {
+        if (!splitActive() && !soScActive()) return emptyList()
+        return stageTaskIds()
+    }
+
+    private fun stageTaskIds(): List<Int> {
         runCatching {
             val ctl = cls(Constants.CLS_MULTITASKING_CTL).getMethod("getInstance").invoke(null) ?: return emptyList()
             val sc = ctl.javaClass.getMethod("getMultipleSplitController").invoke(ctl)

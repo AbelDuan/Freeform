@@ -468,3 +468,40 @@ MIUI 那圈"背景/阴影"与窗口几何经常对不上（真机：「一边内
 **待真机验证**：需要**真实分屏进行中**触发（四指上滑）。adb 造不出四指多点触控，也造不出分屏 UI 操作，
 只能由用户手动触发；日志关键字：`四指上滑: 走系统分屏吸附 pkg=… task=…` / `enterSplitScreen -> …` /
 `finishEnterSplitScreen 已调用`。
+
+### 8. 四指手势真机取证与两个新发现（2026-09-21）
+
+**（a）合成四指成功了，但方向极性要注意**：内屏触摸设备是 `/dev/input/event7`
+（`Xiaomi_Touch_Input_0`，`ABS_MT_SLOT` max 9 → 最多 10 指），用 MT 协议低层 `sendevent` 可以合成多指；
+脚本 `/data/local/tmp/mt4.sh <dev> <sx1> <sy1> <sx2> <sy2> [n]`。
+- 用 `300 1500 → 300 900` 时，hook 收到 `peak=4` —— **证明我们的输入源能看到 4 个同时按下的指针**，
+  四指识别这条链是通的；
+- 反过来 `300 900 → 300 1500` 时报告 `peak=1`、`dy=0`：**外屏那块的 Y 极性与直觉相反**，
+  且反向扫时驱动会把事件拆成多次单指 DOWN。以后合成手势先小步试方向。
+
+**（b）`splitTaskIds()` 曾把"历史 stage"当当前分屏组**：真机日志
+`四指上滑: SoSc=false 多分屏=false 组内=[6110,6111,6112,6113,6114,6115] shell已知=17`
+—— 没有任何分屏在跑，`getAllStageTaskInfo()` 却回了 6 个上次多分屏留下的 stage，
+导致候选被全部误排除、`enterSplitScreen` 拿到错参数返回 false。
+已加 `if (!splitActive() && !soScActive()) return emptyList()` 守卫。
+
+**（c）按用户提示加了"支持分屏"过滤**：候选现在过一遍
+`MultiTaskingCommonUtils.supportSplit(RunningTaskInfo)`（系统自己的判断），
+日志会打 `候选池=N 其中支持分屏=M → 选中 <pkg>`。用户实测：**设置不支持分屏**，
+要用小红书/酷安这类三方应用测。
+
+**（d）动作路径已跑通（无分屏状态下）**：
+```
+四指上滑: 走系统分屏吸附 pkg=top.funcun.dshfolk task=5653（组内 6 个）
+四指上滑: enterSplitScreen -> false
+四指上滑: finishEnterSplitScreen 已调用
+```
+三步都执行到位、没有异常/闪退；因为当时**没有分屏在进行中**，`enterSplitScreen` 返回 false 属预期。
+真正得分屏场景下的效果仍需用户在双分屏里用四指上滑确认。
+
+**（e）本次新问题（留给下一轮）**：第 5 轮重启 SystemUI 后，`MulWinSwitchEventController` 的
+`start handle ACTION_DOWN` 在 logcat 里正常刷（Pid 与当前 SystemUI 一致），
+但我们的 `installGestures` 只在**主线程**那条日志里出现过，`onInputEvent` 钩子没有产生任何手势日志
+—— 即"事件源活着、钩子没被调到"。前几轮同一份代码是能命中的（有 `手势: 角滑命中` 取证），
+怀疑与 `createEventReceiver` 的调用时机（主线程 post 与 receiver 创建竞争）有关，下一轮先加
+`hook 成功` 级日志确认钩子是否真的挂上，再决定是否改成"钩 DecorViewModel 的 createWindowDecoration"。
