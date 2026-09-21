@@ -29,6 +29,8 @@ object Constants {
     const val K_TEST_HOOK = "test_hook"
     /** 分屏内也用四指加分屏（灰度开关，默认关：SoSc 上加 stage 风险高） */
     const val K_FOUR_FINGER_INDOOR = "four_finger_split_indoor"
+    /** 四指上滑走**多分屏模式**入口（三分屏起）而不是双分屏 */
+    const val K_FOUR_FINGER_MULTI = "four_finger_multi"
     /** 测试入口：`<pkg>|<taskId>` —— 写进 CFG 后由 SystemUI 侧轮询取走并直接执行"加分屏" */
     const val K_TEST_ADDSPLIT = "pending_test_addsplit"
 
@@ -40,6 +42,7 @@ object Constants {
     const val DEF_GESTURES = true
     const val DEF_TEST_HOOK = false
     const val DEF_FOUR_FINGER_INDOOR = false
+    const val DEF_FOUR_FINGER_MULTI = false
     const val DEF_CORNER_FREEFORM = true
     const val DEF_FOUR_FINGER_SPLIT = true
 

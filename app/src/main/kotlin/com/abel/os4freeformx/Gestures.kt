@@ -423,62 +423,20 @@ object Gestures {
                 "四指上滑: SoSc=${soScActive()}(${runCatching { socUtils()?.javaClass?.getMethod("getSoScState")?.invoke(socUtils()) }.getOrNull()}) 多分屏=${splitActive()} " +
                     "组内=$group shell已知=${all.size} 前台=${topTask()?.let { "${pkgOf(it)}/${taskIdOf(it)}/mode=${modeOf(it)}" }}"
             )
-            val pool = all.filter { info ->
-                val id = taskIdOf(info)
-                val p = pkgOf(info)
-                // 必须：有 id、不在当前分屏组、不是自由小窗、**且能取到包名**
-                // （真机踩过：候选里混进 task=6686 pkg=? 这种没有 activity 的任务，
-                //  被选中后既加不进分屏、日志也看不出是谁）
-                id > 0 && !group.contains(id) && modeOf(info) != MODE_FREEFORM &&
-                    !p.isNullOrEmpty()
-            }
-            // 候选优先级：① 系统认定支持分屏 ② 排除系统应用/桌面 ③ 取 Z 序最上（列表尾部）的那个
-            // 用户反馈：设置这类系统应用不支持分屏，测试要用三方应用（小红书/酷安等）
-            val sysPkgs = setOf("com.android.systemui", "com.miui.home", "android", "com.android.settings",
-                "com.android.settings.root", "com.miui.securitycenter", "com.android.permissioncontroller")
-            fun rank(info: Any) = supportSplit(info) && (pkgOf(info) ?: "") !in sysPkgs
-            val ranked = pool.filter { rank(it) }.ifEmpty { pool.filter { supportSplit(it) } }
-            val cand = ranked.lastOrNull() ?: pool.lastOrNull()
-            Logx.always("四指上滑: 候选池=${pool.size} 合格=${ranked.size}")
-            if (cand == null) {
-                Logx.always("四指上滑: 没有可加入分屏的候选任务")
+            // 全屏 → 分屏：**只把"当前前台任务"交给系统**，不自己挑候选应用。
+            // 真机反馈：以前我从候选池挑一个塞进另一侧，系统就直接打开那个应用；
+            // 用户要的是"完全调用系统逻辑，另一侧进桌面/让用户自己选"。
+            val fg = topTask()
+            if (fg == null || taskIdOf(fg) <= 0) {
+                Logx.always("四指上滑: 取不到前台任务，放弃")
                 return@runCatching
             }
-            val pkg = pkgOf(cand) ?: "?"
-            Logx.always("四指上滑: 选中 pkg=$pkg task=${taskIdOf(cand)} mode=${modeOf(cand)}（候选池 ${pool.size}）")
-
-            if (splitActive() || soScActive()) {
-                // 分屏内加分屏：默认仍然**短路**（上一版在 SoSc 上直插 stage 导致黑屏/闪退）。
-                // 参数语义已按官方改正（stage 列表 + 索引），但仍需真机灰度验证，
-                // 所以用独立开关 four_finger_split_indoor 控制，默认关。
-                if (!Cfg.fourFingerIndoor) {
-                    Logx.always(
-                        "四指上滑: 已在分屏（SoSc=${soScActive()} 多分屏=${splitActive()}），短路" +
-                            "（分屏内动作需 four_finger_split_indoor=true 才开启）"
-                    )
-                    return@runCatching
-                }
-                // 双分屏 → 多分屏是一次**异步转场**：紧接着插 stage 往往在转场完成前执行，
-                // 结果就是"stage 建了但空的"（真机现象：另一侧黑屏）。
-                // 所以转分屏后延迟再插（450ms 足够官方转场落地）。
-                // ✅ **进入系统多分屏模式**（而不是在双分屏里塞窗口）。
-                // 抓到的原生链（用户操作日志）：
-                //   hyper_launcher_app: TransitionAction.startMultipleSplits
-                //     → MultiTaskingStateManager$IMultiTaskingStateManagerImpl.lambda$startMultipleSplits$9
-                //     → MultipleSplitRootTaskOrganizer#startMultipleSplits(Bundle)
-                // Bundle 键（反编译确认）：multiple_launch_taskIds / multiple_launch_bounds /
-                //                          multiple_launch_way / multiple_launch_enter_quick_view_mode
-                startMultipleSplits(group, cand)
-                return@runCatching
-            }
-            // ⚠️ 分屏场景暂时**只识别不动作**：
-            // 真机反馈（2026-09-21）——双分屏状态下四指上滑会黑屏/卡顿/闪退。
-            // 原因：在 SoSc 双分屏上直接 `insertMultipleSplitByTask` 插 stage，与 SoSc 状态机冲突
-            // （SoSc 是"一对 stage"，多分屏是"多个 stage"，两者需要一个**专用转场**才能衔接，
-            //   `transferSoScToMultipleSplit` 的入参语义还没在真机上确认过）。
-            // 因此这一支先短路，保证不再闪退；接线方案见 NOTES 第 20 节。
-            // 分支②：全屏单任务 → 走系统官方入口起一个分屏
-            dragToSplit(taskIdOf(cand), pkg)
+            val pkg = pkgOf(fg) ?: "?"
+            Logx.always("四指上滑: 全屏 → 交系统起分屏（前台 pkg=$pkg task=${taskIdOf(fg)} mode=${modeOf(fg)}）")
+            // 分支②：全屏单任务
+            // 单任务 → 双分屏（已验证：另一侧出桌面让用户选）。
+            // 渐进式：之后每滑一次由"分屏中"分支再加一层（双→三→四…）。
+            dragToSplit(taskIdOf(fg), pkg)
         }.onFailure { Logx.e("四指上滑处理失败", it) }
     }
 
@@ -538,13 +496,14 @@ object Gestures {
      * `multiple_launch_way`（字符串）、`multiple_launch_enter_quick_view_mode`（布尔）。
      * 由系统自己去铺 stage、并**给出空位让用户选应用** —— 这才是原生行为。
      */
-    private fun startMultipleSplits(group: List<Int>, cand: Any) {
+    private fun startMultipleSplits(group: List<Int>, cand: Any?) {
         runCatching {
-            val ids = ArrayList<Int>(group).apply { taskIdOf(cand).takeIf { it > 0 }?.let { add(it) } }
-            if (ids.size < 3) {
-                Logx.always("四指上滑: 当前只有 ${ids.size} 个任务，不足以进多分屏（需 ≥3）")
-                return@runCatching
-            }
+            val ids = ArrayList<Int>(group)
+            cand?.let { c -> taskIdOf(c).takeIf { it > 0 }?.let { ids.add(it) } }
+            // 单任务场景：只有 1 个 id —— 系统多分屏最少 3 个 stage。
+            // 做法：把同一个任务 id 补到 3 个（系统会为没有任务的 stage 留空位/让用户选），
+            // 这是唯一不需要用户先手动开三个应用的路径。
+            while (ids.size < 3) ids.add(ids[0])
             val bounds = ArrayList<android.graphics.Rect>()
             ids.forEach { _ -> bounds.add(android.graphics.Rect(0, 0, screenW, screenH)) }
             val b = android.os.Bundle().apply {

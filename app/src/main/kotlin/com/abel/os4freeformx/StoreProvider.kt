@@ -35,6 +35,7 @@ class StoreProvider : ContentProvider() {
                 putBoolean(Constants.K_CORNER_FREEFORM, c?.getBoolean(Constants.K_CORNER_FREEFORM, Constants.DEF_CORNER_FREEFORM) ?: Constants.DEF_CORNER_FREEFORM)
                 putBoolean(Constants.K_FOUR_FINGER_SPLIT, c?.getBoolean(Constants.K_FOUR_FINGER_SPLIT, Constants.DEF_FOUR_FINGER_SPLIT) ?: Constants.DEF_FOUR_FINGER_SPLIT)
                 c?.getString(Constants.K_PICK, null)?.let { putString(Constants.K_PICK, it) }
+                putBoolean(Constants.K_FOUR_FINGER_MULTI, c?.getBoolean(Constants.K_FOUR_FINGER_MULTI, Constants.DEF_FOUR_FINGER_MULTI) ?: Constants.DEF_FOUR_FINGER_MULTI)
                 putBoolean(Constants.K_FOUR_FINGER_INDOOR, c?.getBoolean(Constants.K_FOUR_FINGER_INDOOR, Constants.DEF_FOUR_FINGER_INDOOR) ?: Constants.DEF_FOUR_FINGER_INDOOR)
                 putBoolean(Constants.K_TEST_HOOK, c?.getBoolean(Constants.K_TEST_HOOK, Constants.DEF_TEST_HOOK) ?: Constants.DEF_TEST_HOOK)
                 c?.getString(Constants.K_TEST_ADDSPLIT, null)?.let { putString(Constants.K_TEST_ADDSPLIT, it) }

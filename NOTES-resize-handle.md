@@ -1026,3 +1026,19 @@ taskIds = 当前分屏组 + 选中候选，bounds 用整屏占位；日志 `已�
 
 **已实现的入口保留在代码里但默认关闭**：`startMultipleSplits(Bundle)`（见第 30 节），
 待确认"从单任务直接进多分屏"是否可行后再开灰度。
+
+### 33. 渐进式四指：现状与下一步（2026-09-21）
+用户明确交互：**单任务 → 双分屏 → 三分屏 → …**，每次四指上滑加一层。
+
+已验证可用的那一层：**单任务 → 双分屏**（`openWindowFromFullscreen`，另一侧出桌面让用户选；dock/导航条正常）。
+
+**"分屏中再加一层"尚未接线**（当前该分支只打日志、不动作 —— 见第 32 节的止血）。
+接线要点（已定位）：
+- 已在分屏/多分屏 → 调 `getMultipleSplitController().startMultipleSplits(Bundle)`（失败回退
+  `getMultiTaskingStateManager()`），`multiple_launch_taskIds` = **当前各 stage 的任务 id**（+补位到 ≥3），
+  bounds 用整屏占位；由系统铺 stage 并为空 stage 留位让用户选应用；
+- 不要用 `openWindowFromFullscreen` 去凑多分屏（会拉扯状态机，dock/返回手势失效 —— 第 32 节）。
+
+**工程教训（本轮再次踩到）**：用 python 的 `str.index`/`str.replace` 做批量改写时，
+只要有一处理论不匹配就会**中途抛异常**，而异常被 `&&` 链吞掉后我可能误以为"已改+已构建"。
+**必须校验替换结果（`print(patched)`）并核对产物**，不能只看"产物"两个字。
