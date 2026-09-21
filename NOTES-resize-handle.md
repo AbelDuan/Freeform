@@ -980,3 +980,22 @@ MultipleSplitLayout(29255): MultiTaskingStateManager$IMultiTaskingStateManagerIm
 **本轮实现**：四指上滑在分屏状态下调用
 `getMultipleSplitController().startMultipleSplits(Bundle)`（失败回退 `getMultiTaskingStateManager()`），
 taskIds = 当前分屏组 + 选中候选，bounds 用整屏占位；日志 `已请求进入多分屏 startMultipleSplits(taskIds=[…]) ok=…`。
+
+### 31. 「第一次能进分屏、之后进不去」——诊断版已上线（2026-09-21）
+用户实测：**第一次**四指上滑能从单任务进双分屏；**之后再滑进不去**；退回桌面再进单任务，
+有时又恢复能力（**概率性**）。这是典型的**状态机没回到空闲**或 **taskId 失效**。
+
+已加诊断（本轮）：每次命中都把完整状态打进日志：
+```
+四指上滑: SoSc=<bool>(state=<getSoScState()>) 多分屏=<bool> 组内=[…] shell已知=N
+          前台=<pkg>/<taskId>/mode=<n>
+```
+判读方法：
+- `state` 不是空闲值（`-1` / `0`）→ 上一次分屏的收尾还没结束，此时再调
+  `openWindowFromFullscreen` 会被 SoSc 状态机拒绝（表现就是"滑了没反应"）；
+- `前台=null` 或 `taskId=-1` → 取不到前台任务，`openWindowFromFullscreen(-1, null)` 自然无效；
+- `mode=6` 但 `SoSc=false` → 说明处在**多分屏残留**状态，需要先 `exitMultipleSplit`。
+
+> 本轮还踩了个自伤：批量插入辅助函数时 python 的 `str.index` 定位失败，
+> 导致 `socStateDesc()` 被引用但没定义、Kotlin 编译报 `unresolved reference`。
+> 已改成内联表达式。**教训：批量改代码后必须看编译输出，不能只看"产物"字样**。

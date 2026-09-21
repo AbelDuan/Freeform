@@ -420,7 +420,8 @@ object Gestures {
             val group = splitTaskIds()
             val all = allTasks()
             Logx.always(
-                "四指上滑: SoSc=${soScActive()} 多分屏=${splitActive()} 组内=$group shell已知=${all.size}"
+                "四指上滑: SoSc=${soScActive()}(${runCatching { socUtils()?.javaClass?.getMethod("getSoScState")?.invoke(socUtils()) }.getOrNull()}) 多分屏=${splitActive()} " +
+                    "组内=$group shell已知=${all.size} 前台=${topTask()?.let { "${pkgOf(it)}/${taskIdOf(it)}/mode=${modeOf(it)}" }}"
             )
             val pool = all.filter { info ->
                 val id = taskIdOf(info)
