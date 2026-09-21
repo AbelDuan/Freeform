@@ -905,3 +905,15 @@ MultipleSplitRootTaskOrganizer.prepareExitMultipleSplit
 3. **"那一侧留空让用户选应用"是系统原生行为**（半屏应用 + 半屏桌面），
    我们不该自作主张塞候选应用 —— 应改成"把当前任务 + 一个空位"交给系统，
    由系统拉起选择界面（这才是用户最初的需求："弹出应用列表让我点"）。
+
+### 27. 按原生链改的第一版（2026-09-21）
+**① 全屏 → 分屏**：改用原生入口 `SoScUtils.prepareDragDropTaskToSoSc(wct, taskId, hotAreaType, caller)`
+（抓到的原生链：`SoScUtilsImpl → SoScSplitScreenController → SoScStageCoordinator`），
+热区传 `HOT_AREA_SPLIT_LEFT_OR_TOP=1`，随后 `applyTransaction` + `finishEnterSplitScreen`。
+替换掉之前的 `openWindowFromFullscreen`（它是上游封装，参数语义不同，会出现"直接翻桌面"）。
+
+**② 分屏内加窗**：**先短路**。因为原生是"一组任务 id 整体构建"
+（`extractAndAddMultipleSplitGroupedTask(taskId, pairedTaskIds, splitBounds)`），
+而我那条 `transferSoScToMultipleSplit` + `insertMultipleSplitBy*` 是自己拼的，
+真机表现就是用户看到的"原分屏被重新布局 + 右侧黑块"。
+接线方案已明确（见第 26 节），等这一版验证不再有黑块后再上。

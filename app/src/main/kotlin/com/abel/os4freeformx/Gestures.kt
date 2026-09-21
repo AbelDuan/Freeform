@@ -460,12 +460,15 @@ object Gestures {
                 // 双分屏 → 多分屏是一次**异步转场**：紧接着插 stage 往往在转场完成前执行，
                 // 结果就是"stage 建了但空的"（真机现象：另一侧黑屏）。
                 // 所以转分屏后延迟再插（450ms 足够官方转场落地）。
-                if (!splitActive() && soScActive()) {
-                    transferSoScToMulti()
-                    main.postDelayed({ insertPane(cand, group.size) }, 450)
-                } else {
-                    insertPane(cand, group.size)
-                }
+                // ⚠️ 原生多分屏是"一组任务 id 整体构建"：
+                //   MultipleSplitUtils#extractAndAddMultipleSplitGroupedTask(taskId, pairedTaskIds, splitBounds)
+                // 我这条"先 transferSoScToMultipleSplit 再 insertMultipleSplitBy*"是自己拼的，
+                // 真机表现是**原分屏被重新布局、右侧留黑块**（用户实测反馈），所以先短路。
+                // 待接线：把 (当前分屏任务 + 新任务) 作为 pairedTaskIds 交给系统（见 NOTES 26 节）。
+                Logx.always(
+                    "四指上滑: 分屏内加窗暂未接线（原生需 groupedTaskIds 整体构建；" +
+                        "当前拼凑路径会留黑块）。组内=$group 多分屏=${splitActive()} SoSc=${soScActive()}"
+                )
                 return@runCatching
             }
             // ⚠️ 分屏场景暂时**只识别不动作**：
@@ -511,53 +514,48 @@ object Gestures {
 
     private fun dragToSplitInternal(taskId: Int, pkg: String) {
         runCatching {
-            val ctl = cls(Constants.CLS_MULTITASKING_CTL).getMethod("getInstance").invoke(null) ?: return@runCatching
-            val trans = ctl.javaClass.getMethod("getMulWinSwitchTransition").invoke(ctl) ?: return@runCatching
-            // 首选：官方"任务 → SoSc 分屏"入口（内部 prepareDragDropTaskToSoSc + startTransition(0x2b6f)）
-            // 签名是 (int taskId, PendingIntent intent)，taskId != -1 时走任务分支、忽略 intent
-            trans.javaClass.getMethod(
-                "openWindowFromFullscreen", Integer.TYPE, android.app.PendingIntent::class.java
-            ).invoke(trans, Integer.valueOf(taskId), null)
-            Logx.always("四指上滑: 已请求系统分屏吸附（openWindowFromFullscreen task=$taskId pkg=$pkg）")
+            val soc = socUtils() ?: run {
+                Logx.e("进分屏: 取不到 SoScUtils")
+                return@runCatching
+            }
+            val wctCls = Class.forName("android.window.WindowContainerTransaction", false, uiLoader)
+            val wct = wctCls.getDeclaredConstructor().newInstance()
+            // **照抄原生调用链**（抓用户原生操作日志确认）：
+            //   SoScUtilsImpl.prepareDragDropTaskToSoSc(wct, taskId, hotAreaType, caller)
+            //     → SoScSplitScreenController#prepareDragDropTaskToSoSc
+            //     → SoScStageCoordinator#prepareDragDropTaskToSoSc（真正落 bounds 的地方）
+            // 之前用 openWindowFromFullscreen 只是它的上游封装，参数语义不同，会出现"直接翻桌面"。
+            val m = soc.javaClass.methods.firstOrNull {
+                it.name == "prepareDragDropTaskToSoSc" && it.parameterTypes.size == 4
+            } ?: run {
+                Logx.e("进分屏: 找不到 prepareDragDropTaskToSoSc(4 参)")
+                return@runCatching
+            }
+            val args = arrayOfNulls<Any?>(4)
+            args[0] = wct                                  // WindowContainerTransaction
+            args[1] = Integer.valueOf(taskId)              // 进分屏的任务
+            args[2] = Integer.valueOf(HOT_AREA_SPLIT_LEFT_OR_TOP)  // 热区：左上角
+            args[3] = Integer.valueOf(0)                   // caller
+            m.invoke(soc, *args)
+            Logx.always("进分屏: 已调原生 prepareDragDropTaskToSoSc(task=$taskId hotArea=$HOT_AREA_SPLIT_LEFT_OR_TOP pkg=$pkg)")
+            // 提交并收尾（与原生一致：applyTransaction + finishEnterSplitScreen）
+            val org = runCatching {
+                val ctl = cls(Constants.CLS_MULTITASKING_CTL).getMethod("getInstance").invoke(null)
+                ctl?.let { c -> orgOf(c) ?: orgOf(c.javaClass.getMethod("getMultipleSplitController").invoke(c)) }
+            }.getOrNull()
+            if (org != null) {
+                org.javaClass.getMethod("applyTransaction", wctCls).invoke(org, wct)
+                Logx.always("进分屏: WCT 已提交")
+            }
+            runCatching {
+                val txCls = Class.forName("android.view.SurfaceControl\$Transaction")
+                soc.javaClass.getMethod("finishEnterSplitScreen", txCls)
+                    .invoke(soc, txCls.getDeclaredConstructor().newInstance())
+                Logx.always("进分屏: finishEnterSplitScreen 已调用")
+            }.onFailure { Logx.v("进分屏: 无 finishEnterSplitScreen（可忽略）") }
         }.onFailure { e ->
             val root = (e as? java.lang.reflect.InvocationTargetException)?.targetException ?: e
             Logx.e("进分屏失败: ${root.javaClass.name}: ${root.message}", root)
-        }
-    }
-
-    /**
-     * 双分屏（SoSc）→ 多分屏。
-     *
-     * ⚠️ **参数语义照抄官方**（`MultipleSplitShellCommandHandler#runTransferSoScToMultipleSplit`，
-     * 反编译确认）：
-     * ```java
-     * stageList = [SoScUtilsImpl.getLeftTopStage(), SoScUtilsImpl.getRightBottomStage()]  // stage 对象列表
-     * indexList = [0, 1]                                                                  // 两个分屏的索引
-     * MultipleSplitController.transferSoScToMultipleSplit(stageList, indexList)
-     * ```
-     * 之前误传 **taskId 列表** → SoSc 状态机崩（真机黑屏/闪退）。
-     */
-    private fun transferSoScToMulti() {
-        runCatching {
-            val socImpl = Class.forName("com.android.wm.shell.sosc.SoScUtilsImpl", false, uiLoader)
-                .getMethod("getInstance").invoke(null) ?: return@runCatching
-            val left = socImpl.javaClass.getMethod("getLeftTopStage").invoke(socImpl)
-            val right = socImpl.javaClass.getMethod("getRightBottomStage").invoke(socImpl)
-            if (left == null || right == null) {
-                Logx.e("四指上滑: 取不到 SoSc 的左右 stage（left=$left right=$right）")
-                return@runCatching
-            }
-            val stageList = ArrayList<Any?>().apply { add(left); add(right) }
-            val indexList = ArrayList<Any?>().apply { add(Integer.valueOf(0)); add(Integer.valueOf(1)) }
-            val ctl = cls(Constants.CLS_MULTITASKING_CTL).getMethod("getInstance").invoke(null) ?: return@runCatching
-            val sc = ctl.javaClass.getMethod("getMultipleSplitController").invoke(ctl) ?: return@runCatching
-            sc.javaClass.getMethod(
-                "transferSoScToMultipleSplit", java.util.List::class.java, java.util.List::class.java
-            ).invoke(sc, stageList, indexList)
-            Logx.always("四指上滑: 已请求 SoSc→多分屏（stage=[leftTop,rightBottom] index=[0,1]，照官方语义）")
-        }.onFailure { e ->
-            val root = (e as? java.lang.reflect.InvocationTargetException)?.targetException ?: e
-            Logx.e("四指上滑: SoSc→多分屏失败 ${root.javaClass.simpleName}: ${root.message}", root)
         }
     }
 
