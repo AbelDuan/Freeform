@@ -784,3 +784,24 @@ SystemUI PID 15547 全程未变（无崩溃）。
 2. **照抄真实参数**再调用，而不是按签名猜；
 3. 若转场确实必须由拖拽会话发起，则退回"只在全屏场景加分屏"（已验证可用），
    分屏内加窗交给系统原生手势。
+
+### 21. 找到 `transferSoScToMultipleSplit` 的正确参数语义（2026-09-21，反编译定位）
+第 20 节的闪退根因确认：**参数传错了**。官方调用点
+（`MultipleSplitShellCommandHandler#runTransferSoScToMultipleSplit`，shell 命令帮助写作
+`transferSoScToMultipleSplit <index1> <index2>`）反编译出来是：
+```java
+SoScUtilsImpl soc = SoScUtilsImpl.getInstance();
+List stageList = new ArrayList(); stageList.add(soc.getLeftTopStage()); stageList.add(soc.getRightBottomStage());
+List indexList = new ArrayList(); indexList.add(0); indexList.add(1);
+MultipleSplitController.transferSoScToMultipleSplit(stageList, indexList);
+```
+即**第一个参数是 SoSc 的左右 stage 对象列表**（`getLeftTopStage()` / `getRightBottomStage()`），
+第二个是**分屏索引**。我上一版传的是 **taskId 列表** → SoSc 状态机直接崩。
+
+**已改正**（照官方语义），但分屏内动作仍**默认关闭**，用独立灰度开关
+`four_finger_split_indoor`（默认 `false`）控制：
+- `false`（默认）：分屏内四指上滑只打日志短路，**绝不动作**（保证不闪退）；
+- `true`：走 `transferSoScToMulti()`（stage 列表 + 索引[0,1]）→ `insertMultipleSplitByTask` 插第三个。
+
+验证顺序建议：先开 `four_finger_split_indoor=true`，在**双分屏**里四指上滑一次；
+若看到 `已请求 SoSc→多分屏（stage=[leftTop,rightBottom] index=[0,1]）` 且不闪退，再继续调插入那一步。

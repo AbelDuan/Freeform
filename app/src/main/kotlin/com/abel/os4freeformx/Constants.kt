@@ -27,6 +27,8 @@ object Constants {
     const val K_PICK = "pending_pick"
     /** 调试用：打开 adb 测试轮询（默认关，会周期性跨进程 call provider） */
     const val K_TEST_HOOK = "test_hook"
+    /** 分屏内也用四指加分屏（灰度开关，默认关：SoSc 上加 stage 风险高） */
+    const val K_FOUR_FINGER_INDOOR = "four_finger_split_indoor"
     /** 测试入口：`<pkg>|<taskId>` —— 写进 CFG 后由 SystemUI 侧轮询取走并直接执行"加分屏" */
     const val K_TEST_ADDSPLIT = "pending_test_addsplit"
 
@@ -37,6 +39,7 @@ object Constants {
     const val DEF_RESIZE = true
     const val DEF_GESTURES = true
     const val DEF_TEST_HOOK = false
+    const val DEF_FOUR_FINGER_INDOOR = false
     const val DEF_CORNER_FREEFORM = true
     const val DEF_FOUR_FINGER_SPLIT = true
 

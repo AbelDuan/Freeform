@@ -440,10 +440,18 @@ object Gestures {
             Logx.always("四指上滑: 选中 pkg=$pkg task=${taskIdOf(cand)}（候选池 ${pool.size}）")
 
             if (splitActive() || soScActive()) {
-                Logx.always(
-                    "四指上滑: 当前已在分屏（SoSc=${soScActive()} 多分屏=${splitActive()}），" +
-                        "动作暂时短路（避免 SoSc/多分屏状态机冲突导致闪退）"
-                )
+                // 分屏内加分屏：默认仍然**短路**（上一版在 SoSc 上直插 stage 导致黑屏/闪退）。
+                // 参数语义已按官方改正（stage 列表 + 索引），但仍需真机灰度验证，
+                // 所以用独立开关 four_finger_split_indoor 控制，默认关。
+                if (!Cfg.fourFingerIndoor) {
+                    Logx.always(
+                        "四指上滑: 已在分屏（SoSc=${soScActive()} 多分屏=${splitActive()}），短路" +
+                            "（分屏内动作需 four_finger_split_indoor=true 才开启）"
+                    )
+                    return@runCatching
+                }
+                if (!splitActive() && soScActive()) transferSoScToMulti()
+                insertPane(cand, group.size)
                 return@runCatching
             }
             // ⚠️ 分屏场景暂时**只识别不动作**：
@@ -503,18 +511,39 @@ object Gestures {
         }
     }
 
-    /** 双分屏（SoSc）→ 多分屏：`MultipleSplitController#transferSoScToMultipleSplit(List, List)`。 */
-    private fun transferSoScToMulti(group: List<Int>) {
+    /**
+     * 双分屏（SoSc）→ 多分屏。
+     *
+     * ⚠️ **参数语义照抄官方**（`MultipleSplitShellCommandHandler#runTransferSoScToMultipleSplit`，
+     * 反编译确认）：
+     * ```java
+     * stageList = [SoScUtilsImpl.getLeftTopStage(), SoScUtilsImpl.getRightBottomStage()]  // stage 对象列表
+     * indexList = [0, 1]                                                                  // 两个分屏的索引
+     * MultipleSplitController.transferSoScToMultipleSplit(stageList, indexList)
+     * ```
+     * 之前误传 **taskId 列表** → SoSc 状态机崩（真机黑屏/闪退）。
+     */
+    private fun transferSoScToMulti() {
         runCatching {
+            val socImpl = Class.forName("com.android.wm.shell.sosc.SoScUtilsImpl", false, uiLoader)
+                .getMethod("getInstance").invoke(null) ?: return@runCatching
+            val left = socImpl.javaClass.getMethod("getLeftTopStage").invoke(socImpl)
+            val right = socImpl.javaClass.getMethod("getRightBottomStage").invoke(socImpl)
+            if (left == null || right == null) {
+                Logx.e("四指上滑: 取不到 SoSc 的左右 stage（left=$left right=$right）")
+                return@runCatching
+            }
+            val stageList = ArrayList<Any?>().apply { add(left); add(right) }
+            val indexList = ArrayList<Any?>().apply { add(Integer.valueOf(0)); add(Integer.valueOf(1)) }
             val ctl = cls(Constants.CLS_MULTITASKING_CTL).getMethod("getInstance").invoke(null) ?: return@runCatching
             val sc = ctl.javaClass.getMethod("getMultipleSplitController").invoke(ctl) ?: return@runCatching
             sc.javaClass.getMethod(
                 "transferSoScToMultipleSplit", java.util.List::class.java, java.util.List::class.java
-            ).invoke(sc, ArrayList(group), ArrayList(group.map { Integer.valueOf(0) }))
-            Logx.always("四指上滑: 已请求 SoSc→多分屏转换（组内 ${group.size} 个）")
+            ).invoke(sc, stageList, indexList)
+            Logx.always("四指上滑: 已请求 SoSc→多分屏（stage=[leftTop,rightBottom] index=[0,1]，照官方语义）")
         }.onFailure { e ->
             val root = (e as? java.lang.reflect.InvocationTargetException)?.targetException ?: e
-            Logx.e("四指上滑: SoSc→多分屏转换失败 ${root.javaClass.simpleName}: ${root.message}", root)
+            Logx.e("四指上滑: SoSc→多分屏失败 ${root.javaClass.simpleName}: ${root.message}", root)
         }
     }
 

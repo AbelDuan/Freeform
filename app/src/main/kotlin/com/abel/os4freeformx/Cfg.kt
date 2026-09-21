@@ -23,6 +23,7 @@ object Cfg {
     @Volatile var cornerFreeform = Constants.DEF_CORNER_FREEFORM
     @Volatile var fourFingerSplit = Constants.DEF_FOUR_FINGER_SPLIT
     @Volatile var testHook = Constants.DEF_TEST_HOOK
+    @Volatile var fourFingerIndoor = Constants.DEF_FOUR_FINGER_INDOOR
 
     /** 只记住模块引用，不读 prefs（system_server 启动阶段只允许这一步）。 */
     fun setModule(m: XposedModule) {
@@ -60,6 +61,7 @@ object Cfg {
             cornerFreeform = p.getBoolean(Constants.K_CORNER_FREEFORM, Constants.DEF_CORNER_FREEFORM)
             fourFingerSplit = p.getBoolean(Constants.K_FOUR_FINGER_SPLIT, Constants.DEF_FOUR_FINGER_SPLIT)
             testHook = p.getBoolean(Constants.K_TEST_HOOK, Constants.DEF_TEST_HOOK)
+            fourFingerIndoor = p.getBoolean(Constants.K_FOUR_FINGER_INDOOR, Constants.DEF_FOUR_FINGER_INDOOR)
             Logx.verbose = log
         }.onFailure { Logx.e("reload 失败", it) }
     }
@@ -121,6 +123,7 @@ object Cfg {
             cornerFreeform = b.getBoolean(Constants.K_CORNER_FREEFORM, Constants.DEF_CORNER_FREEFORM)
             fourFingerSplit = b.getBoolean(Constants.K_FOUR_FINGER_SPLIT, Constants.DEF_FOUR_FINGER_SPLIT)
             testHook = b.getBoolean(Constants.K_TEST_HOOK, Constants.DEF_TEST_HOOK)
+            fourFingerIndoor = b.getBoolean(Constants.K_FOUR_FINGER_INDOOR, Constants.DEF_FOUR_FINGER_INDOOR)
             Logx.verbose = log
         }.onFailure { Logx.e("读配置失败", it) }
         val after = "$log|$immersive|$rememberBounds"
