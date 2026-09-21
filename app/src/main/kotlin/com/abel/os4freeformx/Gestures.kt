@@ -519,10 +519,18 @@ object Gestures {
         runCatching {
             val ids = ArrayList<Int>(group)
             cand?.let { c -> taskIdOf(c).takeIf { it > 0 }?.let { ids.add(it) } }
-            // 单任务场景：只有 1 个 id —— 系统多分屏最少 3 个 stage。
-            // 做法：把同一个任务 id 补到 3 个（系统会为没有任务的 stage 留空位/让用户选），
-            // 这是唯一不需要用户先手动开三个应用的路径。
-            while (ids.size < 3) ids.add(ids[0])
+            // ⚠️ **绝不补位/去重后仍重复**：真机取证 —— 双分屏时我传 [7068,7073,7068]（第三个是补位补的），
+            // 系统按"三个任务"去铺 stage，拿到重复 id 直接**黑屏**（用户实测）。
+            // 因此这里严格**只传真实存在的任务 id**，重复的丢掉；数量不足就交给系统自己处理
+            // （系统会为空 stage 留位/弹选择界面，这才是原生行为）。
+            val uniq = LinkedHashSet<Int>()
+            ids.forEach { if (it > 0) uniq.add(it) }
+            ids.clear(); ids.addAll(uniq)
+            Logx.always("四指上滑: 多分屏 taskIds=${ids}（去重后 ${ids.size} 个，不补位）")
+            if (ids.isEmpty()) {
+                Logx.always("四指上滑: 没有有效的任务 id，放弃")
+                return@runCatching
+            }
             val bounds = ArrayList<android.graphics.Rect>()
             ids.forEach { _ -> bounds.add(android.graphics.Rect(0, 0, screenW, screenH)) }
             val b = android.os.Bundle().apply {
