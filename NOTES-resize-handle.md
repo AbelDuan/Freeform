@@ -1042,3 +1042,20 @@ taskIds = 当前分屏组 + 选中候选，bounds 用整屏占位；日志 `已�
 **工程教训（本轮再次踩到）**：用 python 的 `str.index`/`str.replace` 做批量改写时，
 只要有一处理论不匹配就会**中途抛异常**，而异常被 `&&` 链吞掉后我可能误以为"已改+已构建"。
 **必须校验替换结果（`print(patched)`）并核对产物**，不能只看"产物"两个字。
+
+### 34. 三分屏"未被调用"的真因：组内 id 是历史残留（2026-09-21）
+用户实测"三分屏未被调用"。日志显示函数**其实被调了、而且 `ok=true`**，但参数是错的：
+```
+四指上滑状态判定: 多分屏=true SoSc=true 当前层数=6 组内=[6995,6997,6998,6999,7000,6996]
+四指上滑: 已请求进入多分屏 startMultipleSplits(taskIds=[这 6 个残留 id]) ok=true
+```
+**根因**：`stageTaskIds()` 用了 `MultipleSplitController#getAllStageTaskInfo()`，
+它把**历史遗留的 stage** 一起返回（本项目已第二次踩这个坑）→
+`startMultipleSplits` 拿到一堆过期 taskId，系统铺不动，屏幕无变化（但接口返回 true）。
+
+**修法**：改为只取**当前真正可见**的分屏子任务 ——
+`MultiTaskingTaskRepository#getVisibleSplitChildTaskInfo()`，
+兜底再用 `MultipleSplitController#getActiveStageList()` 里的 `getRunningTaskInfo()`。
+
+**教训**：凡是"取当前分屏组"的地方，都必须用**可见/活跃**语义的 API，
+`getAllStageTaskInfo()` 这类"全部 stage"的接口在本机一定会带出历史残留。

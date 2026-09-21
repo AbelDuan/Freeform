@@ -423,20 +423,31 @@ object Gestures {
                 "四指上滑: SoSc=${soScActive()}(${runCatching { socUtils()?.javaClass?.getMethod("getSoScState")?.invoke(socUtils()) }.getOrNull()}) 多分屏=${splitActive()} " +
                     "组内=$group shell已知=${all.size} 前台=${topTask()?.let { "${pkgOf(it)}/${taskIdOf(it)}/mode=${modeOf(it)}" }}"
             )
-            // 全屏 → 分屏：**只把"当前前台任务"交给系统**，不自己挑候选应用。
-            // 真机反馈：以前我从候选池挑一个塞进另一侧，系统就直接打开那个应用；
-            // 用户要的是"完全调用系统逻辑，另一侧进桌面/让用户自己选"。
-            val fg = topTask()
-            if (fg == null || taskIdOf(fg) <= 0) {
-                Logx.always("四指上滑: 取不到前台任务，放弃")
-                return@runCatching
+            // ===== 按当前状态选接口（用户指定的逻辑）=====
+            //  单任务        → 双分屏接口（openWindowFromFullscreen）
+            //  双分屏(SoSc)  → 三分屏接口（startMultipleSplits 起多分屏模式）
+            //  三/四/五/六分屏 → 同一个"加层"接口（startMultipleSplits 扩一层）
+            // 每个入口都由系统自己去铺 stage / 弹"让用户选应用"，模块不自建 UI、不预塞应用。
+            val inSplit = splitActive() || soScActive()
+            val cur = if (inSplit) splitTaskIds() else emptyList()
+            Logx.always(
+                "四指上滑状态判定: 多分屏=${splitActive()} SoSc=${soScActive()} " +
+                    "当前层数=${if (inSplit) cur.size else 1} 组内=$cur"
+            )
+            if (!inSplit) {
+                val fg = topTask()
+                if (fg == null || taskIdOf(fg) <= 0) {
+                    Logx.always("四指上滑: 取不到前台任务，放弃")
+                    return@runCatching
+                }
+                Logx.always(
+                    "四指上滑: 单任务 → 调**双分屏**接口（前台 pkg=${pkgOf(fg)} task=${taskIdOf(fg)}）"
+                )
+                dragToSplit(taskIdOf(fg), pkgOf(fg) ?: "?")
+            } else {
+                Logx.always("四指上滑: 已在分屏（${cur.size} 层）→ 调**加层/多分屏**接口")
+                startMultipleSplits(cur, null)
             }
-            val pkg = pkgOf(fg) ?: "?"
-            Logx.always("四指上滑: 全屏 → 交系统起分屏（前台 pkg=$pkg task=${taskIdOf(fg)} mode=${modeOf(fg)}）")
-            // 分支②：全屏单任务
-            // 单任务 → 双分屏（已验证：另一侧出桌面让用户选）。
-            // 渐进式：之后每滑一次由"分屏中"分支再加一层（双→三→四…）。
-            dragToSplit(taskIdOf(fg), pkg)
         }.onFailure { Logx.e("四指上滑处理失败", it) }
     }
 
@@ -826,31 +837,31 @@ object Gestures {
     }
 
     private fun stageTaskIds(): List<Int> {
+        // ⚠️ **不能用 `getAllStageTaskInfo()`**：它会把历史遗留的 stage 一起返回
+        // （真机踩过两次：明明只在双分屏，却报"当前层数=6 组内=[6 个残留 id]"，
+        //  于是 startMultipleSplits 拿到一堆过期 id → ok=true 但屏幕上没反应）。
+        // 正确来源：仓库里**当前可见**的分屏子任务。
+        runCatching {
+            val repo = taskRepo() ?: return emptyList()
+            val l = repo.javaClass.getMethod("getVisibleSplitChildTaskInfo").invoke(repo) as? List<*>
+            val ids = l?.mapNotNull { it?.let { t -> taskIdOf(unwrap(t)).takeIf { id -> id > 0 } } } ?: emptyList()
+            if (ids.isNotEmpty()) return ids
+        }
+        // 兜底：多分屏的活跃 stage 列表
         runCatching {
             val ctl = cls(Constants.CLS_MULTITASKING_CTL).getMethod("getInstance").invoke(null) ?: return emptyList()
-            val sc = ctl.javaClass.getMethod("getMultipleSplitController").invoke(ctl)
-            val l = sc.javaClass.getMethod("getAllStageTaskInfo").invoke(sc) as? List<*>
-            l?.mapNotNull { it?.let { t -> taskIdOf(unwrap(t)).takeIf { id -> id > 0 } } }?.let { if (it.isNotEmpty()) return it }
-        }
-        runCatching {
-            val l = cls(Constants.CLS_MULTITASKING_CTL).getMethod("getInstance").invoke(null)
-                ?.let { ctl -> ctl.javaClass.getMethod("getMultiTaskingTaskRepository").invoke(ctl) }
-                ?.javaClass?.getMethod("getVisibleSplitChildTaskInfo")?.invoke(
-                    cls(Constants.CLS_MULTITASKING_CTL).getMethod("getInstance").invoke(null)
-                        ?.let { ctl -> ctl.javaClass.getMethod("getMultiTaskingTaskRepository").invoke(ctl) }
-                ) as? List<*>
-            l?.mapNotNull { it?.let { t -> taskIdOf(unwrap(t)).takeIf { id -> id > 0 } } }?.let { return it }
+            val sc = ctl.javaClass.getMethod("getMultipleSplitController").invoke(ctl) ?: return emptyList()
+            val l = sc.javaClass.getMethod("getActiveStageList").invoke(sc) as? List<*>
+            l?.mapNotNull { st ->
+                st?.let { s2 ->
+                    runCatching { s2.javaClass.getMethod("getRunningTaskInfo").invoke(s2) }
+                        .getOrNull()?.let { info -> taskIdOf(unwrap(info)).takeIf { id -> id > 0 } }
+                }
+            }?.let { if (it.isNotEmpty()) return it }
         }
         return emptyList()
     }
 
-    /**
-     * SoSc 双分屏是否在进行中。
-     *
-     * ⚠️ `isSoScActive()` 在 **`SoScUtilsImpl`** 上，**不在** `MultipleSplitController` 上
-     * （真机踩过：之前按 MultipleSplitController 反射，静默失败 → 一直报 `SoSc=false`，
-     *  于是在分屏里也走"重新起分屏"的分支，表现就是动作没效果/另一侧黑屏）。
-     */
     private fun soScActive(): Boolean = runCatching {
         val soc = socUtils() ?: return false
         (soc.javaClass.getMethod("isSoScActive").invoke(soc) as? Boolean) ?: false
