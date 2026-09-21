@@ -37,12 +37,17 @@ HyperOS 4（Android 17 / API 37）**小窗（freeform）与分屏体验增强** 
 | 手势 | 行为 | 生效范围 |
 | --- | --- | --- |
 | **角落斜滑** | 屏幕下部**左右角**起手 → 朝屏幕中心**明显斜向**（≈45°）滑 ≥200dp → 把当前前台应用转成小窗（官方 `MiuiMultiWindowUtils.getActivityOptions(ctx,pkg,true,x,y)`，小窗落在起手点附近） | **只在单应用全屏时生效**；分屏/多分屏/已有小窗时完全退让给系统 |
-| **四指上滑** | 4 指同时按住一起上滑 ≥45dp → 把下一个可用应用加进分屏：全屏时用官方 `openWindowFromFullscreen` 起分屏；已在分屏时 `insertMultipleSplitByTask` 插一个 stage | 全屏 / 双分屏 / 多分屏**全部生效** |
+| **四指上滑** | 4 指同时按住一起上滑 ≥45dp → 把下一个可用应用加进分屏：走官方 `MiuiMultiWindowUtils` / `openWindowFromFullscreen` 入口起分屏 | **全屏单任务：✅ 已真机验证**；分屏内：⚠️ 当前只识别不动作（详见下） |
 
 开关（模块设置里）：`gestures` 总开关、`corner_freeform`、`four_finger_split`。
 **实现要点**：两条手势共用 MIUI 自己的全局输入源 ——
 `MulWinSwitchEventController$EventReceiver#onInputEvent`（MIUI 用 `InputManager.monitorGestureInput`
 建的全屏触摸监视器），挂它即可拿到全屏/桌面/小窗/分屏的触摸，无需额外权限。
+
+> ⚠️ **分屏内加分屏暂未开放**：真机实测「双分屏下四指上滑」会黑屏/卡顿/闪退 ——
+> SoSc 双分屏（一对 stage）与多分屏（多个 stage）结构不同，需要一个**专用转场**才能衔接，
+> 直接 `insertMultipleSplitByTask` 会与 SoSc 状态机冲突。现已**短路**（只识别、打日志、不做动作），
+> 不再闪退。接线方案见 NOTES 第 20 节（先抓真实"拖第三个应用进左上角"的日志，照抄参数）。
 
 **四指手势的五处坑（真机逐条踩出来的，详见 NOTES 14/16/18 节）**：
 ① `onMove` 里"指针数<4 就撤销"→ 改为 <2 才放弃；② `ACTION_POINTER_UP` 抬一根就撤销 → 同上；
