@@ -42,6 +42,14 @@ $ADB shell "input swipe 1504 1800 1504 300 200" >/dev/null 2>&1
 sleep 2
 $ADB shell "dumpsys window | grep -E 'mDreamingLockscreen|mCurrentFocus' | head -3"
 
+# ★ 测试钩子由 `test_hook` 门控（**默认关闭** —— 生产不做常驻跨进程轮询）。
+#   先打开：轮询每轮都从 StoreProvider 的 getCfg 读真实开关值，所以**不需要重启 SystemUI**；
+#   但门控关闭时轮询是 5s 一轮，打开后最多 5s 生效 → 等 8s 稳妥。
+#   ⚠ 别用 Cfg.testHook 判断：LSPosed remote prefs 是快照，hook 进程永远读到旧值。
+log "打开测试钩子门控 ..."
+$ADB shell "am start -n $PKG/.PickActivity --es test 'TESTHOOK:1'" >/dev/null 2>&1
+sleep 8
+
 $ADB shell "su -c 'logcat -c'" >/dev/null 2>&1
 log "触发钩子 $H ..."
 hook "$H"

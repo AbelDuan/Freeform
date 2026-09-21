@@ -5,5 +5,5 @@ description=HyperOS 4 分屏增强：四指手势原生多分屏（SoSc 双分�
 minApiVersion=100
 targetApiVersion=102
 staticScope=true
-version=0.2.0
-versionCode=3
+version=0.2.1
+versionCode=4

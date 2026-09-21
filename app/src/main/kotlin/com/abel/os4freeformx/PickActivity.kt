@@ -24,6 +24,18 @@ class PickActivity : Activity() {
         // 测试入口：am start -n com.abel.os4freeformx/.PickActivity --es test "pkg|taskId"
         // 直接把"加分屏"请求交给 SystemUI 侧执行（adb 造不出四指触控时用它验证系统路径）
         intent.getStringExtra("test")?.let { sel ->
+            // 测试开关：`am start -n <pkg>/.PickActivity --es test "TESTHOOK:1" / "TESTHOOK:0"`
+            // 打开后 SystemUI 侧 [Gestures.watchTestHook] 的轮询会在 1.5s 内生效，
+            // **不需要重启 SystemUI**；关闭后轮询线程只 sleep，生产零开销。
+            if (sel.startsWith("TESTHOOK")) {
+                val on = sel.substringAfter(':', "1").trim() != "0"
+                AppPrefs.putBoolean(this, Constants.K_TEST_HOOK, on)
+                android.widget.Toast.makeText(
+                    this, "测试钩子：${if (on) "开" else "关"}", android.widget.Toast.LENGTH_SHORT
+                ).show()
+                finish()
+                return
+            }
             AppPrefs.putString(this, Constants.K_TEST_ADDSPLIT, sel)
             finish()
             return

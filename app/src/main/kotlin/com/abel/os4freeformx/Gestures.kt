@@ -120,15 +120,15 @@ object Gestures {
 
         // ② 注册 EventHandler + 确保 receiver 存在（全屏场景下 MIUI 可能还没建 receiver）
         main.post { ensureReceiver() }
-        // ⚠️ 测试轮询默认**关闭**：它每 1.5s 跨进程 call 一次 ContentProvider，
-        // 在 SystemUI 启动早期 Context 还没就绪时会抛
+        // ⚠️ 测试轮询由 `test_hook` 门控，**默认关闭**：开启时会周期性跨进程 call 一次
+        // ContentProvider，而 SystemUI 启动早期 Context 还没就绪时会抛
         // `NullPointerException: getDefaultClassLoader(...) must not be null`，
-        // 真机表现为分屏里滑动黑屏/闪退。只有显式打开测试开关才启动。
-        // 注意：必须在 post 的 lambda **内部**读取配置 —— 安装那一刻 Cfg 往往还没读到
-        // remote prefs（真机踩过：provider 里 test_hook=true，钩子却按默认 false 跳过）
-        // ⚠️ 临时调试：去掉 Cfg.testHook 门控，让测试轮询始终运行（FIRE:/MAKEPAIR:/ADDSPLIT: 驱动）。
-        // 提交前需恢复为 `&& Cfg.testHook` 或改回默认关闭，避免常驻跨进程轮询。
-        main.post { if (runCatching { Cfg.reload() }.isSuccess) watchTestHook() }
+        // 真机表现为分屏里滑动黑屏/闪退 —— 所以默认必须关。
+        // ★ 门控判据放在 [watchTestHook] 的**循环内部**，且从 provider 的 Bundle 读
+        //   （不能用 Cfg.testHook：remote prefs 是快照，见 Cfg.kt）⇒
+        //   开关**动态生效**，打开后无需重启 SystemUI 就能用 adb 钩子测试；
+        //   关闭时轮询降到 5s 一次，且不做任何命令处理。
+        main.post { watchTestHook() }
         Logx.always(
             "installGestures: onInputEvent 挂载=$hooked（gestures=${Cfg.gestures} " +
                 "屏=${screenW}x${screenH} 密度=$density）"
@@ -756,12 +756,20 @@ object Gestures {
     private fun watchTestHook() {
         Thread {
             while (true) {
+                var active = false
                 runCatching {
                     val ctx = AppCtx.get()
                     if (ctx != null) {
                         val b = ctx.contentResolver.call(
                             android.net.Uri.parse("content://${Constants.AUTHORITY}"), "getCfg", null, null
                         )
+                        // ★ 门控**必须**从 provider 返回的这个 Bundle 读，**不能用 Cfg.testHook** ——
+                        //   LSPosed 的 remote preferences 在被 hook 的进程里是**快照**，App 改配置后
+                        //   该进程永远读到旧值（Cfg.kt 注释 + 2026-09-19 实测）。
+                        //   provider 读的是模块 App 的真实 prefs ⇒ 开关即时生效、**无需重启 SystemUI**。
+                        val hooking = b?.getBoolean(Constants.K_TEST_HOOK, Constants.DEF_TEST_HOOK) ?: false
+                        if (!hooking) return@runCatching
+                        active = true
                         val vRaw = b?.getString(Constants.K_TEST_ADDSPLIT)
                         if (!vRaw.isNullOrEmpty()) {
                             Logx.always("测试入口: 收到请求「$vRaw」")
@@ -1019,7 +1027,8 @@ object Gestures {
                     }
                 }
                 try {
-                    Thread.sleep(1500)
+                    // 门控关：5s 探一次开关（近乎零开销，且打开后最多 5s 生效）；门控开：1.5s 探一次命令
+                    Thread.sleep(if (active) 1500 else 5_000)
                 } catch (ie: InterruptedException) {
                     return@Thread
                 }
@@ -1734,38 +1743,6 @@ object Gestures {
             }
             found
         }.getOrNull().also { if (it == null) Logx.e("topTask: ActivityTaskManager.getTasks 未取得前台") }
-    }
-
-    /** 临时诊断：dump 多任务仓库任务对象的真实结构，定位 taskId / pkg 取法。 */
-    private fun diagMultiTasking(tag: String) {
-        val repo = taskRepo() ?: run { Logx.e("DIAG[$tag] repo=null"); return }
-        fun dump(method: String) {
-            runCatching {
-                val l = repo.javaClass.getMethod(method).invoke(repo) as? List<*>
-                Logx.e("DIAG[$tag] $method size=${l?.size}")
-                l?.forEachIndexed { i, it ->
-                    if (it == null) { Logx.e("DIAG[$tag]   [$i] null"); return@forEachIndexed }
-                    val cls = it.javaClass.name
-                    val raw = when (it) {
-                        is Int -> it
-                        is Integer -> it.toInt()
-                        else -> null
-                    }
-                    if (raw != null) { Logx.e("DIAG[$tag]   [$i] RAW_INT=$raw cls=$cls"); return@forEachIndexed }
-                    val ti = runCatching { it.javaClass.getMethod("getTaskInfo").invoke(it) }.getOrNull()
-                    val mti = declaredField(it, "mTaskInfo")
-                    val tid = runCatching { it.javaClass.getMethod("getTaskId").invoke(it) }.getOrNull()
-                    val pk = runCatching { it.javaClass.getMethod("getPackageName").invoke(it) }.getOrNull()
-                    val ra = runCatching { it.javaClass.getMethod("getRealActivity").invoke(it) }.getOrNull()
-                    Logx.e("DIAG[$tag]   [$i] cls=$cls getTaskInfo=${ti?.javaClass?.name} mTaskInfo=${mti?.javaClass?.name} getTaskId=$tid getPkg=$pk getRealActivity=${ra?.javaClass?.name}")
-                    if (mti != null && isRunningTaskInfo(mti)) {
-                        Logx.e("DIAG[$tag]     mTaskInfo RUNNING: taskId=${taskIdOf(mti)} pkg=${pkgOf(mti)}")
-                    }
-                }
-            }.onFailure { Logx.e("DIAG[$tag] $method threw ${it.message}") }
-        }
-        dump("getVisibleFullTaskInfo")
-        dump("getMultiWindowTasksInZOrder")
     }
 
     private fun taskIdOf(info: Any): Int = runCatching {
