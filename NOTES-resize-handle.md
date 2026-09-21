@@ -931,3 +931,24 @@ MultipleSplitRootTaskOrganizer.prepareExitMultipleSplit
 
 **教训**：日志里看到的方法名 ≠ 可以脱离上下文调用。抓调用链只能确认"谁调了谁"，
 **不能确认"脱离原有会话是否还能用"**；这类涉及状态机的方法，必须小步灰度 + 立即可回退。
+
+### 29. ⚠️ 概念纠正（用户说明，2026-09-21）：多分屏 ≠ 分屏加内窗
+用户明确指出：**多分屏是系统自带的另一个模式**，从**三分屏**开始进入，**最多六个应用同时运行**。
+它**不是**"在双分屏里再塞一个窗口"，两者是不同的 windowing 状态（真机也印证：
+多分屏 stage 名为 `stage_c/d/e/f`、容器是独立 rootTask；双分屏是 `main/side` 一对）。
+
+**这意味着我之前的方向是错的**：我一直在做"双分屏 + `insertMultipleSplitBy*` 塞第三个"，
+而用户要的是**进入系统的多分屏模式**。所以：
+- 不该自己拼 stage（会留黑块 / 状态机崩）；
+- 应该找**系统进入多分屏的入口**，用四指手势去触发它。
+
+**已定位的候选入口**（反编译确认签名）：
+| 方法 | 签名 | 说明 |
+| --- | --- | --- |
+| `MultipleSplitUtilsImpl#extractAndAddMultipleSplitGroupedTask` | `(TaskInfo, Map, ArrayList, List) → Z` | 系统按"一组任务"构建多分屏的核心（真机日志里出现） |
+| `MultipleSplitUtilsImpl#startMultipleSplits` | `(Bundle) → void` | shell 命令 `startMultipleSplits recent <taskId>…` 走的也是它 |
+| `MultipleSplitController#insertMultipleSplitByIntent/ByTask` | `(WCT, …, int)` | 单点插入，**不是**进入多分屏的正确方式 |
+
+**下一步**：需要用户配合抓一次"系统原生进入多分屏"的完整意图/参数
+（上次抓到的日志只到 `extractAndAddMultipleSplitGroupedTask` 的调用，没拿到上游的 Bundle/Intent 内容）。
+或者反过来：**hook 系统的多分屏入口**，让四指手势等价于用户手动触发那一个动作，而不是自己造调用。
