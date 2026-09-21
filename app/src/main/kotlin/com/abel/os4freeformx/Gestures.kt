@@ -437,36 +437,116 @@ object Gestures {
                     "组内=$group shell已知=${all.size} 前台=${topTask()?.let { "${pkgOf(it)}/${taskIdOf(it)}/mode=${modeOf(it)}" }}"
             )
             // ===== 按当前状态选接口（用户指定的逻辑）=====
-            //  单任务        → 双分屏接口（openWindowFromFullscreen）
-            //  双分屏(SoSc)  → 三分屏接口（startMultipleSplits 起多分屏模式）
-            //  三/四/五/六分屏 → 同一个"加层"接口（startMultipleSplits 扩一层）
-            // 每个入口都由系统自己去铺 stage / 弹"让用户选应用"，模块不自建 UI、不预塞应用。
+            //  单任务        → 原生 SoSc 入口（enterSplitScreen）
+            //  双分屏(SoSc)/多分屏 → 系统 Dock 路径加一层
+            // ⚠ freeformTasks() 扫的是**全系统** mode 5/6 任务，会把历史遗留的隐藏自由窗也算进来
+            //   （实测：前台是 mode=1 全屏 settings，却捞出 8 个陈旧 id → 误判"已在分屏"）。
+            //   因此"是否已在分屏"只认 **SoSc / 多分屏**，或**前台任务本身就是自由窗**。
             val free = freeformTasks()
-            val inSplit = splitActive() || soScActive() || free.isNotEmpty()
+            val fgNow: android.app.ActivityManager.RunningTaskInfo? =
+                topTask() as? android.app.ActivityManager.RunningTaskInfo
+            val fgIsFree = fgNow != null && runCatching { modeOf(fgNow) }.getOrDefault(0) in listOf(5, 6)
+            val inSplit = splitActive() || soScActive() || fgIsFree
+            val fgId = fgNow?.let { taskIdOf(it) } ?: -1
             val cur = when {
                 splitActive() || soScActive() -> splitTaskIds()
-                free.isNotEmpty() -> free
+                fgIsFree && fgId > 0 -> listOf(fgId)
                 else -> emptyList()
             }
             Logx.always(
-                "四指上滑状态判定: 多分屏=${splitActive()} SoSc=${soScActive()} 自由窗=$free " +
+                "四指上滑状态判定: 多分屏=${splitActive()} SoSc=${soScActive()} 前台自由窗=$fgIsFree 全系统自由窗=$free " +
                     "当前层数=${if (inSplit) cur.size else 1} 组内=$cur"
             )
             if (!inSplit) {
-                val fg = topTask()
+                val fg = fgNow
                 if (fg == null || taskIdOf(fg) <= 0) {
                     Logx.always("四指上滑: 取不到前台任务，放弃")
                     return@runCatching
                 }
-                Logx.always(
-                    "四指上滑: 单任务 → 调**双分屏**接口（前台 pkg=${pkgOf(fg)} task=${taskIdOf(fg)}）"
-                )
-                dragToSplit(taskIdOf(fg), pkgOf(fg) ?: "?")
+                // ★ 2026-09-21 实测定论（平板 turner / HyperOS 4）：
+                //   `openWindowFromFullscreen` 在本固件只产 **freeform**（mode 5/6），不是原生 SoSc，
+                //   导致后续 dock 路径 `dockMultipleSplitTasks` 恒返回 null。
+                //   正解 = `SoScUtilsImpl.enterSplitScreen(RunningTaskInfo, WCT, z)`
+                //     → moveToStage → SoScStageCoordinator.moveToStage()
+                //     （mIsOpenPairs=!isSoScActive + buildHomeToFront + 真 transition）
+                //   实测产出真原生 SoSc（isSoScActive=true / inSoScFullMode=true），
+                //   且后续 dock 能走通 DOCK_EXIT_SOSC_TO_THREE 出三分屏，**可触摸**。
+                Logx.always("四指上滑: 单任务 → 调**原生 SoSc**接口（前台 pkg=${pkgOf(fg)} task=${taskIdOf(fg)}）")
+                enterNativeSoSc(fg)
             } else {
-                Logx.always("四指上滑: 已在分屏（${cur.size} 层）→ 调**加层/多分屏**接口")
-                startMultipleSplits(cur, null)
+                // 已在分屏（SoSc 双分屏 / 多分屏）→ 走系统自己的 Dock 路径加一层：
+                //   dockMultipleSplitTasks → 桌面出现 → 启动第 N 个应用 → DOCK_EXIT_SOSC_TO_THREE
+                //   ⚠ Dock 路径**必须**指定第 N 个应用（不指定只会停在 dock 态，出不来下一层），
+                //     所以先拉选择器，拿到包名后再 dock。
+                val ctx = AppCtx.get()
+                if (ctx == null) {
+                    Logx.e("四指上滑: 取不到 Context，改走仅 dock")
+                    dockAddSplit(null)
+                } else {
+                    Logx.always("四指上滑: 已在分屏（${cur.size} 层）→ 拉起选择器，选完走 **Dock 加层**")
+                    dockAddSplitWithPicker(ctx)
+                }
             }
         }.onFailure { Logx.e("四指上滑处理失败", it) }
+    }
+
+    /**
+     * **全屏 → 原生 SoSc 双分屏**（本固件的正解，2026-09-21 平板实测）。
+     *
+     * 链路：
+     * ```
+     * SoScUtilsImpl.enterSplitScreen(RunningTaskInfo, WindowContainerTransaction, z)
+     *   → SoScSplitScreenController.enterSplitScreen(taskId, z, wct)
+     *   → SoScSplitScreenController.moveToStage(taskId, !z ? 1 : 0, wct)
+     *   → SoScStageCoordinator.moveToStage(taskInfo, position, wct)
+     *        mIsOpenPairs = !isSoScActive()        // ← 建对
+     *        fillExitFreeformWct(...) / buildHomeToFront(wct)
+     *        prepareEnterSplitScreen(...)
+     *        startEnterTransition(TRANSIT_SPLIT_SCREEN_PAIR_OPEN)   // 真 transition → 真输入通道
+     * ```
+     *
+     * 与 `openWindowFromFullscreen` 的区别（实测）：后者只产 freeform（mode 5/6），
+     * `soScActive()`/`inSoScFullMode()` 均 false，后续 Dock 路径必然失败。
+     *
+     * ⚠ 必须在 MIUI 自己的 `Transitions.mainExecutor` 上执行：
+     * `SoScSplitScreenTransitions.startEnterTransition` → `Transitions.startTransition` 内部
+     * `HandlerExecutor.assertCurrentThread()`，直接调用抛
+     * `IllegalStateException: must be called on Handler`（实测）。
+     *
+     * @param info 目标任务（当前前台的全屏任务）。
+     * @param z    true → 进 stage0(左/上)，false → 进 stage1(右/下)。默认 true。
+     */
+    private fun enterNativeSoSc(info: android.app.ActivityManager.RunningTaskInfo, z: Boolean = true) {
+        val body = Runnable {
+            runCatching {
+                val soc = socUtils() ?: run { Logx.e("原生SoSc: 取不到 SoScUtils"); return@runCatching }
+                val wctCls = Class.forName("android.window.WindowContainerTransaction")
+                val wct = wctCls.getConstructor().newInstance()
+                soc.javaClass.getMethod(
+                    "enterSplitScreen",
+                    android.app.ActivityManager.RunningTaskInfo::class.java, wctCls, java.lang.Boolean.TYPE
+                ).invoke(soc, info, wct, java.lang.Boolean.valueOf(z))
+                Logx.always("原生SoSc: enterSplitScreen 已调用(tid=${info.taskId} z=$z)")
+            }.onFailure { e ->
+                val root = (e as? java.lang.reflect.InvocationTargetException)?.targetException ?: e
+                Logx.e("原生SoSc: enterSplitScreen 失败 ${root.javaClass.name}: ${root.message}", root)
+            }
+        }
+        var posted = false
+        runCatching {
+            val ctl = cls(Constants.CLS_MULTITASKING_CTL).getMethod("getInstance").invoke(null) ?: return@runCatching
+            val trans = ctl.javaClass.getMethod("getMulWinSwitchTransition").invoke(ctl) ?: return@runCatching
+            val tr = declaredField(trans, "mTransitions") ?: declaredField(ctl, "mTransitions") ?: return@runCatching
+            val exec = tr.javaClass.getMethod("getMainExecutor").invoke(tr) as? java.util.concurrent.Executor
+                ?: return@runCatching
+            exec.execute(body)
+            posted = true
+            Logx.always("原生SoSc: 已投递到 Transitions.mainExecutor")
+        }
+        if (!posted) {
+            Logx.always("原生SoSc: 取不到 Transitions.mainExecutor，改在主线程执行")
+            main.post(body)
+        }
     }
 
     /**
@@ -501,15 +581,27 @@ object Gestures {
 
     private fun dragToSplitInternal(taskId: Int, pkg: String) {
         runCatching {
+            val ctx = AppCtx.get() ?: return@runCatching
             val ctl = cls(Constants.CLS_MULTITASKING_CTL).getMethod("getInstance").invoke(null) ?: return@runCatching
             val trans = ctl.javaClass.getMethod("getMulWinSwitchTransition").invoke(ctl) ?: return@runCatching
             // ✅ 用 `openWindowFromFullscreen(taskId, intent)` —— 真机验证过**能真正起分屏**，
             // 而且行为就是系统默认的"半屏应用 + 半屏桌面/让用户选"（用户实测确认）。
             // ⚠️ 不要换成 `prepareDragDropTaskToSoSc`：我用它试过一版，参数语义没摸对，
             //    真机表现是**两侧都黑屏**（2026-09-21 实测），已回退。
+            // ⚠️ 第二参必须是**非 null 的 PendingIntent**：框架内部 `MulWinSwitchTransition
+            //   .openWindowFromFullscreen` 会直接调 `pi.isActivity()`，传 null 在 turner/平板
+            //   固件上就是 `NullPointerException`（2026-09-21 实测）。这里传 HOME intent，
+            //   复刻"半屏应用 + 半屏桌面/让用户选"的原生行为。
+            val home = android.content.Intent(android.content.Intent.ACTION_MAIN).apply {
+                addCategory(android.content.Intent.CATEGORY_HOME)
+            }
+            val pi = android.app.PendingIntent.getActivity(
+                ctx, 0, home,
+                android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
+            )
             trans.javaClass.getMethod(
                 "openWindowFromFullscreen", Integer.TYPE, android.app.PendingIntent::class.java
-            ).invoke(trans, Integer.valueOf(taskId), null)
+            ).invoke(trans, Integer.valueOf(taskId), pi)
             Logx.always("进分屏: 已请求 openWindowFromFullscreen(task=$taskId pkg=$pkg)")
         }.onFailure { e ->
             val root = (e as? java.lang.reflect.InvocationTargetException)?.targetException ?: e
@@ -670,10 +762,17 @@ object Gestures {
                         val b = ctx.contentResolver.call(
                             android.net.Uri.parse("content://${Constants.AUTHORITY}"), "getCfg", null, null
                         )
-                        val v = b?.getString(Constants.K_TEST_ADDSPLIT)
-                        if (!v.isNullOrEmpty()) {
-                            Logx.always("测试入口: 收到请求「$v」")
+                        val vRaw = b?.getString(Constants.K_TEST_ADDSPLIT)
+                        if (!vRaw.isNullOrEmpty()) {
+                            Logx.always("测试入口: 收到请求「$vRaw」")
                             main.post {
+                                // ⚠ 钩子判据统一写成 `startsWith("X:")`，但 adb 传参时**尾冒号会被 shell 吃掉**
+                                //   （实测 `--es test DOCKSTATE:` → `Binding not well formed`）。
+                                //   所以这里**只给「无参钩子」补尾冒号**：先按"第一段是否含 `:`"判断有没有参数载荷。
+                                //   ⚠ 不能无脑补 —— 会给 `SOSCDOCK:1|com.android.contacts` 变成
+                                //   `...com.android.contacts:`，包名带尾冒号 → "取不到启动 Intent"（实测踩过）。
+                                val head = vRaw.substringBefore('|')
+                                val v = if (head.contains(':') || vRaw.endsWith(":")) vRaw else "$vRaw:"
                                 when {
                                     v.startsWith("FIRE:") -> fourFingerAddSplit()
                                     v.startsWith("MAKEPAIR:") -> makeSplitPair(v.removePrefix("MAKEPAIR:"))
@@ -722,6 +821,190 @@ object Gestures {
                                         val pk = v.removePrefix("DOCKADD:").trim().ifEmpty { null }
                                         Logx.always("测试入口: dockAddSplit(target=${pk ?: "(仅dock)"}) SoSc=${soScActive()} 多分屏=${splitActive()} 组内=${splitTaskIds()}")
                                         dockAddSplit(pk)
+                                    }
+                                    v.startsWith("DIAGSPLIT:") -> {
+                                        runCatching {
+                                            val ctl = cls(Constants.CLS_MULTITASKING_CTL).getMethod("getInstance").invoke(null) ?: return@runCatching
+                                            val trans = ctl.javaClass.getMethod("getMulWinSwitchTransition").invoke(ctl)
+                                            val clsT = trans.javaClass
+                                            Logx.e("DIAGSPLIT MulWinSwitchTransition=${clsT.name}")
+                                            clsT.methods.sortedBy { it.name }.forEach { m ->
+                                                val ps = m.parameterTypes.joinToString(",") { it.name }
+                                                if (m.name.contains("Sc", true) || m.name.contains("Split", true) || m.name.contains("Fullscreen", true) || m.name.contains("Dock", true))
+                                                    Logx.e("DIAGSPLIT   M ${m.name}($ps)")
+                                            }
+                                            val repo = taskRepo()
+                                            if (repo != null) {
+                                                Logx.e("DIAGSPLIT Repo=${repo.javaClass.name}")
+                                                repo.javaClass.methods.sortedBy { it.name }.forEach { m ->
+                                                    val ps = m.parameterTypes.joinToString(",") { it.name }
+                                                    if (m.name.contains("Task", true) || m.name.contains("Split", true) || m.name.contains("Free", true))
+                                                        Logx.e("DIAGSPLIT   R ${m.name}($ps)")
+                                                }
+                                            }
+                                        }.onFailure { Logx.e("DIAGSPLIT err ${it.message}") }
+                                    }
+                                    v.startsWith("FREESPLIT:") -> {
+                                        // 把当前 freeform 2 分屏（openWindowFromFullscreen 产物）转成原生 SoSc 2 分屏，
+                                        // 以便走 Dock 路径。startFreeformToSplit(MultiTaskingTaskInfo,int,int,WCT)
+                                        runCatching {
+                                            val fg = topTask() ?: return@runCatching
+                                            val tid = taskIdOf(fg)
+                                            Logx.e("FREESPLIT topTask tid=$tid")
+                                            val repo = taskRepo() ?: return@runCatching
+                                            val mti = runCatching { repo.javaClass.getMethod("getMultiTaskingTaskInfo", Integer.TYPE).invoke(repo, tid) }.getOrNull()
+                                                ?: runCatching { repo.javaClass.getMethod("getMiuiFreeformTaskInfo", Integer.TYPE).invoke(repo, tid) }.getOrNull()
+                                            Logx.e("FREESPLIT mti=${mti?.javaClass?.name} null=${mti == null}")
+                                            if (mti == null) { Logx.e("FREESPLIT 取不到 MultiTaskingTaskInfo"); return@runCatching }
+                                            val ctl = cls(Constants.CLS_MULTITASKING_CTL).getMethod("getInstance").invoke(null) ?: return@runCatching
+                                            val trans = ctl.javaClass.getMethod("getMulWinSwitchTransition").invoke(ctl) ?: return@runCatching
+                                            val wctCls = Class.forName("android.window.WindowContainerTransaction")
+                                            val wct = wctCls.getConstructor().newInstance()
+                                            val body = Runnable {
+                                                runCatching {
+                                                    trans.javaClass.getMethod("startFreeformToSplit", mti.javaClass, Integer.TYPE, Integer.TYPE, wctCls)
+                                                        .invoke(trans, mti, 0, 0, wct)
+                                                    Logx.e("FREESPLIT startFreeformToSplit 已调用 (tid=$tid)")
+                                                }.onFailure { Logx.e("FREESPLIT 失败 ${it.message}") }
+                                            }
+                                            val tr = declaredField(trans, "mTransitions") ?: declaredField(ctl, "mTransitions") ?: return@runCatching
+                                            val exec = tr.javaClass.getMethod("getMainExecutor").invoke(tr) as? java.util.concurrent.Executor
+                                                ?: run { main.post(body); return@runCatching }
+                                            exec.execute(body)
+                                        }.onFailure { Logx.e("FREESPLIT err ${it.message}") }
+                                    }
+                                    v.startsWith("SOSC:") -> {
+                                        // ★ 正路：用系统自己的 SoSc 建对入口 ——
+                                        //   SoScUtilsImpl.enterSplitScreen(RunningTaskInfo, WCT, z)
+                                        //     → SoScSplitScreenController.enterSplitScreen(taskId, z, wct)
+                                        //     → moveToStage(taskId, !z?1:0, wct)
+                                        //     → SoScStageCoordinator.moveToStage(): mIsOpenPairs=!isSoScActive()
+                                        //       buildHomeToFront(wct) + startEnterTransition(TRANSIT_SPLIT_SCREEN_PAIR_OPEN)
+                                        //   参数：z=true → stage0(左上/左)，z=false → stage1(右下/右)。
+                                        //   语法 SOSC:<0|1>[|taskId]
+                                        runCatching {
+                                            val rest = v.removePrefix("SOSC:").trim()
+                                            val part = rest.split('|')
+                                            val z = (part.getOrNull(0)?.trim()?.toIntOrNull() ?: 1) != 0
+                                            val explicit = part.getOrNull(1)?.trim()?.toIntOrNull()
+                                            val info: android.app.ActivityManager.RunningTaskInfo? =
+                                                if (explicit != null && explicit > 0) {
+                                                    runCatching {
+                                                        val atmCls = Class.forName("android.app.ActivityTaskManager")
+                                                        val atm = atmCls.getMethod("getInstance").invoke(null)
+                                                        val m = atmCls.getMethod("getTasks", Integer.TYPE, java.lang.Boolean.TYPE, java.lang.Boolean.TYPE)
+                                                        val ts = m.invoke(atm, 32, false, false) as? List<*>
+                                                        ts?.mapNotNull { it as? android.app.ActivityManager.RunningTaskInfo }
+                                                            ?.firstOrNull { it.taskId == explicit }
+                                                    }.getOrNull()
+                                                } else topTask() as? android.app.ActivityManager.RunningTaskInfo
+                                            if (info == null) { Logx.e("SOSC 取不到目标 RunningTaskInfo"); return@runCatching }
+                                            Logx.always("测试入口: SoSc.enterSplitScreen(tid=${info.taskId} z=$z pkg=${info.topActivity?.packageName})")
+                                            val wctCls = Class.forName("android.window.WindowContainerTransaction")
+                                            val wct = wctCls.getConstructor().newInstance()
+                                            val soc = socUtils()
+                                            if (soc == null) { Logx.e("SOSC 取不到 SoScUtils"); return@runCatching }
+                                            // ★ 必须投到 MIUI 自己的 Transitions.mainExecutor 上执行 ——
+                                            //   SoScStageCoordinator.moveToStage → SoScSplitScreenTransitions.startEnterTransition
+                                            //   → Transitions.startTransition 内部 HandlerExecutor.assertCurrentThread()
+                                            //   （实测：直接调用抛 IllegalStateException: must be called on Handler）
+                                            val body = Runnable {
+                                                runCatching {
+                                                    soc.javaClass.getMethod(
+                                                        "enterSplitScreen",
+                                                        android.app.ActivityManager.RunningTaskInfo::class.java, wctCls, java.lang.Boolean.TYPE
+                                                    ).invoke(soc, info, wct, java.lang.Boolean.valueOf(z))
+                                                    Logx.always("测试入口: SoSc.enterSplitScreen 已调用(z=$z)")
+                                                }.onFailure { e0 ->
+                                                    val root = (e0 as? java.lang.reflect.InvocationTargetException)?.targetException ?: e0
+                                                    Logx.e("SOSC enterSplitScreen 失败 ${root.javaClass.name}: ${root.message}", root)
+                                                }
+                                            }
+                                            val posted = runCatching {
+                                                val ctl0 = cls(Constants.CLS_MULTITASKING_CTL).getMethod("getInstance").invoke(null) ?: return@runCatching false
+                                                val trans0 = ctl0.javaClass.getMethod("getMulWinSwitchTransition").invoke(ctl0) ?: return@runCatching false
+                                                val tr = declaredField(trans0, "mTransitions") ?: declaredField(ctl0, "mTransitions") ?: return@runCatching false
+                                                val exec = tr.javaClass.getMethod("getMainExecutor").invoke(tr) as? java.util.concurrent.Executor ?: return@runCatching false
+                                                exec.execute(body)
+                                                true
+                                            }.getOrDefault(false)
+                                            if (!posted) {
+                                                Logx.e("SOSC 取不到 Transitions.mainExecutor，退回 main")
+                                                main.post(body)
+                                            }
+                                        }.onFailure { Logx.e("SOSC err ${it.message}") }
+                                    }
+                                    v.startsWith("DOCKSTATE:") -> {
+                                        // 诊断：dock 路径为什么返回 null —— 逐个打印守卫值
+                                        runCatching {
+                                            val soc = socUtils()
+                                            fun m(name: String): Any? = runCatching {
+                                                soc?.javaClass?.getMethod(name)?.invoke(soc)
+                                            }.getOrNull()
+                                            Logx.e("DOCKSTATE SoScUtils=${soc?.javaClass?.name}")
+                                            Logx.e("DOCKSTATE isSoScSupported=${m("isSoScSupported")} isSoScActive=${m("isSoScActive")} inSoScFullMode=${m("inSoScFullMode")} inSoScMinimizedMode=${m("inSoScMinimizedMode")}")
+                                            val ctl = cls(Constants.CLS_MULTITASKING_CTL).getMethod("getInstance").invoke(null)
+                                            val sc = ctl?.javaClass?.getMethod("getMultipleSplitController")?.invoke(ctl)
+                                            Logx.e("DOCKSTATE MultipleSplitController=${sc?.javaClass?.name}")
+                                            if (sc != null) {
+                                                for (n in listOf("isMultipleSplitActive", "getCurrentActiveStageCount", "isDocked")) {
+                                                    Logx.e("DOCKSTATE   $n=${runCatching { sc.javaClass.getMethod(n).invoke(sc) }.getOrNull()}")
+                                                }
+                                                val org = runCatching { sc.javaClass.getMethod("getMultipleSplitOrganizer").invoke(sc) }.getOrNull()
+                                                if (org != null) {
+                                                    Logx.e("DOCKSTATE   organizer=${org.javaClass.name}")
+                                                    for (n in listOf("isMultipleSplitActive", "getCurrentActiveStageCount", "isDocked", "getDockPosition")) {
+                                                        Logx.e("DOCKSTATE     org.$n=${runCatching { org.javaClass.getMethod(n).invoke(org) }.getOrNull()}")
+                                                    }
+                                                    Logx.e("DOCKSTATE     org.mDockedState=${declaredField(org, "mDockedState")}")
+                                                }
+                                            }
+                                        }.onFailure { Logx.e("DOCKSTATE err ${it.message}") }
+                                    }
+                                    v.startsWith("SOSCDOCK:") -> {
+                                        // ★ 一步到位：先在 SystemUI 内建原生 SoSc，1.5s 后（过渡完成）
+                                        //   直接调 Dock —— 全程不经 am start，避免 PickActivity 抢焦点把 SoSc 拆掉。
+                                        //   语法 SOSCDOCK:<pkg>或 SOSCDOCK:<z>|<pkg>
+                                        runCatching {
+                                            val rest = v.removePrefix("SOSCDOCK:").trim()
+                                            val z: Boolean
+                                            val pkg: String?
+                                            if (rest.contains('|')) {
+                                                z = (rest.substringBefore('|').trim().toIntOrNull() ?: 1) != 0
+                                                pkg = rest.substringAfter('|').trim().ifEmpty { null }
+                                            } else { z = true; pkg = rest.ifEmpty { null } }
+                                            val info = topTask() as? android.app.ActivityManager.RunningTaskInfo
+                                            if (info == null) { Logx.e("SOSCDOCK 取不到前台任务"); return@runCatching }
+                                            Logx.always("测试入口: SOSCDOCK 目标=${info.taskId} ${info.topActivity?.packageName} → z=$z → dock ${pkg ?: "(无)"}")
+                                            val wctCls = Class.forName("android.window.WindowContainerTransaction")
+                                            val soc = socUtils() ?: run { Logx.e("SOSCDOCK 取不到 SoScUtils"); return@runCatching }
+                                            val body = Runnable {
+                                                runCatching {
+                                                    val wct = wctCls.getConstructor().newInstance()
+                                                    soc.javaClass.getMethod(
+                                                        "enterSplitScreen",
+                                                        android.app.ActivityManager.RunningTaskInfo::class.java, wctCls, java.lang.Boolean.TYPE
+                                                    ).invoke(soc, info, wct, java.lang.Boolean.valueOf(z))
+                                                    Logx.always("SOSCDOCK ① enterSplitScreen 已调用(tid=${info.taskId} z=$z)")
+                                                    // 等 SoSc 过渡落地，再 dock（仍在 SystemUI 内，无 am start 干扰）
+                                                    main.postDelayed({
+                                                        Logx.always("SOSCDOCK ② SoSc 态: active=${runCatching { soc.javaClass.getMethod("isSoScActive").invoke(soc) }.getOrNull()} fullMode=${runCatching { soc.javaClass.getMethod("inSoScFullMode").invoke(soc) }.getOrNull()}")
+                                                        dockAddSplit(pkg)
+                                                    }, 2000)
+                                                }.onFailure { e1 ->
+                                                    val root = (e1 as? java.lang.reflect.InvocationTargetException)?.targetException ?: e1
+                                                    Logx.e("SOSCDOCK ① 失败 ${root.javaClass.name}: ${root.message}", root)
+                                                }
+                                            }
+                                            val posted = runCatching {
+                                                val ctl0 = cls(Constants.CLS_MULTITASKING_CTL).getMethod("getInstance").invoke(null) ?: return@runCatching false
+                                                val trans0 = ctl0.javaClass.getMethod("getMulWinSwitchTransition").invoke(ctl0) ?: return@runCatching false
+                                                val tr = declaredField(trans0, "mTransitions") ?: declaredField(ctl0, "mTransitions") ?: return@runCatching false
+                                                val exec = tr.javaClass.getMethod("getMainExecutor").invoke(tr) as? java.util.concurrent.Executor ?: return@runCatching false
+                                                exec.execute(body); true
+                                            }.getOrDefault(false)
+                                            if (!posted) main.post(body)
+                                        }.onFailure { Logx.e("SOSCDOCK err ${it.message}") }
                                     }
                                     else -> addToSplit(v)
                                 }
@@ -830,7 +1113,10 @@ object Gestures {
         fallback
     }.getOrNull()
 
-    private fun dockAddSplit(pkg: String?) {
+    private fun dockAddSplit(pkg0: String?) {
+        // 防御：adb 传参可能带尾冒号/空白（`SOSCDOCK:1|pkg:` 之类），包名后面带 `:` 会让
+        // `getLaunchIntentForPackage` 返回 null → "取不到启动 Intent"（实测踩过）。
+        val pkg = pkg0?.trim()?.trimEnd(':')?.ifEmpty { null }
         val info = dockParamTaskInfo()
         if (info == null) {
             Logx.e("加分屏(dock): 取不到 RunningTaskInfo —— 需要先进入分屏（真 SoSc 双分屏）")
@@ -906,25 +1192,32 @@ object Gestures {
      * 7705 就是当时分屏里的日历）。这里依次尝试：当前分屏子任务 → SoSc 根任务 → 前台任务。
      */
     private fun dockParamTaskInfo(): Any? {
+        // 1) 分屏内可见子任务（真机 demo dock 时传入的就是其中一个子任务 RunningTaskInfo）。
+        //    ⚠️ getVisibleSplitChildTaskInfo() 的元素可能是 MultiTaskingTaskInfo 包装，
+        //       其 getTaskInfo()/mTaskInfo 在异常态会返回 Integer —— 必须先用 isRunningTaskInfo
+        //       过滤，否则会原样把 Integer 当 info 返回，导致 `info as Parcelable` 抛
+        //       ClassCastException（实测：Integer cannot be cast to android.os.Parcelable）。
         runCatching {
             val repo = taskRepo() ?: return@runCatching
             val l = repo.javaClass.getMethod("getVisibleSplitChildTaskInfo").invoke(repo) as? List<*>
-            l?.firstOrNull { it != null }?.let { return unwrap(it) }
+            l?.firstOrNull { it != null && isRunningTaskInfo(unwrap(it)) }?.let { return unwrap(it) }
         }
-        // 回退：SoSc 左右 **stage** 里的任务（注意不能用 getSplitRootTaskInfo —— 那是 SoSc 根任务，
-        // 真机拿到的是 pkg=null isRunning=false 的空壳，喂给 dockMultipleSplitTasks 只会返回 null）
+        // 2) 回退：SoSc 左右 **stage** 里的任务（不用 getSplitRootTaskInfo 空壳 —— 那是 SoSc 根任务，
+        //    真机拿到的是 pkg=null isRunning=false 的空壳，喂给 dockMultipleSplitTasks 只会返回 null）
         runCatching {
             val soc = socUtils() ?: return@runCatching
             for (m in listOf("getLeftTopStage", "getRightBottomStage")) {
                 val st = runCatching { soc.javaClass.getMethod(m).invoke(soc) }.getOrNull() ?: continue
-                val rti = runCatching { st.javaClass.getMethod("getRunningTaskInfo").invoke(st) }.getOrNull()
-                if (rti != null) {
-                    val pkg = runCatching { pkgOf(unwrap(rti)) }.getOrNull()
-                    if (!pkg.isNullOrEmpty()) return unwrap(rti)
-                }
+                val rti = runCatching { st.javaClass.getMethod("getRunningTaskInfo").invoke(st) }.getOrNull() ?: continue
+                val u = unwrap(rti)
+                if (isRunningTaskInfo(u) && !pkgOf(u).isNullOrEmpty()) return u
             }
         }
-        return topTask()
+        // 3) 兜底：前台任务。仅当它真是 RunningTaskInfo 时才用，否则放弃（让 dockAddSplit 干净地
+        //    报「需要先进入分屏」，而不是崩在 info as Parcelable）。
+        val t = topTask()
+        if (t != null && isRunningTaskInfo(t)) return t
+        return null
     }
 
     /** `MultipleSplitRootTaskOrganizer.dockMultipleSplitTasks` 唯一读取的 Bundle key。 */
@@ -1009,6 +1302,76 @@ object Gestures {
         }.onFailure { Logx.e("提交 WCT 失败", it) }
     }
 
+    /**
+     * 「已在分屏 → 再加一层」的生产入口：**先让用户选应用，再走系统 Dock 路径**。
+     *
+     * 复用 [showPicker]/[awaitPick] 的选择器（跑在模块 App 进程，结果经 CFG prefs 一次性 token 取回），
+     * 拿到包名后交给 [dockAddSplit] —— 由系统 `dockMultipleSplitTasks` → 桌面 → 启动该应用
+     * → `DOCK_EXIT_SOSC_TO_THREE`(11288) 落成下一层。实测三分屏可触摸（2026-09-21 平板）。
+     */
+    private fun dockAddSplitWithPicker(ctx: Context) {
+        runCatching {
+            // ⚠ 候选**不能用** `getVisibleFullTaskInfo()`（本固件只给 1~3 条，且会漏掉用户想加的应用）；
+            //   Dock 路径要求"启动第 N 个应用"，所以候选 = 系统里**所有可启动的应用**。
+            val pkgs = launchablePkgs(ctx)
+            if (pkgs.isEmpty()) {
+                Logx.e("Dock加层: 没有可启动的应用，改走仅 dock")
+                dockAddSplit(null)
+                return@runCatching
+            }
+            val token = java.util.UUID.randomUUID().toString().take(8)
+            pickToken = token
+            val i = Intent().apply {
+                setClassName(MODULE_PKG, "$MODULE_PKG.PickActivity")
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS)
+                putStringArrayListExtra("pkgs", ArrayList(pkgs))
+                putExtra("token", token)
+                putExtra("index", -1)
+            }
+            ctx.startActivity(i)
+            Logx.always("Dock加层: 已拉起选择器（${pkgs.size} 个候选 token=$token）")
+            awaitPickForDock(ctx, token, pkgs)
+        }.onFailure { Logx.e("Dock加层: 拉起选择器失败", it) }
+    }
+
+    /** 与 [awaitPick] 同构，但选中后走 `dockAddSplit(pkg)` 而不是 `addToSplit(pkg)`。 */
+    private fun awaitPickForDock(ctx: Context, token: String, pkgs: List<String>) {
+        Thread {
+            // 选应用这一步是"轻决策"（不用像 addToSplit 那样想层数），8s 足够；超时自动兜底。
+            val deadline = android.os.SystemClock.uptimeMillis() + 8_000
+            while (android.os.SystemClock.uptimeMillis() < deadline) {
+                runCatching {
+                    val b = ctx.contentResolver.call(
+                        android.net.Uri.parse("content://${Constants.AUTHORITY}"), "getCfg", null, null
+                    )
+                    val v = b?.getString(Constants.K_PICK)
+                    if (!v.isNullOrEmpty() && v.startsWith("$token|")) {
+                        val pkg = v.substringAfter('|')
+                        pickToken = null
+                        Logx.always("Dock加层: 用户选中 $pkg → 走 Dock 路径")
+                        main.post { dockAddSplit(pkg) }
+                        return@Thread
+                    }
+                }
+                try {
+                    Thread.sleep(300)
+                } catch (ie: InterruptedException) {
+                    return@Thread
+                }
+            }
+            // ⚠ 超时**不能**退成 `dockAddSplit(null)`：那样系统已经进了 dock 态、桌面被拉到前台，
+            //   但没有第 N 个应用可启动 → 停在"桌面上悬着一个空 dock"，用户以为卡死了（实测 23:36）。
+            //   改为**自动挑一个候选**（首个可启动应用）继续走完整 Dock 链路，保证总能落成下一层。
+            val auto = pkgs.firstOrNull()
+            if (auto != null) {
+                Logx.always("Dock加层: 选择器超时 → 自动选用 $auto 继续 Dock 加层")
+                main.post { dockAddSplit(auto) }
+            } else {
+                Logx.always("Dock加层: 选择器超时且无候选，放弃（不进入 dock 态）")
+            }
+        }.start()
+    }
+
     private fun socUtils(): Any? = runCatching {
         Class.forName("com.android.wm.shell.sosc.SoScUtils", false, uiLoader)
             .getMethod("getInstance").invoke(null)
@@ -1070,6 +1433,62 @@ object Gestures {
         val pm = ctx.packageManager
         pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString()
     }.getOrDefault(pkg)
+
+    /**
+     * 系统里**所有可启动**（有 LAUNCHER 入口）的应用包名，供选择器做候选。
+     *
+     * 为什么不用 shell 的任务仓库：Dock 路径的本质是"**启动一个新应用**并把它 dock 进来"
+     * （`dockMultipleSplitTasks` → 回桌面 → `startActivity` → `DOCK_EXIT_SOSC_TO_THREE`），
+     * 所以候选必须是**可启动的应用全集**，而不是"当前正在跑的任务"。
+     *
+     * 处理：
+     * - 过滤掉自己（[MODULE_PKG]）、桌面、`android`、以及 SystemUI / 输入法等**不可分屏**的系统 UI；
+     * - 按应用名（中文标签）排序，与选择器 [PickActivity] 的展示顺序一致；
+     * - 同名/同包去重。
+     *
+     * ⚠ 跑在 SystemUI 进程：`queryIntentActivities` 用 `MATCH_ALL`，别用 Android 11+ 的
+     *   `MATCH_ALL` 变体（部分固件对 system uid 校验不同）；失败就退回 `getInstalledApplications`。
+     */
+    private fun launchablePkgs(ctx: Context): List<String> {
+        val pm = ctx.packageManager ?: return emptyList()
+        val out = LinkedHashMap<String, String>()   // pkg -> label
+        runCatching {
+            val i = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+            @Suppress("DEPRECATION")
+            val list = pm.queryIntentActivities(i, 0) ?: emptyList()
+            for (ri in list) {
+                val pkg = ri.activityInfo?.packageName ?: continue
+                if (!isSplittablePkg(pkg)) continue
+                out.putIfAbsent(pkg, runCatching { ri.loadLabel(pm).toString() }.getOrDefault(pkg))
+            }
+        }
+        if (out.isEmpty()) {
+            // 兜底：直接枚举已安装应用（无 launcher 图标的也算，Dock 只关心包名能不能启动）
+            runCatching {
+                for (ai in pm.getInstalledApplications(0)) {
+                    val pkg = ai.packageName ?: continue
+                    if (!isSplittablePkg(pkg)) continue
+                    out.putIfAbsent(pkg, runCatching { pm.getApplicationLabel(ai).toString() }.getOrDefault(pkg))
+                }
+            }
+        }
+        val sorted = out.entries
+            .sortedBy { it.value.lowercase() }
+            .map { it.key }
+        Logx.always("Dock加层: 候选应用 ${sorted.size} 个 → ${sorted.take(12)}${if (sorted.size > 12) " ..." else ""}")
+        return sorted
+    }
+
+    /** 排除不该出现在分屏候选里的包（自己 / 桌面 / 系统 UI / 输入法）。 */
+    private fun isSplittablePkg(pkg: String): Boolean {
+        if (pkg == MODULE_PKG) return false
+        if (pkg == "android" || pkg == "com.miui.home" || pkg.endsWith(".launcher")) return false
+        val bad = listOf(
+            "com.android.systemui", "com.android.settings.intelligence",
+            "com.google.android.inputmethod", "com.baidu.input", "com.sohu.inputmethod",
+        )
+        return bad.none { pkg == it || pkg.startsWith("$it.") }
+    }
 
     /**
      * 把选中的应用加进当前分屏组。
@@ -1265,18 +1684,88 @@ object Gestures {
         ctl.javaClass.getMethod("getMultiTaskingTaskRepository").invoke(ctl)
     }.getOrNull()
 
-    /** 前台任务：优先"可见的全屏任务"，其次 Z 序最上的多窗口任务。 */
+    /** 前台任务：优先框架标准接口 ActivityTaskManager.getTasks（跨 MIUI 固件稳定），其次 MIUI 仓库兜底。 */
     private fun topTask(): Any? {
+        // 本平板固件（turner / HyperOS 4）的 MIUI 多任务仓库取不到前台全屏任务
+        // （getVisibleFullTaskInfo 空、getMultiWindowTasksInZOrder 返回 List<Integer 且不含前台应用）。
+        // Android 17 上 ActivityManager.getTasks(int) 已移除，改用 ActivityTaskManager.getTasks，
+        // 其返回真 RunningTaskInfo，systemui（system uid）有调用权限。
+        topTaskViaAtm()?.let { return it }
+        // 兜底：MIUI 仓库（部分固件可用）
         val repo = taskRepo() ?: return null
         runCatching {
             val l = repo.javaClass.getMethod("getVisibleFullTaskInfo").invoke(repo) as? List<*>
-            l?.firstOrNull { it != null }?.let { return unwrap(it) }
+            l?.firstOrNull { it != null && isRunningTaskInfo(unwrap(it)) }?.let { return unwrap(it) }
         }
         runCatching {
             val l = repo.javaClass.getMethod("getMultiWindowTasksInZOrder").invoke(repo) as? List<*>
-            l?.lastOrNull { it != null }?.let { return unwrap(it) }
+            l?.lastOrNull { it != null && isRunningTaskInfo(unwrap(it)) }?.let { return unwrap(it) }
         }
         return null
+    }
+
+    /** 通过 ActivityTaskManager.getTasks 取最上的真实前台任务（RunningTaskInfo）。 */
+    private fun topTaskViaAtm(): Any? {
+        return runCatching {
+            val atmCls = Class.forName("android.app.ActivityTaskManager")
+            val atm = atmCls.getMethod("getInstance").invoke(null) ?: return@runCatching null
+            // 候选签名（不同固件略有差异）：getTasks(int,boolean,boolean) / (int,int,boolean) / (int,boolean)
+            val tries = listOf(
+                arrayOf<Class<*>>(Integer.TYPE, java.lang.Boolean.TYPE, java.lang.Boolean.TYPE) to arrayOf<Any>(16, false, false),
+                arrayOf<Class<*>>(Integer.TYPE, Integer.TYPE, java.lang.Boolean.TYPE) to arrayOf<Any>(16, 0, false),
+                arrayOf<Class<*>>(Integer.TYPE, java.lang.Boolean.TYPE) to arrayOf<Any>(16, false),
+            )
+            var found: Any? = null
+            for ((sig, args) in tries) {
+                if (found != null) break
+                runCatching {
+                    val m = atmCls.getMethod("getTasks", *sig)
+                    val tasks = m.invoke(atm, *args) as? List<*> ?: return@runCatching
+                    for (e in tasks) {
+                        val t = e as? android.app.ActivityManager.RunningTaskInfo ?: continue
+                        val tn = t.topActivity ?: t.baseActivity
+                        val pkg = tn?.packageName
+                        if (pkg != null && pkg != "com.miui.home" && !pkg.endsWith(".launcher") && pkg != "android") {
+                            found = t
+                            return@runCatching
+                        }
+                    }
+                }
+            }
+            found
+        }.getOrNull().also { if (it == null) Logx.e("topTask: ActivityTaskManager.getTasks 未取得前台") }
+    }
+
+    /** 临时诊断：dump 多任务仓库任务对象的真实结构，定位 taskId / pkg 取法。 */
+    private fun diagMultiTasking(tag: String) {
+        val repo = taskRepo() ?: run { Logx.e("DIAG[$tag] repo=null"); return }
+        fun dump(method: String) {
+            runCatching {
+                val l = repo.javaClass.getMethod(method).invoke(repo) as? List<*>
+                Logx.e("DIAG[$tag] $method size=${l?.size}")
+                l?.forEachIndexed { i, it ->
+                    if (it == null) { Logx.e("DIAG[$tag]   [$i] null"); return@forEachIndexed }
+                    val cls = it.javaClass.name
+                    val raw = when (it) {
+                        is Int -> it
+                        is Integer -> it.toInt()
+                        else -> null
+                    }
+                    if (raw != null) { Logx.e("DIAG[$tag]   [$i] RAW_INT=$raw cls=$cls"); return@forEachIndexed }
+                    val ti = runCatching { it.javaClass.getMethod("getTaskInfo").invoke(it) }.getOrNull()
+                    val mti = declaredField(it, "mTaskInfo")
+                    val tid = runCatching { it.javaClass.getMethod("getTaskId").invoke(it) }.getOrNull()
+                    val pk = runCatching { it.javaClass.getMethod("getPackageName").invoke(it) }.getOrNull()
+                    val ra = runCatching { it.javaClass.getMethod("getRealActivity").invoke(it) }.getOrNull()
+                    Logx.e("DIAG[$tag]   [$i] cls=$cls getTaskInfo=${ti?.javaClass?.name} mTaskInfo=${mti?.javaClass?.name} getTaskId=$tid getPkg=$pk getRealActivity=${ra?.javaClass?.name}")
+                    if (mti != null && isRunningTaskInfo(mti)) {
+                        Logx.e("DIAG[$tag]     mTaskInfo RUNNING: taskId=${taskIdOf(mti)} pkg=${pkgOf(mti)}")
+                    }
+                }
+            }.onFailure { Logx.e("DIAG[$tag] $method threw ${it.message}") }
+        }
+        dump("getVisibleFullTaskInfo")
+        dump("getMultiWindowTasksInZOrder")
     }
 
     private fun taskIdOf(info: Any): Int = runCatching {

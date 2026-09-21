@@ -45,8 +45,8 @@ A shell "am start -W -a android.intent.action.MAIN -c android.intent.category.LA
 sleep 2.5
 echo "  前台: $(A shell 'dumpsys activity activities' 2>/dev/null | grep -m1 -oE 'topResumedActivity.*' | cut -c1-90)"
 
-SAY "2) DRAGADD:1 → 造真·原生 SoSc 双分屏"
-A shell "am start -n $PKG/.PickActivity --es test 'DRAGADD:1'" >/dev/null 2>&1
+SAY "2) DRAGADD:1|com.android.contacts → 造真·原生 SoSc 双分屏（前台 calculator + 拖入 contacts）"
+A shell "am start -n $PKG/.PickActivity --es test 'DRAGADD:1|com.android.contacts'" >/dev/null 2>&1
 sleep 4
 echo "  mInSplitScreen : $(A shell 'dumpsys window windows' 2>/dev/null | grep -m1 -oE 'mInSplitScreen=(true|false)')"
 echo "  FocusedWindows : $(A shell dumpsys input 2>/dev/null | grep -m1 'FocusedWindows' -A1 | tail -1 | tr -d '\r' | cut -c1-100)"

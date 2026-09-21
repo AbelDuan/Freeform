@@ -5,7 +5,9 @@
 # 用法： ./tools/fix-lsposed-module.sh
 set -euo pipefail
 PKG=com.abel.os4freeformx
-TMP=/tmp/lspdb; mkdir -p "$TMP"; rm -f "$TMP"/f.db*
+# 临时工作目录：默认用 mktemp（Linux / macOS / Git Bash 通用，不绑定任何一台机器的绝对路径）。
+# 需要固定位置时用环境变量覆盖： LSPDB_TMP=/tmp/lspdb ./tools/fix-lsposed-module.sh
+TMP="${LSPDB_TMP:-$(mktemp -d)}"; mkdir -p "$TMP"; rm -f "$TMP"/f.db*
 
 NEW=$(adb shell "pm path $PKG" | tr -d '\r' | sed 's/package://')
 echo "真实 APK 路径: $NEW"

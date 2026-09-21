@@ -29,6 +29,8 @@ module_readable.log
 
 # ── 测试运行时输出（脚本产物，非源码）───────────────────────
 /_out/
+/_lspdb/
+/_recon/
 t17_*.png
 t17_*.txt
 small_*.png
