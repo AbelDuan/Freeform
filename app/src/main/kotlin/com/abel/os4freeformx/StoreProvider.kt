@@ -62,6 +62,21 @@ class StoreProvider : ContentProvider() {
                 }
                 Bundle()
             }
+            // 写入配置键（PREFS_CFG，CE+DE 双写）—— SystemUI 侧的测试广播用它把命令投递进来
+            "putCfg" -> {
+                val k = extras?.getString("k") ?: arg
+                val v = extras?.getString("v")
+                if (k != null && v != null) {
+                    val c = context?.getSharedPreferences(Constants.PREFS_CFG, Context.MODE_PRIVATE)
+                    c?.edit()?.putString(k, v)?.apply()
+                    runCatching {
+                        context?.createDeviceProtectedStorageContext()
+                            ?.getSharedPreferences(Constants.PREFS_CFG, Context.MODE_PRIVATE)
+                            ?.edit()?.putString(k, v)?.apply()
+                    }
+                }
+                Bundle()
+            }
             "clear" -> {
                 p.edit().clear().apply()
                 Bundle()

@@ -23,23 +23,8 @@ class PickActivity : Activity() {
         super.onCreate(savedInstanceState)
         // 测试入口：am start -n com.abel.os4freeformx/.PickActivity --es test "pkg|taskId"
         // 直接把"加分屏"请求交给 SystemUI 侧执行（adb 造不出四指触控时用它验证系统路径）
-        intent.getStringExtra("test")?.let { sel ->
-            // 测试开关：`am start -n <pkg>/.PickActivity --es test "TESTHOOK:1" / "TESTHOOK:0"`
-            // 打开后 SystemUI 侧 [Gestures.watchTestHook] 的轮询会在 1.5s 内生效，
-            // **不需要重启 SystemUI**；关闭后轮询线程只 sleep，生产零开销。
-            if (sel.startsWith("TESTHOOK")) {
-                val on = sel.substringAfter(':', "1").trim() != "0"
-                AppPrefs.putBoolean(this, Constants.K_TEST_HOOK, on)
-                android.widget.Toast.makeText(
-                    this, "测试钩子：${if (on) "开" else "关"}", android.widget.Toast.LENGTH_SHORT
-                ).show()
-                finish()
-                return
-            }
-            AppPrefs.putString(this, Constants.K_TEST_ADDSPLIT, sel)
-            finish()
-            return
-        }
+        registerCloseReceiver()
+        intent.getStringExtra("test")?.let { sel -> if (handleTest(sel)) return }
         val pkgs = intent.getStringArrayListExtra(EXTRA_PKGS) ?: arrayListOf()
         val token = intent.getStringExtra(EXTRA_TOKEN).orEmpty()
 
@@ -70,9 +55,56 @@ class PickActivity : Activity() {
         setContentView(root)
     }
 
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        // ★ 关键：选择器还活着时再发 adb 测试命令，`am start` 会把它投递给**已有实例**
+        //   （真机日志：`Activity not started, intent has been delivered to currently running
+        //    top-most instance`）→ 走的是 onNewIntent 而不是 onCreate。
+        //   不在这里处理的话，命令会被**静默吞掉**（表现：钩子完全没反应、日志空）。
+        intent.getStringExtra("test")?.let { handleTest(it) }
+    }
+
+    /** 处理 adb 测试命令；返回 true 表示已消费（调用方应 return）。 */
+    private fun handleTest(sel: String): Boolean {
+        // 测试开关：`am start -n <pkg>/.PickActivity --es test "TESTHOOK:1" / "TESTHOOK:0"`
+        // 打开后 SystemUI 侧 [Gestures.watchTestHook] 的轮询会在 5s 内生效（无需重启 SystemUI）；
+        // 关闭后轮询降到 5s 一轮且不做命令处理，生产近乎零开销。
+        if (sel.startsWith("TESTHOOK")) {
+            val on = sel.substringAfter(':', "1").trim() != "0"
+            AppPrefs.putBoolean(this, Constants.K_TEST_HOOK, on)
+            android.widget.Toast.makeText(
+                this, "测试钩子：${if (on) "开" else "关"}", android.widget.Toast.LENGTH_SHORT
+            ).show()
+            finish()
+            return true
+        }
+        AppPrefs.putString(this, Constants.K_TEST_ADDSPLIT, sel)
+        finish()
+        return true
+    }
+
+    // 选择器超时/兜底后 SystemUI 会发这个广播，把还赖在屏幕上的选择器关掉
+    // （否则它会一直盖在分屏上方，挡住刚加出来的那一列）。
+    private val closeReceiver = object : android.content.BroadcastReceiver() {
+        override fun onReceive(c: android.content.Context, i: android.content.Intent) = finish()
+    }
+
+    private fun registerCloseReceiver() {
+        runCatching {
+            registerReceiver(closeReceiver, android.content.IntentFilter(ACTION_CLOSE_PICK))
+        }
+    }
+
+    override fun onDestroy() {
+        runCatching { unregisterReceiver(closeReceiver) }
+        super.onDestroy()
+    }
+
     companion object {
         const val EXTRA_PKGS = "pkgs"
         const val EXTRA_TOKEN = "token"
         const val EXTRA_INDEX = "index"
+        /** 广播：关掉还盖在屏幕上的选择器（选择器超时兜底后由 SystemUI 侧发出）。 */
+        const val ACTION_CLOSE_PICK = "com.abel.os4freeformx.CLOSE_PICK"
     }
 }

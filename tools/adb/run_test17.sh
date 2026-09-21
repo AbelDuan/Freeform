@@ -19,7 +19,13 @@ ADB=/c/android/sdk/platform-tools/adb.exe
 PKG=com.abel.os4freeformx
 
 log() { echo "[$(date +%H:%M:%S)] $*"; }
-hook() { $ADB shell "am start -n $PKG/.PickActivity --es test '$1'" >/dev/null 2>&1; }
+# ★ 用**广播**而不是 `am start .PickActivity`：后者会启动一个 Activity 抢前台，
+#   把刚建好的分屏拆掉（实测加层时 SoSc 退回 false）⇒ 永远加不到第 3/4 层。
+#   广播不启动任何界面，可以在保持分屏的前提下连续加层。
+#   （开关类命令 TESTHOOK 仍走 am start，因为此时还没有分屏可拆。）
+hook() {
+  $ADB shell "am broadcast -a com.abel.os4freeformx.TEST --es cmd '$1'" >/dev/null 2>&1
+}
 
 STEP="${1:-state}"
 case "$STEP" in

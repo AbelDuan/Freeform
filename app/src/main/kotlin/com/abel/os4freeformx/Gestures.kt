@@ -128,7 +128,10 @@ object Gestures {
         //   （不能用 Cfg.testHook：remote prefs 是快照，见 Cfg.kt）⇒
         //   开关**动态生效**，打开后无需重启 SystemUI 就能用 adb 钩子测试；
         //   关闭时轮询降到 5s 一次，且不做任何命令处理。
-        main.post { watchTestHook() }
+        main.post {
+            watchTestHook()
+            installTestReceiver()
+        }
         Logx.always(
             "installGestures: onInputEvent 挂载=$hooked（gestures=${Cfg.gestures} " +
                 "屏=${screenW}x${screenH} 密度=$density）"
@@ -747,6 +750,45 @@ object Gestures {
     }.getOrDefault(false)
 
     /**
+     * adb 测试命令的**广播入口**：
+     * `adb shell am broadcast -a com.abel.os4freeformx.TEST --es cmd "FIRE"`
+     *
+     * ★ 为什么还需要广播（明明已有 `PickActivity --es test`）：那条路要 `am start`
+     *   启动一个 Activity，会**抢前台并把刚建好的分屏拆掉**（实测：加层时 `SoSc=false`、
+     *   前台变成另一个全屏应用 ⇒ 永远加不到第 3/4 层）。广播不启动任何界面，
+     *   可以在保持分屏的前提下连续加层。
+     *
+     * 广播本身只把命令写进 `K_TEST_ADDSPLIT`，真正的执行仍走 [watchTestHook] 的轮询，
+     * 沿用同一套分发逻辑、不重复代码。
+     */
+    private fun installTestReceiver() {
+        runCatching {
+            val ctx = AppCtx.get() ?: run { Logx.e("测试广播: 取不到 Context"); return }
+            val recv = object : android.content.BroadcastReceiver() {
+                override fun onReceive(c: android.content.Context, i: android.content.Intent) {
+                    val cmd = i.getStringExtra("cmd") ?: return
+                    Logx.always("测试入口(广播): 收到「$cmd」")
+                    runCatching {
+                        val b = android.os.Bundle()
+                        b.putString("k", Constants.K_TEST_ADDSPLIT)
+                        b.putString("v", cmd)
+                        c.contentResolver.call(
+                            android.net.Uri.parse("content://${Constants.AUTHORITY}"), "putCfg", null, b
+                        )
+                    }.onFailure { Logx.e("测试入口(广播): 写入失败", it) }
+                }
+            }
+            val filter = android.content.IntentFilter(Constants.ACTION_TEST_CMD)
+            if (android.os.Build.VERSION.SDK_INT >= 33) {
+                ctx.registerReceiver(recv, filter, android.content.Context.RECEIVER_EXPORTED)
+            } else {
+                ctx.registerReceiver(recv, filter)
+            }
+            Logx.always("测试广播已注册: ${Constants.ACTION_TEST_CMD}")
+        }.onFailure { Logx.e("注册测试广播失败", it) }
+    }
+
+    /**
      * 测试入口：轮询 `StoreProvider` 的 `pending_test_addsplit`。
      *
      * 用途：adb 造不出四指触控，但"加分屏"那一段可以单独驱动 ——
@@ -1122,14 +1164,15 @@ object Gestures {
         fallback
     }.getOrNull()
 
-    private fun dockAddSplit(pkg0: String?) {
-        // 防御：adb 传参可能带尾冒号/空白（`SOSCDOCK:1|pkg:` 之类），包名后面带 `:` 会让
-        // `getLaunchIntentForPackage` 返回 null → "取不到启动 Intent"（实测踩过）。
-        val pkg = pkg0?.trim()?.trimEnd(':')?.ifEmpty { null }
-        val info = dockParamTaskInfo()
+    /**
+     * 只进入 **dock 态**（不启动任何应用）。返回 `dockMultipleSplitTasks` 的 Bundle，null = 失败。
+     *
+     * 拆出来是为了让"弹选择器"发生在 dock 之后 —— 见 [dockAddSplitWithPicker]。
+     */
+    private fun dockEnter(info: Any?): Any? {
         if (info == null) {
             Logx.e("加分屏(dock): 取不到 RunningTaskInfo —— 需要先进入分屏（真 SoSc 双分屏）")
-            return
+            return null
         }
         Logx.always(
             "加分屏(dock): 参数任务 taskId=${taskIdOf(info)} pkg=${runCatching { pkgOf(info) }.getOrNull()} " +
@@ -1149,49 +1192,64 @@ object Gestures {
             Logx.e("加分屏(dock)失败: ${root.javaClass.simpleName}: ${root.message}", root)
         }.getOrNull()
         Logx.always("加分屏(dock): dockMultipleSplitTasks → $out")
+        return out
+    }
 
+    /** 把应用启动到 dock 的那个 stage 下，让系统自己走 `DOCK_EXIT_*`。 */
+    private fun launchIntoDockStage(pkg: String) {
+        runCatching {
+            val ctx = AppCtx.get() ?: return@runCatching
+            val it0 = ctx.packageManager.getLaunchIntentForPackage(pkg) ?: run {
+                Logx.e("加分屏(dock): 取不到 $pkg 的启动 Intent")
+                return@runCatching
+            }
+            it0.addFlags(
+                android.content.Intent.FLAG_ACTIVITY_NEW_TASK or
+                    android.content.Intent.FLAG_ACTIVITY_MULTIPLE_TASK
+            )
+            // ★ 关键：必须把它启动到 **dock 的那个 stage**（stage_c）下，让新任务的
+            //   parentTaskId = stage_c。系统 `requestOpenToExitDockMode` 就是靠
+            //   `mOrganizer.getStageTaskListener(triggerTask.parentTaskId)` 解析 stage 的
+            //   （反编译确认）；不带 launch root 时 parentTaskId=-1、windowingMode=1
+            //   → 日志出现 "mode : 1, stage : null" → 系统不做 DOCK_EXIT_SOSC_TO_THREE。
+            val tok = dockStageToken()
+            if (tok != null) {
+                runCatching {
+                    val optsCls = Class.forName("android.app.ActivityOptions")
+                    val opts = optsCls.getMethod("makeBasic").invoke(null)
+                    val tokCls = Class.forName("android.window.WindowContainerToken")
+                    optsCls.getMethod("setLaunchRootTask", tokCls).invoke(opts, tok)
+                    val b = optsCls.getMethod("toBundle").invoke(opts) as android.os.Bundle
+                    ctx.startActivity(it0, b)
+                    Logx.always("加分屏(dock): 已启动 $pkg（launchRootTask=dock stage），等待 DOCK_EXIT_SOSC_TO_THREE")
+                }.onFailure {
+                    Logx.e("加分屏(dock): setLaunchRootTask 失败，退回普通启动", it)
+                    ctx.startActivity(it0)
+                }
+            } else {
+                Logx.e("加分屏(dock): 取不到 dock stage token，退回普通启动（系统多半不会 exit dock）")
+                ctx.startActivity(it0)
+            }
+        }.onFailure { Logx.e("加分屏(dock): 启动 $pkg 失败", it) }
+    }
+
+    private fun dockAddSplit(pkg0: String?, taskOverride: Any? = null) {
+        // 防御：adb 传参可能带尾冒号/空白（`SOSCDOCK:1|pkg:` 之类），包名后面带 `:` 会让
+        // `getLaunchIntentForPackage` 返回 null → "取不到启动 Intent"（实测踩过）。
+        val pkg = pkg0?.trim()?.trimEnd(':')?.ifEmpty { null }
+        // ★ taskOverride：拉起选择器后**选择器自己会成为前台任务**，此时再调
+        //   dockParamTaskInfo() 会一路回退到 topTask() 拿到**选择器本身**
+        //   （实测 pkg=com.abel.os4freeformx）⇒ dockMultipleSplitTasks 直接返回 null。
+        //   所以调用方要在弹选择器**之前**取好快照传进来。
+        val info = taskOverride ?: dockParamTaskInfo()
+        if (dockEnter(info) == null) return
         if (pkg.isNullOrEmpty()) {
             Logx.always("加分屏(dock): 已进入 dock 态（桌面应已出现），请手工选应用")
             return
         }
         // dock 过渡 ≈ 1s（真机 DOCK_ENTER 在 18:29:08.875→08.877 finish，但 44ms 后才有
         // updateDockedState，稳妥给 1.2s），之后再启动目标应用，让系统走 DOCK_EXIT_SOSC_TO_THREE。
-        main.postDelayed({
-            runCatching {
-                val ctx = AppCtx.get() ?: return@runCatching
-                val it0 = ctx.packageManager.getLaunchIntentForPackage(pkg) ?: run {
-                    Logx.e("加分屏(dock): 取不到 $pkg 的启动 Intent")
-                    return@runCatching
-                }
-                it0.addFlags(
-                    android.content.Intent.FLAG_ACTIVITY_NEW_TASK or
-                        android.content.Intent.FLAG_ACTIVITY_MULTIPLE_TASK
-                )
-                // ★ 关键：必须把它启动到 **dock 的那个 stage**（stage_c）下，让新任务的
-                //   parentTaskId = stage_c。系统 `requestOpenToExitDockMode` 就是靠
-                //   `mOrganizer.getStageTaskListener(triggerTask.parentTaskId)` 解析 stage 的
-                //   （反编译确认）；不带 launch root 时 parentTaskId=-1、windowingMode=1
-                //   → 日志出现 "mode : 1, stage : null" → 系统不做 DOCK_EXIT_SOSC_TO_THREE。
-                val tok = dockStageToken()
-                if (tok != null) {
-                    runCatching {
-                        val optsCls = Class.forName("android.app.ActivityOptions")
-                        val opts = optsCls.getMethod("makeBasic").invoke(null)
-                        val tokCls = Class.forName("android.window.WindowContainerToken")
-                        optsCls.getMethod("setLaunchRootTask", tokCls).invoke(opts, tok)
-                        val b = optsCls.getMethod("toBundle").invoke(opts) as android.os.Bundle
-                        ctx.startActivity(it0, b)
-                        Logx.always("加分屏(dock): 已启动 $pkg（launchRootTask=dock stage），等待 DOCK_EXIT_SOSC_TO_THREE")
-                    }.onFailure {
-                        Logx.e("加分屏(dock): setLaunchRootTask 失败，退回普通启动", it)
-                        ctx.startActivity(it0)
-                    }
-                } else {
-                    Logx.e("加分屏(dock): 取不到 dock stage token，退回普通启动（系统多半不会 exit dock）")
-                    ctx.startActivity(it0)
-                }
-            }.onFailure { Logx.e("加分屏(dock): 启动 $pkg 失败", it) }
-        }, 1200)
+        main.postDelayed({ launchIntoDockStage(pkg) }, 1200)
     }
 
     /**
@@ -1314,20 +1372,31 @@ object Gestures {
     /**
      * 「已在分屏 → 再加一层」的生产入口：**先让用户选应用，再走系统 Dock 路径**。
      *
-     * 复用 [showPicker]/[awaitPick] 的选择器（跑在模块 App 进程，结果经 CFG prefs 一次性 token 取回），
-     * 拿到包名后交给 [dockAddSplit] —— 由系统 `dockMultipleSplitTasks` → 桌面 → 启动该应用
-     * → `DOCK_EXIT_SOSC_TO_THREE`(11288) 落成下一层。实测三分屏可触摸（2026-09-21 平板）。
+     * ★★ 顺序是**先 dock、再选应用**，不是"先选应用再 dock"：
+     * ```
+     * ① dockParamTaskInfo() 取分屏内任务快照
+     * ② dockEnter(task)      ← 先建立 dock 态（mDockedState）
+     * ③ 弹选择器让用户挑第 N 个应用
+     * ④ launchIntoDockStage(pkg)  用 setLaunchRootTask 启动 → 系统走 DOCK_EXIT_* 落成下一层
+     * ```
+     * ⚠ 反过来（先弹选择器）实测必失败：弹选择器要 `startActivity`，会把 SoSc 拆掉
+     *   （日志 `SoSc=false`），之后再 `dockMultipleSplitTasks` 只会返回 null。
+     *   dock 态在 shell 内部，之后弹选择器不影响它。
      */
     private fun dockAddSplitWithPicker(ctx: Context) {
         runCatching {
+            // ★ 先取分屏内任务快照（弹选择器后前台会变成选择器，那时再取就取错了）
+            val task = dockParamTaskInfo()
             // ⚠ 候选**不能用** `getVisibleFullTaskInfo()`（本固件只给 1~3 条，且会漏掉用户想加的应用）；
             //   Dock 路径要求"启动第 N 个应用"，所以候选 = 系统里**所有可启动的应用**。
             val pkgs = launchablePkgs(ctx)
             if (pkgs.isEmpty()) {
                 Logx.e("Dock加层: 没有可启动的应用，改走仅 dock")
-                dockAddSplit(null)
+                dockEnter(task)
                 return@runCatching
             }
+            // ★ 先建立 dock 态，再弹选择器（顺序反了会被拆掉分屏，见本函数文档注释）
+            if (dockEnter(task) == null) return@runCatching
             val token = java.util.UUID.randomUUID().toString().take(8)
             pickToken = token
             val i = Intent().apply {
@@ -1341,6 +1410,18 @@ object Gestures {
             Logx.always("Dock加层: 已拉起选择器（${pkgs.size} 个候选 token=$token）")
             awaitPickForDock(ctx, token, pkgs)
         }.onFailure { Logx.e("Dock加层: 拉起选择器失败", it) }
+    }
+
+    /**
+     * 让还显示在屏幕上的选择器自己 finish。
+     *
+     * ⚠ 选择器超时兜底后如果不关掉，它会一直盖在分屏上方（挡住刚加出来的那一列），
+     *   而且后续 `am start` 测试命令会被投递给它、被静默吞掉。
+     */
+    private fun closePicker(ctx: Context) {
+        runCatching {
+            ctx.sendBroadcast(android.content.Intent(PickActivity.ACTION_CLOSE_PICK))
+        }.onFailure { Logx.e("Dock加层: 通知选择器关闭失败", it) }
     }
 
     /** 与 [awaitPick] 同构，但选中后走 `dockAddSplit(pkg)` 而不是 `addToSplit(pkg)`。 */
@@ -1358,7 +1439,8 @@ object Gestures {
                         val pkg = v.substringAfter('|')
                         pickToken = null
                         Logx.always("Dock加层: 用户选中 $pkg → 走 Dock 路径")
-                        main.post { dockAddSplit(pkg) }
+                        closePicker(ctx)
+                        main.post { launchIntoDockStage(pkg) }
                         return@Thread
                     }
                 }
@@ -1371,10 +1453,11 @@ object Gestures {
             // ⚠ 超时**不能**退成 `dockAddSplit(null)`：那样系统已经进了 dock 态、桌面被拉到前台，
             //   但没有第 N 个应用可启动 → 停在"桌面上悬着一个空 dock"，用户以为卡死了（实测 23:36）。
             //   改为**自动挑一个候选**（首个可启动应用）继续走完整 Dock 链路，保证总能落成下一层。
+            closePicker(ctx)   // 先把还盖在屏幕上的选择器关掉，再继续走 Dock
             val auto = pkgs.firstOrNull()
             if (auto != null) {
                 Logx.always("Dock加层: 选择器超时 → 自动选用 $auto 继续 Dock 加层")
-                main.post { dockAddSplit(auto) }
+                main.post { launchIntoDockStage(auto) }
             } else {
                 Logx.always("Dock加层: 选择器超时且无候选，放弃（不进入 dock 态）")
             }

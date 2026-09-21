@@ -6,6 +6,14 @@ object Constants {
     const val PREFS_CFG = "os4freeformx_cfg"
     const val PREFS_BOUNDS = "os4freeformx_bounds"
     const val AUTHORITY = "com.abel.os4freeformx.store"
+    /**
+     * adb 测试命令广播：`adb shell am broadcast -a com.abel.os4freeformx.TEST --es cmd "FIRE"`
+     *
+     * ★ 比 `am start .PickActivity --es test` 好的地方：广播**不启动 Activity**，
+     *   不会抢前台 ⇒ **不会把刚建好的分屏拆掉**（实测 am start 会让 SoSc 退回 false、
+     *   前台变成另一个全屏应用，导致永远加不到第 3/4 层）。
+     */
+    const val ACTION_TEST_CMD = "com.abel.os4freeformx.TEST"
     const val ACTION_RELOAD = "com.abel.os4freeformx.action.RELOAD_PREFS"
     const val TAG = "OS4FreeFromX"
 
