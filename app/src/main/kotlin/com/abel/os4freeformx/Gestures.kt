@@ -422,7 +422,12 @@ object Gestures {
             )
             val pool = all.filter { info ->
                 val id = taskIdOf(info)
-                id > 0 && !group.contains(id) && modeOf(info) != MODE_FREEFORM
+                val p = pkgOf(info)
+                // 必须：有 id、不在当前分屏组、不是自由小窗、**且能取到包名**
+                // （真机踩过：候选里混进 task=6686 pkg=? 这种没有 activity 的任务，
+                //  被选中后既加不进分屏、日志也看不出是谁）
+                id > 0 && !group.contains(id) && modeOf(info) != MODE_FREEFORM &&
+                    !p.isNullOrEmpty()
             }
             // 候选优先级：① 系统认定支持分屏 ② 排除系统应用/桌面 ③ 取 Z 序最上（列表尾部）的那个
             // 用户反馈：设置这类系统应用不支持分屏，测试要用三方应用（小红书/酷安等）
@@ -437,7 +442,7 @@ object Gestures {
                 return@runCatching
             }
             val pkg = pkgOf(cand) ?: "?"
-            Logx.always("四指上滑: 选中 pkg=$pkg task=${taskIdOf(cand)}（候选池 ${pool.size}）")
+            Logx.always("四指上滑: 选中 pkg=$pkg task=${taskIdOf(cand)} mode=${modeOf(cand)}（候选池 ${pool.size}）")
 
             if (splitActive() || soScActive()) {
                 // 分屏内加分屏：默认仍然**短路**（上一版在 SoSc 上直插 stage 导致黑屏/闪退）。
@@ -550,13 +555,33 @@ object Gestures {
     /** 多分屏里再加一个 stage：`MultipleSplitController#insertMultipleSplitByTask(wct, taskId, index)`。 */
     private fun insertPane(task: Any, index: Int) {
         runCatching {
+            val ctx = AppCtx.get() ?: return@runCatching
             val ctl = cls(Constants.CLS_MULTITASKING_CTL).getMethod("getInstance").invoke(null) ?: return@runCatching
             val sc = ctl.javaClass.getMethod("getMultipleSplitController").invoke(ctl) ?: return@runCatching
             val wctCls = Class.forName("android.window.WindowContainerTransaction", false, uiLoader)
             val wct = wctCls.getDeclaredConstructor().newInstance()
             val id = taskIdOf(task)
-            sc.javaClass.getMethod("insertMultipleSplitByTask", wctCls, Integer.TYPE, Integer.TYPE)
-                .invoke(sc, wct, Integer.valueOf(id), Integer.valueOf(index))
+            val pkg = pkgOf(task)
+            // ⚠️ 首选 **insertMultipleSplitByIntent**：真机实测用 insertMultipleSplitByTask 把"已有任务"
+            // 塞进去时，stage 建出来了但都是空的（sz=0）→ 用户看到的就是"另一侧黑屏"。
+            // 用 PendingIntent 让系统自己把应用启动进那个 stage，才是系统"另一侧进桌面选择应用"的等价做法。
+            val pi = if (pkg.isNullOrEmpty()) null else runCatching {
+                val launch = ctx.packageManager.getLaunchIntentForPackage(pkg) ?: return@runCatching null
+                launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                android.app.PendingIntent.getActivity(
+                    ctx, 0, launch,
+                    android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
+                )
+            }.getOrNull()
+            if (pi != null) {
+                sc.javaClass.getMethod("insertMultipleSplitByIntent", wctCls, android.app.PendingIntent::class.java, Integer.TYPE)
+                    .invoke(sc, wct, pi, Integer.valueOf(index))
+                Logx.always("四指上滑: 用 insertMultipleSplitByIntent 插桩（pkg=$pkg index=$index）")
+            } else {
+                sc.javaClass.getMethod("insertMultipleSplitByTask", wctCls, Integer.TYPE, Integer.TYPE)
+                    .invoke(sc, wct, Integer.valueOf(id), Integer.valueOf(index))
+                Logx.always("四指上滑: 回退 insertMultipleSplitByTask（task=$id index=$index）")
+            }
             val org = orgOf(ctl) ?: orgOf(sc)
             if (org != null) {
                 org.javaClass.getMethod("applyTransaction", wctCls).invoke(org, wct)

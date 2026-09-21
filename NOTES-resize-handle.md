@@ -823,3 +823,24 @@ gestures=true  corner_freeform=true  four_finger_split=true  four_finger_split_i
 四指上滑: 多分屏插桩已提交（task=… index=…）
 ```
 **若再出现闪退**：把 `four_finger_split_indoor` 改回 false（或直接 `gestures=false`）即可完全止血。
+
+### 23. 分屏内加窗"另一侧黑屏"的原因与修法（2026-09-21，用户实测）
+用户反馈：四指上滑后**单侧分屏生效、另一侧黑屏**；系统默认行为是那一侧进"桌面选择应用"。
+
+真机 `dumpsys` 取证：多分屏容器建出来了，但**所有 stage 都是空的**：
+```
+rootTaskId=6724
+  Task #6730 name=stage_f ... sz=0
+  Task #6729 name=stage_e ... sz=0
+  Task #6728 name=stage_d ... sz=0
+  ...
+```
+即 `insertMultipleSplitByTask(wct, taskId, index)`（塞"已有任务"）在真机上**没能把任务放进 stage**。
+系统自己的等价做法是 `insertMultipleSplitByIntent(wct, PendingIntent, index)`
+—— 由系统**启动**应用进那个 stage（这也解释了为什么原生是"那一侧让自己选应用"）。
+
+**修法**：`insertPane()` 改为首选 `insertMultipleSplitByIntent`（用候选包的启动 Intent 现造 PendingIntent），
+只有造不出 PendingIntent 时才回退 `insertMultipleSplitByTask`。
+
+**另外修掉的候选 bug**：候选池必须过滤掉"取不到包名"的任务
+（真机踩过 `选中 pkg=? task=6686`，这种任务既加不进分屏、日志也看不出是谁）。
