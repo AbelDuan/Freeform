@@ -89,6 +89,7 @@ object Gestures {
 
     /** 命中后本串事件不再交给 MIUI 自己的手势逻辑（避免它再解释一遍）。 */
     @Volatile private var swallow = false
+    @Volatile private var swallowAt = 0L
 
     private fun cls(name: String): Class<*> =
         Class.forName(name, false, uiLoader ?: Gestures.javaClass.classLoader)
@@ -165,6 +166,10 @@ object Gestures {
         if (swallow) {
             val a = ev.actionMasked
             if (a == MotionEvent.ACTION_UP || a == MotionEvent.ACTION_CANCEL) swallow = false
+            // ⚠️ 死锁保护：四指手势是**在 MOVE 上触发**的，而 MIUI 的多指通道**不保证投递
+            // ACTION_UP**（真机取证）。如果不加超时，swallow 会一直为 true，
+            // 之后所有手势都被吞掉 —— 用户表现就是"第一次能进分屏、再滑就没反应"。
+            if (android.os.SystemClock.uptimeMillis() - swallowAt > 700) swallow = false
             return true
         }
         return when (ev.actionMasked) {
@@ -257,6 +262,8 @@ object Gestures {
                     Cfg.fourFingerSplit
                 ) {
                     ffFired = true
+                    swallowAt = android.os.SystemClock.uptimeMillis()
+                    swallow = true
                     Logx.always("手势: 四指上滑命中(MOVE) 行程=${(-dy).toInt()}px 用时=${used}ms 手指数=$ffPeak")
                     fourFingerAddSplit()
                 }
@@ -292,6 +299,7 @@ object Gestures {
                 // 这一片正是 MIUI 自己「上滑到左上角进分屏 / 底部中间上滑进多分屏」的热区，
                 // 我们一旦介入就会把官方手势掐死（真机演示踩过）。
                 if (Cfg.cornerFreeform && isPlainFullscreen()) {
+                    swallowAt = android.os.SystemClock.uptimeMillis()
                     swallow = true
                     consumed = true
                     cornerSwipeToFreeform()
