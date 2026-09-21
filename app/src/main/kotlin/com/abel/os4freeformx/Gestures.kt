@@ -541,16 +541,28 @@ object Gestures {
             }
             val ctl = cls(Constants.CLS_MULTITASKING_CTL).getMethod("getInstance").invoke(null) ?: return@runCatching
             val sc = ctl.javaClass.getMethod("getMultipleSplitController").invoke(ctl) ?: return@runCatching
-            val ok = runCatching {
-                sc.javaClass.getMethod("startMultipleSplits", android.os.Bundle::class.java).invoke(sc, b)
-                true
-            }.getOrElse { e1 ->
-                val root = (e1 as? java.lang.reflect.InvocationTargetException)?.targetException ?: e1
-                Logx.v("多分屏: controller 直调失败（${root.javaClass.simpleName}），改走 stateManager")
+            // ✅ **只调官方接口**：桌面用的就是 `IMultiTaskingStateManager#startMultipleSplits(Bundle)`
+            // （由 SystemUI 的 OutMultiTaskingStateManagerService 提供，onBind 返回 MultiTaskingControllerImpl）。
+            // 不直调下层 `MultipleSplitController` —— 那是实现细节，真机多次出现 ok=true 但黑屏/重启 SystemUI。
+            val iface = Class.forName(
+                "com.android.wm.shell.multitasking.common.IMultiTaskingStateManager", false, uiLoader
+            )
+            val impl = runCatching {
+                ctl.javaClass.getMethod("getMultiTaskingStateManager").invoke(ctl)
+            }.getOrNull()
+            val ok = if (impl != null && iface.isInstance(impl)) {
                 runCatching {
-                    val sm = ctl.javaClass.getMethod("getMultiTaskingStateManager").invoke(ctl) ?: return@runCatching
-                    sm.javaClass.getMethod("startMultipleSplits", android.os.Bundle::class.java).invoke(sm, b)
-                }.isSuccess
+                    iface.getMethod("startMultipleSplits", android.os.Bundle::class.java).invoke(impl, b)
+                    Logx.always("四指上滑: 经官方接口 IMultiTaskingStateManager.startMultipleSplits 调用成功")
+                    true
+                }.getOrElse { e1 ->
+                    val rt = (e1 as? java.lang.reflect.InvocationTargetException)?.targetException ?: e1
+                    Logx.e("四指上滑: 官方接口调用失败 ${rt.javaClass.simpleName}: ${rt.message}", rt)
+                    false
+                }
+            } else {
+                Logx.e("四指上滑: 取不到 MultiTaskingStateManager 实现，放弃（不退回下层 controller）")
+                false
             }
             Logx.always("四指上滑: 已请求进入多分屏 startMultipleSplits(taskIds=${ids}) ok=$ok")
         }.onFailure { e ->

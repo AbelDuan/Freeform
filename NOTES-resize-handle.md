@@ -1101,3 +1101,39 @@ taskIds = 当前分屏组 + 选中候选，bounds 用整屏占位；日志 `已�
 
 **当前默认值**：`four_finger_multi` 现已重新打开以便验证去重修复；
 若再出现黑屏，立即改回 `false`（单任务→双分屏那一层已验证可用，不受影响）。
+
+### 37. 按"只用官方接口"的底线改造：改调 IMultiTaskingStateManager（2026-09-21）
+用户定的底线：**系统已有的功能一律走官方接口，我们只新增一个调用**。
+
+据此把我之前的做法纠正过来。官方链路（日志 + 反编译双重确认）：
+```
+桌面(hyper_launcher_app)
+  └─ bindService → SystemUI 的 MultiTaskingStateManager$OutMultiTaskingStateManagerService
+       └─ onBind 返回 IMultiTaskingStateManager（实现是 MultiTaskingControllerImpl）
+  └─ Binder 调用 IMultiTaskingStateManager#startMultipleSplits(Bundle)   ← **官方接口**
+```
+**我之前错在**：直调下层 `MultipleSplitController#startMultipleSplits`（实现细节，不是入口），
+所以出现"返回 true 但黑屏 / 甚至 SystemUI 重启"。
+
+**改法**：只经官方接口调用 —— 取 `MultiTaskingControllerImpl.getMultiTaskingStateManager()`，
+确认它是 `IMultiTaskingStateManager` 的实例后，调 `startMultipleSplits(Bundle)`；
+**不再回退到下层 controller**（宁可不做也不绕官方接口）。
+
+Bundle 键（照抄官方）：`multiple_launch_taskIds`(int[], 互不相同的真实 id) /
+`multiple_launch_bounds`(Rect[]) / `multiple_launch_way`(String) /
+`multiple_launch_enter_quick_view_mode`(boolean)。
+
+### 38. ⚠️ 仍然缺一环：官方入口需要"被选中的应用"
+官方 `startMultipleSplits` 的 Bundle 里 `multiple_launch_taskIds` 是**已确定的任务列表**，
+它并不会自己弹"选择应用"的界面 —— 那个选择界面在**桌面进程**里
+（日志：`hyper_launcher_app … split_gesture_callback` /
+`grouped_recent_task_info → created MultipleSplitTask`）。
+
+因此"整体交给系统、由系统让用户选应用"要成立，只有两条路：
+1. **扩模块作用域到桌面进程**（`com.miui.home`），hook 桌面的分屏入口，
+   让四指手势等价于用户在那里点一下（**这是最贴近"只新增一个调用"的做法**）；
+2. 先取到用户选定的应用，再用官方接口把它加进分屏（需要模块自己出选择界面 ——
+   与用户"要有系统自己的选择界面"的要求不符）。
+
+**结论**：要实现"四指上滑 → 系统弹选择应用 → 加进分屏"，必须把 scope 扩到桌面进程。
+这一步需要用户决定（LSPosed 里勾选 `com.miui.home` + 模块 scope.list 增加该进程）。

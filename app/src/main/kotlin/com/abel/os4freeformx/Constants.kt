@@ -42,7 +42,7 @@ object Constants {
     const val DEF_GESTURES = true
     const val DEF_TEST_HOOK = false
     const val DEF_FOUR_FINGER_INDOOR = false
-    const val DEF_FOUR_FINGER_MULTI = false
+    const val DEF_FOUR_FINGER_MULTI = false   // 锁死：startMultipleSplits 直调会黑屏/重启 SystemUI（NOTES 36/37）
     const val DEF_CORNER_FREEFORM = true
     const val DEF_FOUR_FINGER_SPLIT = true
 
