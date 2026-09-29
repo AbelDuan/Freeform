@@ -49,8 +49,18 @@ object Hooks {
         installSplitRatio(m, cl)
         // 新手势：全局输入（MulWinSwitchEventController$EventReceiver）+ 手势动作
         installGestures(m, cl)
+        // 小白条（手势导航条）：跟随手势 / 淡入淡出 / 触摸显隐 / 空闲自动隐藏
+        installGestureHandle(m, cl)
         // 诊断探针：抓"双分屏 → 三分屏"真实手势调用的入口（方法名 + 参数）
         runCatching { SplitTrace.install(m, cl) }.onFailure { Logx.e("SplitTrace 安装失败", it) }
+    }
+
+    /** 小白条（手势导航条）：跟随手势 / 淡入淡出 / 触摸显隐 / 空闲自动隐藏。 */
+    private fun installGestureHandle(m: MainHook, cl: ClassLoader) {
+        runCatching {
+            GestureHandle.install(m, cl)
+            Logx.always("installGestureHandle: 已挂载（总开关=${Cfg.gestureHandle}）")
+        }.onFailure { Logx.e("installGestureHandle 失败", it) }
     }
 
     /** 手势总入口（幂等：安装期挂全局输入，动作见 [Gestures]）。 */

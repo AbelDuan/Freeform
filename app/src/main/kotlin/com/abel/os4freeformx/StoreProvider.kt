@@ -31,14 +31,12 @@ class StoreProvider : ContentProvider() {
                 putBoolean(Constants.K_RESIZE, c?.getBoolean(Constants.K_RESIZE, Constants.DEF_RESIZE) ?: Constants.DEF_RESIZE)
                 putInt(Constants.K_DEFAULT_W, c?.getInt(Constants.K_DEFAULT_W, 0) ?: 0)
                 putInt(Constants.K_DEFAULT_H, c?.getInt(Constants.K_DEFAULT_H, 0) ?: 0)
+                putBoolean(Constants.K_GESTURE_HANDLE, c?.getBoolean(Constants.K_GESTURE_HANDLE, Constants.DEF_GESTURE_HANDLE) ?: Constants.DEF_GESTURE_HANDLE)
+                putBoolean(Constants.K_GESTURE_HANDLE_FOLLOW, c?.getBoolean(Constants.K_GESTURE_HANDLE_FOLLOW, Constants.DEF_GESTURE_HANDLE_FOLLOW) ?: Constants.DEF_GESTURE_HANDLE_FOLLOW)
+                putBoolean(Constants.K_GESTURE_HANDLE_TOUCH, c?.getBoolean(Constants.K_GESTURE_HANDLE_TOUCH, Constants.DEF_GESTURE_HANDLE_TOUCH) ?: Constants.DEF_GESTURE_HANDLE_TOUCH)
+                putBoolean(Constants.K_GESTURE_HANDLE_IDLE, c?.getBoolean(Constants.K_GESTURE_HANDLE_IDLE, Constants.DEF_GESTURE_HANDLE_IDLE) ?: Constants.DEF_GESTURE_HANDLE_IDLE)
                 putBoolean(Constants.K_GESTURES, c?.getBoolean(Constants.K_GESTURES, Constants.DEF_GESTURES) ?: Constants.DEF_GESTURES)
                 putBoolean(Constants.K_CORNER_FREEFORM, c?.getBoolean(Constants.K_CORNER_FREEFORM, Constants.DEF_CORNER_FREEFORM) ?: Constants.DEF_CORNER_FREEFORM)
-                putBoolean(Constants.K_FOUR_FINGER_SPLIT, c?.getBoolean(Constants.K_FOUR_FINGER_SPLIT, Constants.DEF_FOUR_FINGER_SPLIT) ?: Constants.DEF_FOUR_FINGER_SPLIT)
-                c?.getString(Constants.K_PICK, null)?.let { putString(Constants.K_PICK, it) }
-                putBoolean(Constants.K_FOUR_FINGER_MULTI, c?.getBoolean(Constants.K_FOUR_FINGER_MULTI, Constants.DEF_FOUR_FINGER_MULTI) ?: Constants.DEF_FOUR_FINGER_MULTI)
-                putBoolean(Constants.K_FOUR_FINGER_INDOOR, c?.getBoolean(Constants.K_FOUR_FINGER_INDOOR, Constants.DEF_FOUR_FINGER_INDOOR) ?: Constants.DEF_FOUR_FINGER_INDOOR)
-                putBoolean(Constants.K_TEST_HOOK, c?.getBoolean(Constants.K_TEST_HOOK, Constants.DEF_TEST_HOOK) ?: Constants.DEF_TEST_HOOK)
-                c?.getString(Constants.K_TEST_ADDSPLIT, null)?.let { putString(Constants.K_TEST_ADDSPLIT, it) }
             }
             "put" -> {
                 val k = extras?.getString("k")

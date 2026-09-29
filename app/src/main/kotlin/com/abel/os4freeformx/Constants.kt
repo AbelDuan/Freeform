@@ -6,14 +6,6 @@ object Constants {
     const val PREFS_CFG = "os4freeformx_cfg"
     const val PREFS_BOUNDS = "os4freeformx_bounds"
     const val AUTHORITY = "com.abel.os4freeformx.store"
-    /**
-     * adb 测试命令广播：`adb shell am broadcast -a com.abel.os4freeformx.TEST --es cmd "FIRE"`
-     *
-     * ★ 比 `am start .PickActivity --es test` 好的地方：广播**不启动 Activity**，
-     *   不会抢前台 ⇒ **不会把刚建好的分屏拆掉**（实测 am start 会让 SoSc 退回 false、
-     *   前台变成另一个全屏应用，导致永远加不到第 3/4 层）。
-     */
-    const val ACTION_TEST_CMD = "com.abel.os4freeformx.TEST"
     const val ACTION_RELOAD = "com.abel.os4freeformx.action.RELOAD_PREFS"
     const val TAG = "OS4FreeFromX"
 
@@ -30,17 +22,12 @@ object Constants {
     const val K_DEFAULT_H = "default_h"
     const val K_GESTURES = "gestures"                // 手势总开关（全局输入挂钩）
     const val K_CORNER_FREEFORM = "corner_freeform"  // 角落斜滑 → 前台应用转小窗
-    const val K_FOUR_FINGER_SPLIT = "four_finger_split" // 四指上滑 → 增加分屏
-    /** 选择器回传：`<一次性 token>|<选中的包名>` */
-    const val K_PICK = "pending_pick"
-    /** 调试用：打开 adb 测试轮询（默认关，会周期性跨进程 call provider） */
-    const val K_TEST_HOOK = "test_hook"
-    /** 分屏内也用四指加分屏（灰度开关，默认关：SoSc 上加 stage 风险高） */
-    const val K_FOUR_FINGER_INDOOR = "four_finger_split_indoor"
-    /** 四指上滑走**多分屏模式**入口（三分屏起）而不是双分屏 */
-    const val K_FOUR_FINGER_MULTI = "four_finger_multi"
-    /** 测试入口：`<pkg>|<taskId>` —— 写进 CFG 后由 SystemUI 侧轮询取走并直接执行"加分屏" */
-    const val K_TEST_ADDSPLIT = "pending_test_addsplit"
+
+    // ---- 小白条（手势导航条）----
+    const val K_GESTURE_HANDLE = "gesture_handle"                // 总开关
+    const val K_GESTURE_HANDLE_FOLLOW = "gesture_handle_follow"  // 小白条跟随手指滑动
+    const val K_GESTURE_HANDLE_TOUCH = "gesture_handle_touch"    // 触摸小白条区域时显隐
+    const val K_GESTURE_HANDLE_IDLE = "gesture_handle_idle"      // 空闲自动隐藏（沉浸）
 
     const val DEF_ENABLE_LOG = false
     const val DEF_IMMERSIVE = true
@@ -48,11 +35,11 @@ object Constants {
     const val DEF_REMEMBER_FOLD = true
     const val DEF_RESIZE = true
     const val DEF_GESTURES = true
-    const val DEF_TEST_HOOK = false
-    const val DEF_FOUR_FINGER_INDOOR = false
-    const val DEF_FOUR_FINGER_MULTI = false   // 永久锁死：任何 startMultipleSplits 路径都会黑屏/SystemUI 重启（NOTES 36/37/39）
     const val DEF_CORNER_FREEFORM = true
-    const val DEF_FOUR_FINGER_SPLIT = true
+    const val DEF_GESTURE_HANDLE = true
+    const val DEF_GESTURE_HANDLE_FOLLOW = true
+    const val DEF_GESTURE_HANDLE_TOUCH = true
+    const val DEF_GESTURE_HANDLE_IDLE = true
 
     // ---- 目标类（HyperOS 4 / Android 17 实测确认）----
     /** wm shell 小窗装饰（systemui 进程，来自 /system_ext/framework/Miui-WindowManager-Shell.jar） */

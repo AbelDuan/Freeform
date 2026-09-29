@@ -68,7 +68,12 @@ class SettingsActivity : Activity() {
         section("手势")
         switchRow("启用手势总开关", Constants.K_GESTURES, Cfg.gestures) { Cfg.gestures = it }
         switchRow("左右下角斜向中间滑 → 前台应用转小窗", Constants.K_CORNER_FREEFORM, Cfg.cornerFreeform) { Cfg.cornerFreeform = it }
-        switchRow("分屏时四指上滑 → 增加分屏", Constants.K_FOUR_FINGER_SPLIT, Cfg.fourFingerSplit) { Cfg.fourFingerSplit = it }
+
+        section("小白条（手势导航条）")
+        switchRow("启用小白条（淡入淡出 / 跟随手势）", Constants.K_GESTURE_HANDLE, Cfg.gestureHandle) { Cfg.gestureHandle = it }
+        switchRow("小白条跟随手指滑动", Constants.K_GESTURE_HANDLE_FOLLOW, Cfg.gestureHandleFollow) { Cfg.gestureHandleFollow = it }
+        switchRow("触摸小白条区域时显隐", Constants.K_GESTURE_HANDLE_TOUCH, Cfg.gestureHandleTouch) { Cfg.gestureHandleTouch = it }
+        switchRow("空闲时自动隐藏（沉浸）", Constants.K_GESTURE_HANDLE_IDLE, Cfg.gestureHandleIdle) { Cfg.gestureHandleIdle = it }
 
         section("其他")
         switchRow("记录详细日志", Constants.K_ENABLE_LOG, Cfg.log) { Cfg.log = it; Logx.verbose = it }

@@ -21,10 +21,10 @@ object Cfg {
     @Volatile var defaultH = 0
     @Volatile var gestures = Constants.DEF_GESTURES
     @Volatile var cornerFreeform = Constants.DEF_CORNER_FREEFORM
-    @Volatile var fourFingerSplit = Constants.DEF_FOUR_FINGER_SPLIT
-    @Volatile var testHook = Constants.DEF_TEST_HOOK
-    @Volatile var fourFingerIndoor = Constants.DEF_FOUR_FINGER_INDOOR
-    @Volatile var fourFingerMulti = Constants.DEF_FOUR_FINGER_MULTI
+    @Volatile var gestureHandle = Constants.DEF_GESTURE_HANDLE
+    @Volatile var gestureHandleFollow = Constants.DEF_GESTURE_HANDLE_FOLLOW
+    @Volatile var gestureHandleTouch = Constants.DEF_GESTURE_HANDLE_TOUCH
+    @Volatile var gestureHandleIdle = Constants.DEF_GESTURE_HANDLE_IDLE
 
     /** 只记住模块引用，不读 prefs（system_server 启动阶段只允许这一步）。 */
     fun setModule(m: XposedModule) {
@@ -60,10 +60,10 @@ object Cfg {
             defaultH = p.getInt(Constants.K_DEFAULT_H, 0)
             gestures = p.getBoolean(Constants.K_GESTURES, Constants.DEF_GESTURES)
             cornerFreeform = p.getBoolean(Constants.K_CORNER_FREEFORM, Constants.DEF_CORNER_FREEFORM)
-            fourFingerSplit = p.getBoolean(Constants.K_FOUR_FINGER_SPLIT, Constants.DEF_FOUR_FINGER_SPLIT)
-            testHook = p.getBoolean(Constants.K_TEST_HOOK, Constants.DEF_TEST_HOOK)
-            fourFingerIndoor = p.getBoolean(Constants.K_FOUR_FINGER_INDOOR, Constants.DEF_FOUR_FINGER_INDOOR)
-            fourFingerMulti = p.getBoolean(Constants.K_FOUR_FINGER_MULTI, Constants.DEF_FOUR_FINGER_MULTI)
+            gestureHandle = p.getBoolean(Constants.K_GESTURE_HANDLE, Constants.DEF_GESTURE_HANDLE)
+            gestureHandleFollow = p.getBoolean(Constants.K_GESTURE_HANDLE_FOLLOW, Constants.DEF_GESTURE_HANDLE_FOLLOW)
+            gestureHandleTouch = p.getBoolean(Constants.K_GESTURE_HANDLE_TOUCH, Constants.DEF_GESTURE_HANDLE_TOUCH)
+            gestureHandleIdle = p.getBoolean(Constants.K_GESTURE_HANDLE_IDLE, Constants.DEF_GESTURE_HANDLE_IDLE)
             Logx.verbose = log
         }.onFailure { Logx.e("reload 失败", it) }
     }
@@ -123,10 +123,10 @@ object Cfg {
             defaultH = b.getInt(Constants.K_DEFAULT_H, 0)
             gestures = b.getBoolean(Constants.K_GESTURES, Constants.DEF_GESTURES)
             cornerFreeform = b.getBoolean(Constants.K_CORNER_FREEFORM, Constants.DEF_CORNER_FREEFORM)
-            fourFingerSplit = b.getBoolean(Constants.K_FOUR_FINGER_SPLIT, Constants.DEF_FOUR_FINGER_SPLIT)
-            testHook = b.getBoolean(Constants.K_TEST_HOOK, Constants.DEF_TEST_HOOK)
-            fourFingerIndoor = b.getBoolean(Constants.K_FOUR_FINGER_INDOOR, Constants.DEF_FOUR_FINGER_INDOOR)
-            fourFingerMulti = b.getBoolean(Constants.K_FOUR_FINGER_MULTI, Constants.DEF_FOUR_FINGER_MULTI)
+            gestureHandle = b.getBoolean(Constants.K_GESTURE_HANDLE, Constants.DEF_GESTURE_HANDLE)
+            gestureHandleFollow = b.getBoolean(Constants.K_GESTURE_HANDLE_FOLLOW, Constants.DEF_GESTURE_HANDLE_FOLLOW)
+            gestureHandleTouch = b.getBoolean(Constants.K_GESTURE_HANDLE_TOUCH, Constants.DEF_GESTURE_HANDLE_TOUCH)
+            gestureHandleIdle = b.getBoolean(Constants.K_GESTURE_HANDLE_IDLE, Constants.DEF_GESTURE_HANDLE_IDLE)
             Logx.verbose = log
         }.onFailure { Logx.e("读配置失败", it) }
         val after = "$log|$immersive|$rememberBounds"
