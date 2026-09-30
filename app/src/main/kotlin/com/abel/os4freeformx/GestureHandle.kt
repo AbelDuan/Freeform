@@ -60,7 +60,6 @@ object GestureHandle {
     private var inputMonitor: Any? = null
     private var inputReceiver: Any? = null
     private var stockHidden = false
-    private var foregroundSequence: Long = 0
     private var lastEnabled = true
     private var activeTouchHandle: View? = null
     private var activeSwipeRevealed = false
@@ -107,8 +106,7 @@ object GestureHandle {
                 if (taskArg < 0 || parameters[taskArg] != ActivityManager.RunningTaskInfo::class.java) continue
                 hook(m, method) { chain ->
                     val result = chain.proceed()
-                    val info = chain.getArg(taskArg) as? ActivityManager.RunningTaskInfo
-                    dispatch { foreground(info) }
+                    dispatch { foreground() }
                     result
                 }
             }
@@ -336,7 +334,7 @@ object GestureHandle {
                     if (context != null && Cfg.gestureHandle) initialize(context)
                     val injector = injector(owner)
                     stockHidden = bool(injector, "mHideGestureLine")
-                    val override = hasPolicies() && bool(injector, "mIsFsgMode") && stockHidden
+                    val override = Cfg.gestureHandle && bool(injector, "mIsFsgMode") && stockHidden
                     // 即便系统全局隐藏手势条，也保留一个原生宿主（绝不写 Settings.Global / 改导航模式）。
                     if (override) setHiddenFlag(injector, false)
                     try {
@@ -357,7 +355,7 @@ object GestureHandle {
                     val result = chain.proceed()
                     // 允许原生拆卸（含主题 / 折叠变化），再用原生创建路径重建（仍检查 display 与极小屏支持）。
                     if ((chain.getArg(0) as Number).toInt() == 0
-                        && hasPolicies() && bool(injector, "mIsFsgMode") && stockHidden
+                        && Cfg.gestureHandle && bool(injector, "mIsFsgMode") && stockHidden
                     ) {
                         Handler(Looper.getMainLooper()).post { refresh() }
                     }
@@ -452,10 +450,9 @@ object GestureHandle {
         try { monitor?.javaClass?.getMethod("dispose")?.invoke(monitor) } catch (ignored: Throwable) {}
     }
 
-    private fun foreground(info: ActivityManager.RunningTaskInfo?) {
-        foregroundSequence++
+    private fun foreground() {
         // 前台变化：重置展示计时（重新展示片刻再进入沉浸）。
-        POLICY.foreground(SystemClock.uptimeMillis())
+        POLICY.reveal(SystemClock.uptimeMillis())
         refresh()
     }
 
@@ -477,7 +474,7 @@ object GestureHandle {
                 POLICY.clearSwipeReveal()
                 clearMotion()
             }
-            val nextPresent = hasPolicies()
+            val nextPresent = Cfg.gestureHandle
             val owner = controller.get()
             if (owner != null) {
                 if (nextPresent && !receiverInstalled) {
@@ -519,7 +516,6 @@ object GestureHandle {
         if (remaining > 0L) main?.postDelayed(HIDE, remaining)
     }
 
-    private fun hasPolicies(): Boolean = Cfg.gestureHandle
 
     private fun clearMotion() {
         if (!Cfg.gestureHandleTouch) activeTouchHandle = null

@@ -61,9 +61,6 @@ class GestureHandlePolicy {
         swipeRevealUntil = 0L
     }
 
-    /** 前台应用变化：重置显示计时（重新展示片刻再进入沉浸）。 */
-    fun foreground(now: Long) { shownAt = now }
-
     /** 当前是否应隐藏小白条。 */
     fun hidden(now: Long, @Suppress("UNUSED_PARAMETER") systemHidden: Boolean): Boolean {
         if (touchRevealActive(now) || swipeRevealActive(now)) return false
