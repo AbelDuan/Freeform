@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      浅色主题：模块配置界面是纯代码构建的浅色 UI（浅灰底 #F7F7F9 + 深字 #111114）。
+      系统默认主题在深色模式下会把 windowBackground 做成黑色，导致列表文字（深字）压黑底看不清，
+      标题栏也会变成黑底白字与内容区风格割裂。这里显式锁一套浅色 AppCompat-free 主题，
+      不依赖 AndroidX（本项目无 AndroidX 依赖）。
+    -->
+    <style name="AppTheme" parent="@android:style/Theme.DeviceDefault.Light">
+        <item name="android:windowBackground">#FFFFFF</item>
+        <item name="android:colorBackground">#FFFFFF</item>
+        <item name="android:textColorPrimary">#111114</item>
+        <item name="android:textColorSecondary">#6B7280</item>
+        <!-- 与自绘头部面板同色，使「状态栏 + 标题区」连成一块，与下方白底列表分层 -->
+        <item name="android:statusBarColor">#D6DEEE</item>
+        <item name="android:navigationBarColor">#FFFFFF</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+
+    <!-- 选择器界面：不需要标题栏，自绘顶部搜索栏，整屏给列表 -->
+    <style name="PickerTheme" parent="@android:style/Theme.DeviceDefault.Light.NoActionBar">
+        <item name="android:windowBackground">#FFFFFF</item>
+        <item name="android:colorBackground">#FFFFFF</item>
+        <item name="android:textColorPrimary">#111114</item>
+        <item name="android:textColorSecondary">#6B7280</item>
+        <!--
+          状态栏用头部面板同色 #D6DEEE：这样「状态栏 + 标题 + 搜索 + 工具行」视觉上连成一块
+          蓝灰头部，与下方纯白列表区之间只隔着一条分隔线，分层一眼可见。
+        -->
+        <item name="android:statusBarColor">#D6DEEE</item>
+        <item name="android:navigationBarColor">#FFFFFF</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+</resources>

@@ -36,9 +36,17 @@ object AppPrefs {
         de(ctx)?.edit()?.putInt(key, value)?.apply()
     }
 
+    fun putFloat(ctx: Context, key: String, value: Float) {
+        ce(ctx).edit().putFloat(key, value).apply()
+        de(ctx)?.edit()?.putFloat(key, value)?.apply()
+    }
+
     fun getBoolean(ctx: Context, key: String, def: Boolean): Boolean =
         runCatching { ce(ctx).getBoolean(key, def) }.getOrDefault(def)
 
     fun getInt(ctx: Context, key: String, def: Int): Int =
         runCatching { ce(ctx).getInt(key, def) }.getOrDefault(def)
+
+    fun getFloat(ctx: Context, key: String, def: Float): Float =
+        runCatching { ce(ctx).getFloat(key, def) }.getOrDefault(def)
 }

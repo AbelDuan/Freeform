@@ -15,6 +15,16 @@ class StoreProvider : ContentProvider() {
     private fun prefs(): android.content.SharedPreferences? =
         context?.getSharedPreferences(Constants.PREFS_BOUNDS, Context.MODE_PRIVATE)
 
+    /** FLOAT_MODE 既可能是 putInt 写的 Int，也可能是 putCfg 写的 String，统一成 Int。 */
+    private fun floatModeOf(c: android.content.SharedPreferences?): Int {
+        if (c == null) return Constants.DEF_FLOAT_MODE
+        return runCatching {
+            c.getInt(Constants.K_FLOAT_MODE, Int.MIN_VALUE).takeIf { it != Int.MIN_VALUE }
+                ?: c.getString(Constants.K_FLOAT_MODE, null)?.trim()?.toIntOrNull()
+                ?: Constants.DEF_FLOAT_MODE
+        }.getOrDefault(Constants.DEF_FLOAT_MODE)
+    }
+
     override fun call(method: String, arg: String?, extras: Bundle?): Bundle? {
         val p = prefs() ?: return null
         return when (method) {
@@ -35,6 +45,11 @@ class StoreProvider : ContentProvider() {
                 putBoolean(Constants.K_GESTURE_HANDLE_FOLLOW, c?.getBoolean(Constants.K_GESTURE_HANDLE_FOLLOW, Constants.DEF_GESTURE_HANDLE_FOLLOW) ?: Constants.DEF_GESTURE_HANDLE_FOLLOW)
                 putBoolean(Constants.K_GESTURE_HANDLE_TOUCH, c?.getBoolean(Constants.K_GESTURE_HANDLE_TOUCH, Constants.DEF_GESTURE_HANDLE_TOUCH) ?: Constants.DEF_GESTURE_HANDLE_TOUCH)
                 putBoolean(Constants.K_GESTURE_HANDLE_IDLE, c?.getBoolean(Constants.K_GESTURE_HANDLE_IDLE, Constants.DEF_GESTURE_HANDLE_IDLE) ?: Constants.DEF_GESTURE_HANDLE_IDLE)
+                putFloat(Constants.K_GESTURE_HANDLE_AREA, c?.getFloat(Constants.K_GESTURE_HANDLE_AREA, Constants.DEF_GESTURE_HANDLE_AREA) ?: Constants.DEF_GESTURE_HANDLE_AREA)
+                putBoolean(Constants.K_GESTURE_HANDLE_FLOAT, c?.getBoolean(Constants.K_GESTURE_HANDLE_FLOAT, Constants.DEF_GESTURE_HANDLE_FLOAT) ?: Constants.DEF_GESTURE_HANDLE_FLOAT)
+                // FLOAT_MODE 可能被 putCfg 以字符串写进来（adb 调试通道只传 String），两种类型都要能读
+                putInt(Constants.K_FLOAT_MODE, floatModeOf(c))
+                putString(Constants.K_FLOAT_PKGS, c?.getString(Constants.K_FLOAT_PKGS, Constants.DEF_FLOAT_PKGS) ?: Constants.DEF_FLOAT_PKGS)
                 putBoolean(Constants.K_GESTURES, c?.getBoolean(Constants.K_GESTURES, Constants.DEF_GESTURES) ?: Constants.DEF_GESTURES)
                 putBoolean(Constants.K_CORNER_FREEFORM, c?.getBoolean(Constants.K_CORNER_FREEFORM, Constants.DEF_CORNER_FREEFORM) ?: Constants.DEF_CORNER_FREEFORM)
             }

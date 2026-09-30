@@ -2,7 +2,7 @@ package com.abel.os4freeformx
 
 /** 模块常量：包名、prefs 名、配置键、目标类名。 */
 object Constants {
-    const val VERSION = "0.1.1"
+    const val VERSION = "0.4.0"
     const val PREFS_CFG = "os4freeformx_cfg"
     const val PREFS_BOUNDS = "os4freeformx_bounds"
     const val AUTHORITY = "com.abel.os4freeformx.store"
@@ -28,6 +28,16 @@ object Constants {
     const val K_GESTURE_HANDLE_FOLLOW = "gesture_handle_follow"  // 小白条跟随手指滑动
     const val K_GESTURE_HANDLE_TOUCH = "gesture_handle_touch"    // 触摸小白条区域时显隐
     const val K_GESTURE_HANDLE_IDLE = "gesture_handle_idle"      // 空闲自动隐藏（沉浸）
+    const val K_GESTURE_HANDLE_AREA = "gesture_handle_area"      // 底部命中带距离(dp，float)
+    const val K_GESTURE_HANDLE_FLOAT = "gesture_handle_float"     // 小白条悬浮（隐藏导航栏背景，悬浮于应用之上）
+    /** 悬浮的作用范围：0=所有应用(默认) / 1=仅白名单 / 2=黑名单外 */
+    const val K_FLOAT_MODE = "gesture_handle_float_mode"
+    /** 白/黑名单包名集合，换行或逗号分隔 */
+    const val K_FLOAT_PKGS = "gesture_handle_float_pkgs"
+
+    const val FLOAT_MODE_ALL = 0
+    const val FLOAT_MODE_WHITELIST = 1
+    const val FLOAT_MODE_BLACKLIST = 2
 
     const val DEF_ENABLE_LOG = false
     const val DEF_IMMERSIVE = true
@@ -40,6 +50,11 @@ object Constants {
     const val DEF_GESTURE_HANDLE_FOLLOW = true
     const val DEF_GESTURE_HANDLE_TOUCH = true
     const val DEF_GESTURE_HANDLE_IDLE = true
+    const val DEF_GESTURE_HANDLE_AREA = 24f
+    const val DEF_GESTURE_HANDLE_FLOAT = false
+    const val DEF_FLOAT_MODE = FLOAT_MODE_ALL
+    /** 默认名单预置几个「底栏自带大字/色块、悬浮观感最好」的常见应用，用户可自行增删 */
+    const val DEF_FLOAT_PKGS = ""
 
     // ---- 目标类（HyperOS 4 / Android 17 实测确认）----
     /** wm shell 小窗装饰（systemui 进程，来自 /system_ext/framework/Miui-WindowManager-Shell.jar） */

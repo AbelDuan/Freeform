@@ -16,6 +16,7 @@ import android.app.KeyguardManager
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
+import android.view.ViewParent
 import io.github.libxposed.api.XposedInterface
 import java.lang.ref.WeakReference
 import java.lang.reflect.Method
@@ -44,6 +45,7 @@ object GestureHandle {
     private const val ROTATED = "com.android.systemui.navigationbar.gestural.QuickswitchOrientedNavHandle"
     private const val TOP_OBSERVER = "com.miui.systemui.functions.MiuiTopActivityObserver"
     private const val FRAME = "com.android.systemui.navigationbar.views.NavigationBarFrame"
+    private const val NAV_BAR_VIEW = "com.android.systemui.navigationbar.views.NavigationBarView"
     private const val CONTROLLER = "com.android.systemui.navigationbar.NavigationBarControllerImpl"
 
     private val POLICY = GestureHandlePolicy()
@@ -162,8 +164,8 @@ object GestureHandle {
             hidden, now, Cfg.gestureHandleFollow && POLICY.swipeRevealActive(now)
         )
         if (visual.fade.running(now) || MOTION.running(now)) view.postInvalidateOnAnimation()
-        if (alpha <= 0f) return null
-        // 只对原生 pill 绘制套透明度。View alpha、原生导航 / 快速切换动画、触摸处理、insets 一律不动。
+        // 纯覆盖层：始终走系统原生绘制，仅用 alpha 控制可见性（alpha=0 → 完全透明 = 空闲隐藏）。
+        // 不修改 mHideGestureLine、不增删导航栏宿主，因此不会禁用系统手势、不会破坏桌面布局。
         val canvas = chain.getArg(0) as Canvas
         val save = if (alpha >= 1f) canvas.save()
         else canvas.saveLayerAlpha(
@@ -281,8 +283,8 @@ object GestureHandle {
             if (view == null || !view.isAttachedToWindow || view.visibility != View.VISIBLE
                 || view.width <= 0 || view.height <= 0
             ) continue
-            var p = view.parent
-            while (p != null && p !== frame) p = (p as? View)?.parent
+            var p: ViewParent? = view.parent
+            while (p != null && p !== frame) p = p.parent
             if (frame != null && p !== frame) continue
             val location = IntArray(2)
             view.getLocationOnScreen(location)
@@ -297,7 +299,7 @@ object GestureHandle {
             display.getRealSize(size)
             val inBottomGestureArea = GestureHandleTouchArea.contains(
                 rawX, rawY, size.x, size.y, (location[1] + view.height).toFloat(), density,
-                GestureHandleTouchArea.DEFAULT_DP
+                Cfg.gestureHandleArea
             )
             if (onPill || inBottomGestureArea) return view
         }
@@ -332,38 +334,27 @@ object GestureHandle {
                     controller = WeakReference<Any?>(owner)
                     val context = fieldValue(owner, "mContext") as? Context
                     if (context != null && Cfg.gestureHandle) initialize(context)
-                    val injector = injector(owner)
-                    stockHidden = bool(injector, "mHideGestureLine")
-                    val override = Cfg.gestureHandle && bool(injector, "mIsFsgMode") && stockHidden
-                    // 即便系统全局隐藏手势条，也保留一个原生宿主（绝不写 Settings.Global / 改导航模式）。
-                    if (override) setHiddenFlag(injector, false)
-                    try {
-                        return@hook chain.proceed()
-                    } finally {
-                        if (override) {
-                            setHiddenFlag(injector, true)
-                            stockHidden = true
-                            invalidateHandles()
-                        }
-                    }
+                    // 只读系统手势线状态，绝不改写 mHideGestureLine，绝不增删导航栏宿主：
+                    // 宿主完全交给系统管理，模块只做视觉覆盖层，避免重复宿主破坏手势区域 / 桌面布局。
+                    stockHidden = bool(injector(owner), "mHideGestureLine")
+                    val result = chain.proceed()
+                    invalidateHandles()
+                    result
                 }
             } else if (method.name == "removeNavigationBar") {
                 hook(m, method) { chain ->
-                    val owner = chain.getThisObject()
-                    val injector = injector(owner)
-                    stockHidden = bool(injector, "mHideGestureLine")
-                    val result = chain.proceed()
-                    // 允许原生拆卸（含主题 / 折叠变化），再用原生创建路径重建（仍检查 display 与极小屏支持）。
-                    if ((chain.getArg(0) as Number).toInt() == 0
-                        && Cfg.gestureHandle && bool(injector, "mIsFsgMode") && stockHidden
-                    ) {
-                        Handler(Looper.getMainLooper()).post { refresh() }
-                    }
-                    result
+                    // 仅同步系统手势线状态用于可见性判定；不重建、不增删宿主。
+                    stockHidden = bool(injector(chain.getThisObject()), "mHideGestureLine")
+                    chain.proceed()
                 }
             }
         }
     }
+
+    // 小白条悬浮（旧实现，已移除）：曾把 NavigationBarView / NavigationBarFrame 的背景替换为
+    // ColorDrawable，并在 draw()（= onDraw 内）每帧向上遍历父链改写背景。后果：在 onDraw 期间触发
+    // setBackground → requestLayout/invalidate 递归，SystemUI 崩溃循环、状态栏与导航栏消失、整机黑屏。
+    // 未来实现「悬浮」必须改为只改「颜色/模式」参数（不替换 Drawable 对象），且绝不在绘制路径里碰视图属性。
 
     private fun hook(m: MainHook, method: Method, hooker: XposedInterface.Hooker): Boolean =
         m.hookExecutable(method, hooker)
@@ -451,8 +442,8 @@ object GestureHandle {
     }
 
     private fun foreground() {
-        // 前台变化：重置展示计时（重新展示片刻再进入沉浸）。
-        POLICY.reveal(SystemClock.uptimeMillis())
+        // 前台变化（页面 / Activity 切换）不再重置展示计时：未触碰底部区域或小白条时保持空闲隐藏。
+        // 初始展示与锁屏点亮分别由 initialize() 与屏幕亮起广播负责。
         refresh()
     }
 
@@ -474,39 +465,11 @@ object GestureHandle {
                 POLICY.clearSwipeReveal()
                 clearMotion()
             }
-            val nextPresent = Cfg.gestureHandle
-            val owner = controller.get()
-            if (owner != null) {
-                if (nextPresent && !receiverInstalled) {
-                    val context = fieldValue(owner, "mContext") as? Context
-                    if (context != null) initialize(context)
-                }
-                val injector = injector(owner)
-                stockHidden = bool(injector, "mHideGestureLine")
-                if (stockHidden && bool(injector, "mIsFsgMode")) {
-                    try {
-                        val view = defaultNavigationBar(owner)
-                        if (nextPresent) {
-                            if (view == null) owner.javaClass.getMethod("addDefaultNavigationBar").invoke(owner)
-                        } else if (view != null) {
-                            // 总开关关闭时，移除此前为规则保留的宿主。
-                            owner.javaClass.getMethod("removeNavigationBar", Integer.TYPE)
-                                .invoke(owner, 0)
-                        }
-                    } catch (t: Throwable) {
-                        Logx.e("小白条: host 刷新不可用", t)
-                    }
-                }
-            }
+            // 不再增删导航栏宿主：模块只做视觉覆盖层，宿主完全交给系统管理，
+            // 避免重复宿主破坏手势区域 / 桌面布局。
             scheduleHide()
             invalidateHandles()
         }
-    }
-
-    private fun defaultNavigationBar(owner: Any): Any? = try {
-        owner.javaClass.getMethod("getDefaultNavigationBarView").invoke(owner)
-    } catch (ignored: NoSuchMethodException) {
-        owner.javaClass.getMethod("getDefaultNavigationBar").invoke(owner)
     }
 
     private fun scheduleHide() {
@@ -544,11 +507,6 @@ object GestureHandle {
 
     private fun bool(owner: Any?, field: String): Boolean =
         java.lang.Boolean.TRUE == fieldValue(owner, field)
-
-    private fun setHiddenFlag(owner: Any?, value: Boolean) {
-        owner ?: return
-        owner.javaClass.getField("mHideGestureLine").setBoolean(owner, value)
-    }
 
     private fun fieldValue(target: Any?, fieldName: String): Any? {
         if (target == null) return null

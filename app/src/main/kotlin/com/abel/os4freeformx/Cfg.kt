@@ -25,6 +25,45 @@ object Cfg {
     @Volatile var gestureHandleFollow = Constants.DEF_GESTURE_HANDLE_FOLLOW
     @Volatile var gestureHandleTouch = Constants.DEF_GESTURE_HANDLE_TOUCH
     @Volatile var gestureHandleIdle = Constants.DEF_GESTURE_HANDLE_IDLE
+    @Volatile var gestureHandleArea = Constants.DEF_GESTURE_HANDLE_AREA
+    @Volatile var gestureHandleFloat = Constants.DEF_GESTURE_HANDLE_FLOAT
+    @Volatile var floatMode = Constants.DEF_FLOAT_MODE
+    @Volatile var floatPkgsRaw = Constants.DEF_FLOAT_PKGS
+    @Volatile private var floatPkgs: Set<String> = emptySet()
+
+    /**
+     * 悬浮是否对 [pkg] 生效（热路径调用，只读 volatile，无锁无 IO）。
+     *   ALL(0)       → 恒 true
+     *   WHITELIST(1) → 命中集合才 true
+     *   BLACKLIST(2) → 不在集合里就 true
+     */
+    fun floatAppliesTo(pkg: String?): Boolean {
+        if (!gestureHandleFloat) return false
+        return when (floatMode) {
+            Constants.FLOAT_MODE_WHITELIST -> floatPkgs.contains(pkg)
+            Constants.FLOAT_MODE_BLACKLIST -> !floatPkgs.contains(pkg)
+            else -> true
+        }
+    }
+
+    private fun parsePkgs(s: String) {
+        floatPkgsRaw = s
+        floatPkgs = s.split('\n', ',', ' ', '\t')
+            .asSequence()
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .toHashSet()
+    }
+
+    /** 设置界面展示用。 */
+    fun floatModeLabel(): String = when (floatMode) {
+        Constants.FLOAT_MODE_WHITELIST -> "仅白名单生效"
+        Constants.FLOAT_MODE_BLACKLIST -> "黑名单外生效"
+        else -> "所有应用生效"
+    }
+
+    fun floatPkgsRawLineCount(): Int = floatPkgsRaw
+        .split('\n', ',', ' ', '\t').count { it.trim().isNotEmpty() }
 
     /** 只记住模块引用，不读 prefs（system_server 启动阶段只允许这一步）。 */
     fun setModule(m: XposedModule) {
@@ -64,6 +103,10 @@ object Cfg {
             gestureHandleFollow = p.getBoolean(Constants.K_GESTURE_HANDLE_FOLLOW, Constants.DEF_GESTURE_HANDLE_FOLLOW)
             gestureHandleTouch = p.getBoolean(Constants.K_GESTURE_HANDLE_TOUCH, Constants.DEF_GESTURE_HANDLE_TOUCH)
             gestureHandleIdle = p.getBoolean(Constants.K_GESTURE_HANDLE_IDLE, Constants.DEF_GESTURE_HANDLE_IDLE)
+            gestureHandleArea = p.getFloat(Constants.K_GESTURE_HANDLE_AREA, Constants.DEF_GESTURE_HANDLE_AREA)
+            gestureHandleFloat = p.getBoolean(Constants.K_GESTURE_HANDLE_FLOAT, Constants.DEF_GESTURE_HANDLE_FLOAT)
+            floatMode = p.getInt(Constants.K_FLOAT_MODE, Constants.DEF_FLOAT_MODE)
+            parsePkgs(p.getString(Constants.K_FLOAT_PKGS, Constants.DEF_FLOAT_PKGS) ?: Constants.DEF_FLOAT_PKGS)
             Logx.verbose = log
         }.onFailure { Logx.e("reload 失败", it) }
     }
@@ -127,6 +170,10 @@ object Cfg {
             gestureHandleFollow = b.getBoolean(Constants.K_GESTURE_HANDLE_FOLLOW, Constants.DEF_GESTURE_HANDLE_FOLLOW)
             gestureHandleTouch = b.getBoolean(Constants.K_GESTURE_HANDLE_TOUCH, Constants.DEF_GESTURE_HANDLE_TOUCH)
             gestureHandleIdle = b.getBoolean(Constants.K_GESTURE_HANDLE_IDLE, Constants.DEF_GESTURE_HANDLE_IDLE)
+            gestureHandleArea = b.getFloat(Constants.K_GESTURE_HANDLE_AREA, Constants.DEF_GESTURE_HANDLE_AREA)
+            gestureHandleFloat = b.getBoolean(Constants.K_GESTURE_HANDLE_FLOAT, Constants.DEF_GESTURE_HANDLE_FLOAT)
+            floatMode = b.getInt(Constants.K_FLOAT_MODE, Constants.DEF_FLOAT_MODE)
+            parsePkgs(b.getString(Constants.K_FLOAT_PKGS, Constants.DEF_FLOAT_PKGS) ?: Constants.DEF_FLOAT_PKGS)
             Logx.verbose = log
         }.onFailure { Logx.e("读配置失败", it) }
         val after = "$log|$immersive|$rememberBounds"

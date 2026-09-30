@@ -38,7 +38,13 @@ class MainHook : XposedModule() {
             Cfg.reload()
             when (pkg) {
                 Constants.PKG_SYSTEM -> Hooks.installSystemServer(this, param.defaultClassLoader)
-                Constants.PKG_SYSTEMUI -> Hooks.installSystemUi(this, param.defaultClassLoader)
+                Constants.PKG_SYSTEMUI -> {
+                    Hooks.installSystemUi(this, param.defaultClassLoader)
+                    // 小白条悬浮：作用域固定，只能走 SystemUI 侧（不改应用、不动 insets）
+                    NavBarTransparent.install(this, param.defaultClassLoader)
+                }
+                // 作用域固定（system + com.android.systemui），不会有第三方应用进来；保留 else 仅作日志
+                else -> Logx.v("onPackageLoaded: 作用域外进程 $pkg，跳过")
             }
         } catch (t: Throwable) {
             Logx.e("onPackageLoaded($pkg) 失败", t)
