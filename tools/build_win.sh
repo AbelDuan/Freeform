@@ -3,27 +3,27 @@
 # 关键点：所有传给 Windows .exe / java 的参数必须用 C:/ 盘符形式，
 # 否则 MSYS 不会转换 /c/...，导致 .exe 找不到文件。
 set -u
-HERE_W="C:/Users/Abel/WorkBuddy/2026-09-20-12-28-11/Freeform"
-HERE_U="/c/Users/Abel/WorkBuddy/2026-09-20-12-28-11/Freeform"
+HERE_W="C:/Users/Abel/WorkBuddy/2026-09-29-16-48-37/Freeform"
+HERE_U="/c/Users/Abel/WorkBuddy/2026-09-29-16-48-37/Freeform"
 SRC_W="$HERE_W/app/src/main"
 SRC_U="$HERE_U/app/src/main"
 OUT_W="$HERE_W/build"; OUT_U="$HERE_U/build"
 DIST_W="$HERE_W/dist"; DIST_U="$HERE_U/dist"
 KS_W="$HERE_W/keystore/os4freeformx.jks"
 
-JAVA_HOME_W="C:/AndroidBuild/jdk17_extract/jdk-17.0.20+8"
+JAVA_HOME_W="C:/Program Files/Microsoft/jdk-17.0.20.101-hotspot"
 JAVA="$JAVA_HOME_W/bin/java.exe"
 JAR="$JAVA_HOME_W/bin/jar.exe"
 KEYTOOL="$JAVA_HOME_W/bin/keytool.exe"
-AAPT2="C:/android/sdk/build-tools/35.0.0/aapt2.exe"
-ZIPALIGN="C:/android/sdk/build-tools/35.0.0/zipalign.exe"
-D8_JAR="C:/android/sdk/build-tools/35.0.0/lib/d8.jar"
-APKSIGNER_JAR="C:/android/sdk/build-tools/35.0.0/lib/apksigner.jar"
-ANDROID_JAR="C:/android/sdk/platforms/android-36/android.jar"
-KOTLINC_JAR="C:/AndroidBuild/gradle-8.10_extract/gradle-8.10/lib/kotlin-compiler-embeddable-1.9.24.jar"
-KOTLIN_STDLIB="C:/AndroidBuild/gradle-8.10_extract/gradle-8.10/lib/kotlin-stdlib-1.9.24.jar"
-TROVE4J="C:/AndroidBuild/gradle-8.10_extract/gradle-8.10/lib/trove4j-1.0.20200330.jar"
-ANNOTATIONS="C:/AndroidBuild/gradle-8.10_extract/gradle-8.10/lib/annotations-24.0.1.jar"
+AAPT2="C:/Android/Sdk/build-tools/35.0.0/aapt2.exe"
+ZIPALIGN="C:/Android/Sdk/build-tools/35.0.0/zipalign.exe"
+D8_JAR="C:/Android/Sdk/build-tools/35.0.0/lib/d8.jar"
+APKSIGNER_JAR="C:/Android/Sdk/build-tools/35.0.0/lib/apksigner.jar"
+ANDROID_JAR="C:/Android/Sdk/platforms/android-36/android.jar"
+KOTLINC_JAR="C:/Users/Abel/.gradle/wrapper/dists/gradle-8.10-bin/deqhafrv1ntovfmgh0nh3npr9/gradle-8.10/lib/kotlin-compiler-embeddable-1.9.24.jar"
+KOTLIN_STDLIB="C:/Users/Abel/.gradle/wrapper/dists/gradle-8.10-bin/deqhafrv1ntovfmgh0nh3npr9/gradle-8.10/lib/kotlin-stdlib-1.9.24.jar"
+TROVE4J="C:/Users/Abel/.gradle/wrapper/dists/gradle-8.10-bin/deqhafrv1ntovfmgh0nh3npr9/gradle-8.10/lib/trove4j-1.0.20200330.jar"
+ANNOTATIONS="C:/Users/Abel/.gradle/wrapper/dists/gradle-8.10-bin/deqhafrv1ntovfmgh0nh3npr9/gradle-8.10/lib/annotations-24.0.1.jar"
 LIBXP="$HERE_W/app/libs/libxposed-api-102.jar"
 
 # 版本单一来源：从 module.prop 读，避免与 aapt2 versionName 打架
@@ -36,6 +36,7 @@ VCODE="$(sed -n 's/^versionCode=//p' "$MPROP_U" | tr -d '\r\n')"
 echo "版本: version=$VER versionCode=$VCODE (来自 module.prop)"
 fail(){ echo "!!! $1 (exit $2)"; exit $2; }
 
+mkdir -p "$HERE_W/keystore"
 rm -rf "$OUT_U"; mkdir -p "$OUT_U/res" "$OUT_U/gen" "$OUT_U/kt" "$OUT_U/dex" "$OUT_U/stdlib_dex" "$DIST_U"
 
 echo "== 1/6 aapt2 compile =="
@@ -49,8 +50,7 @@ echo "== 3/6 kotlinc =="
 find "$SRC_U/kotlin" -name '*.kt' | sed 's|^/c/|C:/|' > "$OUT_W/sources.txt"
 wc -l < "$OUT_W/sources.txt"
 CP3="$ANDROID_JAR;$LIBXP;$KOTLIN_STDLIB"
-KCP="$KOTLINC_JAR;$KOTLIN_STDLIB;$TROVE4J;$ANNOTATIONS"
-"$JAVA" -cp "$KCP" org.jetbrains.kotlin.cli.jvm.K2JVMCompiler -nowarn -jvm-target 17 \
+"$JAVA" -Xmx3000m -cp "$KOTLINC_JAR;$KOTLIN_STDLIB;$TROVE4J;$ANNOTATIONS" org.jetbrains.kotlin.cli.jvm.K2JVMCompiler -nowarn -jvm-target 17 \
   -classpath "$CP3" -d "$OUT_W/kt" "@$OUT_W/sources.txt" || fail "kotlinc" $?
 
 echo "== 4/6 d8 =="

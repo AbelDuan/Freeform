@@ -12,7 +12,7 @@ import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import android.view.Choreographer
-import android.view.KeyguardManager
+import android.app.KeyguardManager
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
@@ -24,8 +24,8 @@ import java.util.ArrayList
 import java.util.Collections
 import java.util.WeakHashMap
 import java.util.concurrent.atomic.AtomicBoolean
-import kotlin.math.maxOf
-import kotlin.math.minOf
+import kotlin.comparisons.maxOf
+import kotlin.comparisons.minOf
 import kotlin.math.roundToInt
 
 /**
@@ -254,7 +254,7 @@ object GestureHandle {
     private fun revealForSwipe(handle: View, motion: GestureHandleMotion, event: MotionEvent, now: Long) {
         if (activeSwipeRevealed) return
         val slop = ViewConfiguration.get(handle.context).scaledTouchSlop
-        if (!motion.movedBeyond(event.rawX, event.rawY, slop)) return
+        if (!motion.movedBeyond(event.rawX, event.rawY, slop.toFloat())) return
         activeSwipeRevealed = true
         POLICY.swipeDown(now)
         scheduleHide()
@@ -296,7 +296,7 @@ object GestureHandle {
             val size = Point()
             display.getRealSize(size)
             val inBottomGestureArea = GestureHandleTouchArea.contains(
-                rawX, rawY, size.x, size.y, location[1] + view.height, density,
+                rawX, rawY, size.x, size.y, (location[1] + view.height).toFloat(), density,
                 GestureHandleTouchArea.DEFAULT_DP
             )
             if (onPill || inBottomGestureArea) return view
@@ -545,7 +545,8 @@ object GestureHandle {
     private fun bool(owner: Any?, field: String): Boolean =
         java.lang.Boolean.TRUE == fieldValue(owner, field)
 
-    private fun setHiddenFlag(owner: Any, value: Boolean) {
+    private fun setHiddenFlag(owner: Any?, value: Boolean) {
+        owner ?: return
         owner.javaClass.getField("mHideGestureLine").setBoolean(owner, value)
     }
 
