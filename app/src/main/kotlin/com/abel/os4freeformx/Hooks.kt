@@ -1711,30 +1711,13 @@ object Hooks {
                             } else if (memo == null) {
                                 Logx.always("核对: task=$id pkg=$pkg 该屏无记忆，实际=$realNow")
                             } else if (realNow != null) {
-                                if (sMemo > 0f) {
-                                    // 新记忆（带 @scale）：存的是「可视 ÷ scale」⇒ 统一到**可视空间**比位置+尺寸
-                                    val visMemo = scaled(memo, sMemo)
-                                    val visNow = if (sNow > 0f) scaled(realNow, sNow) else realNow
-                                    if (visMemo == visNow) {
-                                        Logx.always("核对通过(位置+尺寸): task=$id pkg=$pkg 可视=$visNow")
-                                    } else if (nth == 1 && sNow > 0f) {
-                                        Logx.e(
-                                            "核对不一致(位置+尺寸): task=$id pkg=$pkg 目标=$visMemo 实际=$visNow " +
-                                                "sNow=$sNow ⇒ 按记忆位置+尺寸重开"
-                                        )
-                                        reopenAtMemory(ctrl, unscaled(visMemo, sNow))
-                                    }
-                                } else {
-                                    // ⚠️ 旧记忆（没有 @scale）：**只保证左上角一致**，尺寸不参与判定。
-                                    //    之前这里把"真实 rect"当成"可视 rect"去比 ⇒ 尺寸永远不一致 ⇒
-                                    //    每次开窗都多触发一次重开，反而把原来的位置改坏（用户实测：
-                                    //    "连位置都记不住了"）。用户口径也正是"只需要左上角一致"。
-                                    if (memo.left == realNow.left && memo.top == realNow.top) {
-                                        Logx.always("核对通过(左上角): task=$id pkg=$pkg 左上=$realNow")
-                                    } else if (nth == 1) {
-                                        Logx.e("左上角不一致: task=$id pkg=$pkg 记忆=$memo 实际=$realNow ⇒ 按记忆左上角重开")
-                                        reopenAtMemory(ctrl, Rect(memo))
-                                    }
+                                // 用户口径：**只需要左上角一致**。尺寸由 MIUI 决定，模块不参与
+                                // （见 NOTES 40.12：用 rect 反算尺寸会让窗口时而变大、时而"变得很小"）。
+                                if (memo.left == realNow.left && memo.top == realNow.top) {
+                                    Logx.always("核对通过(左上角): task=$id pkg=$pkg 左上=$realNow")
+                                } else if (nth == 1) {
+                                    Logx.e("左上角不一致: task=$id pkg=$pkg 记忆=$memo 实际=$realNow ⇒ 按记忆左上角重开")
+                                    reopenAtMemory(ctrl, Rect(memo))
                                 }
                             }
                         }
@@ -1848,19 +1831,13 @@ object Hooks {
                 Logx.e("记录核对($why): 真实=$bounds 可视=$vis scale=$scale")
             }
         }
-        // ★★ 存「**真实左上角** + 可视尺寸 ÷ 当时的 scale」（用户口径：左上角必须一致，尺寸按记忆新建）：
-        //    ① 位置取 **真实 rect 的 left/top** —— 真机实测可视矩形的左上角会随缩放锚点偏移
-        //       （真实 (70,511) vs 可视 (66,859)，差 348px）；上上版误用可视 left/top 当位置，
-        //       结果"连位置都记不住"✗
-        //    ② 只有**尺寸**用"可视尺寸 ÷ scale" ⇒ 建窗时把这个 rect 交给 MIUI，它按自己的 scale 渲染，
-        //       可视尺寸 = rect × scale = 记忆尺寸 ✓（模块从不推 scale，避开 NOTES 40.3 的装饰错位）
-        val store = if (scale > 0f && vis != null && vis.width() > 0 && vis.height() > 0) {
-            Rect(
-                bounds.left, bounds.top,
-                bounds.left + maxOf((vis.width() / scale).toInt(), 1),
-                bounds.top + maxOf((vis.height() / scale).toInt(), 1)
-            )
-        } else bounds
+        // ★★ 存 **真实 rect 原样**（位置锚点就是它，恢复时原样交回 ⇒ 左上角一定一致）。
+        // ⚠️ 2026-10-01 教训（用户实测「位置不对、大小不对、有时变得很小」）：
+        //    不要试图用「可视尺寸 ÷ scale」反算 rect 来"记住尺寸" —— MIUI 的 freeformScale
+        //    不受我们控制，实测同一应用在不同会话里出现过 0.09 / 0.132 / 0.25 / 0.415 / 0.66 /
+        //    0.8796 / 1.55，反算出来的 rect 到了下一次建窗就会被按另一个 scale 渲染 ⇒ 尺寸乱跳、变小。
+        //    尺寸交回 MIUI 自己（用户口径：只需要左上角一致）。scale 只当**记录信息**写进 @scale。
+        val store = bounds
         // 折叠屏内外屏分开记录：用**任务所在的 display** 算 key（外屏是另一个 displayId）
         val dispId = (field(info, "displayId") as? Int) ?: -1
         val screen = Bounds.screenKeyFor(AppCtx.get(), dispId)
