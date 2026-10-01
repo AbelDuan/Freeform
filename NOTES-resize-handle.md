@@ -1360,3 +1360,32 @@ aapt2 起不来；且 Debian 的 aapt2 是 2.19，对 `res/values/styles.xml` �
    `MultiTaskingAnimTarget.setAnimParam(bounds,sx,sy,anchorY)`、`MiuiFreeformModeTaskInfo#getResizeOriFreeformScale`）。
 2. 在其中找到"**建窗时把 bounds 变成可视尺寸**"那一步（乘/除 scale 的位置），在那里按记忆尺寸反推目标。
 3. 真机回归：位置 + 尺寸 + 装饰可点（三点/角柄/底栏）+ 不漂移 + 不触发 ANR。
+
+## 41. 角滑手势（左右下角内滑 → 小窗）最终形态（2026-10-02）
+
+### 41.1 行为（用户口径，已真机验证）
+```
+起手区 = 屏幕【左右下角】：最底 25% 高 × 左右各 1/6 宽（按当前显示实时尺寸算，不写死 px）
+动作   = 朝屏幕中心方向滑（不限角度）≥ 屏幕对角线 5%  →  停驻 0.3 秒  →  震动 + 以官方接口开小窗
+放行   = 不吞事件（钩子恒 chain.proceed()）⇒ 不屏蔽任何系统手势；侧边中段仍归小米侧边栏
+生效范围 = 仅【单应用全屏】；分屏/多窗口时放行给系统
+```
+
+### 41.2 ⛔ 两条踩死过的路（不要回头）
+1. **自建 `InputMonitorCompat` 通道**：本机**收不到任何事件**（探针 0 条）——通道"建成功"的日志会骗人，
+   必须用"事件探针"验证。⇒ 用户完全摸不到，白改一轮。
+2. **寄生 `MulWinSwitchEventController#onInputEvent` 且逐 MOVE 做重活**：
+   `ANR in com.android.systemui [Gesture Monitor] MultiTaskSwitch ... action=MOVE` ⇒
+   `Process com.android.systemui has died`（真机连崩三次），表现是"小窗不可操作 + SystemUI 重启"。
+   ⇒ 现在**只旁观不吞**、判定保持纯算术、触发一律 `main.post` 异步。
+
+### 41.3 显示尺寸必须按"当前显示"取
+`defaultDisplay.getRealMetrics()` 在折叠屏展开态可能仍返回**外屏**几何（实测 1168×1712，而机器在内屏
+1672×2364）⇒ 起手区宽度算窄 ⇒ 用户摸不到、合成坐标却能中。
+改法：`DisplayManager.getDisplay(DEFAULT_DISPLAY).getRealSize()`，并**每次按下节流刷新**（2s），
+尺寸统一归一化成「短边=宽、长边=高」（与旋转无关）。
+
+### 41.4 本轮同时删除
+- 设置项「默认小窗宽度/高度」及其常量/字段/读取（全库无消费，纯存值）；
+- 设置项「启用手势总开关」（四指等手势早已在 2026-09-21 删除）；
+- 保留「左右下角斜向中间滑 → 前台应用转小窗」开关。

@@ -542,18 +542,20 @@ object Hooks {
                                         res.set(memo)
                                         Logx.always("套用比例目标 $pkg@$screen -> $memo（整块）")
                                     } else {
-                                        // ★ 发布版行为：**只对齐左上角**（用户拍板：尺寸先交回 MIUI）。
-                                        //   保留 MIUI 刚算出来的矩形尺寸，只把左上角挪到记忆值 ⇒
-                                        //   位置按记忆对齐，尺寸/scale 语义与原生完全一致
-                                        //   （不会出现"尺寸乱跳 / 变得很小"，那是按 scale 反算 rect 造成的）。
-                                        //   尺寸的完整方案见 NOTES 40.15（要从 MIUI 建窗算 scale 的那一步入手）。
+                                        // ★★ 用户口径（2026-10-01）：「保持原位置打开窗口，如果超出边界，就被边界弹回去」。
+                                        //    做法 = 记忆位置 + MIUI 自己的尺寸：
+                                        //      · 左上角用记忆值 ⇒ 打开时就在你上次放的位置
+                                        //      · 尺寸用 MIUI 刚算出来的 ⇒ 它自己的
+                                        //        adjustFreeFormBoundsInMovableBounds / scaleDownIfNeeded
+                                        //        边界判定仍然成立，超出就由 MIUI 弹回，**模块不自己做夹取**
+                                        //    （整块替换曾经绕过这套机制 ⇒ 真机出现"半截在屏幕外"✗）
                                         val systemDefault = Rect(res)
                                         val target = Rect(res).apply { offsetTo(memo.left, memo.top) }
                                         if (rectIdx >= 0) (chain.getArg(rectIdx) as? Rect)?.set(target)
                                         res.set(target)
                                         Logx.always(
-                                            "恢复(仅左上角) $pkg@$screen -> $target（记忆左上 ${memo.left},${memo.top}，" +
-                                                "尺寸用系统默认 $systemDefault）"
+                                            "恢复(记忆位置+系统尺寸) $pkg@$screen -> $target（记忆左上 ${memo.left},${memo.top}，" +
+                                                "系统默认 $systemDefault；超界由 MIUI 弹回）"
                                         )
                                     }
                                 }
@@ -1919,6 +1921,24 @@ object Hooks {
                     return
                 }
                 else -> pendingTarget.remove(key)
+            }
+        }
+        // ★ 用户口径（2026-10-01）：**忠实记录原位置**；窗口万一超界，交给 MIUI 自己的边界机制弹回来。
+        //   所以这里**不做**任何"越界就不记"的取舍（早前那版会因此丢掉用户位置）。
+        //   只留一条诊断日志，方便出问题时一眼看出可视矩形是否越界。
+        runCatching {
+            if (scale > 0f) {
+                val vis = Rect(
+                    bounds.left, bounds.top,
+                    bounds.left + (bounds.width() * scale).toInt(),
+                    bounds.top + (bounds.height() * scale).toInt()
+                )
+                val dm = ctx.resources.displayMetrics
+                val sw = maxOf(dm.widthPixels, dm.heightPixels)
+                val sh = minOf(dm.widthPixels, dm.heightPixels)
+                if (vis.left < 0 || vis.top < 0 || vis.right > sw || vis.bottom > sh) {
+                    Logx.always("记录提示: 可视矩形超出屏幕($why) 真实=$bounds scale=$scale 可视=$vis 屏=${sw}x$sh（照记，交给 MIUI 弹回）")
+                }
             }
         }
         // 忠实记录用户看到的真实值：(bounds, scale) 成对交给 Bounds.put（它保证不写裸值）

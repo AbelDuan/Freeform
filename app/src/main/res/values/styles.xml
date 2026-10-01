@@ -11,28 +11,28 @@
              否则会出现"双层顶栏"：主题 ActionBar 与自绘头部叠在一起（真机截图可见露出的边）。 -->
         <item name="android:windowActionBar">false</item>
         <item name="android:windowNoTitle">true</item>
-        <item name="android:windowBackground">#FFFFFF</item>
-        <item name="android:colorBackground">#FFFFFF</item>
-        <item name="android:textColorPrimary">#111114</item>
-        <item name="android:textColorSecondary">#6B7280</item>
+        <item name="android:windowBackground">@color/white</item>
+        <item name="android:colorBackground">@color/white</item>
+        <item name="android:textColorPrimary">@color/text_primary</item>
+        <item name="android:textColorSecondary">@color/text_secondary</item>
         <!-- 与自绘头部面板同色，使「状态栏 + 标题区」连成一块，与下方白底列表分层 -->
-        <item name="android:statusBarColor">#D6DEEE</item>
-        <item name="android:navigationBarColor">#FFFFFF</item>
+        <item name="android:statusBarColor">@color/status_bar</item>
+        <item name="android:navigationBarColor">@color/white</item>
         <item name="android:windowLightStatusBar">true</item>
     </style>
 
     <!-- 选择器界面：不需要标题栏，自绘顶部搜索栏，整屏给列表 -->
     <style name="PickerTheme" parent="@android:style/Theme.DeviceDefault.Light.NoActionBar">
-        <item name="android:windowBackground">#FFFFFF</item>
-        <item name="android:colorBackground">#FFFFFF</item>
-        <item name="android:textColorPrimary">#111114</item>
-        <item name="android:textColorSecondary">#6B7280</item>
+        <item name="android:windowBackground">@color/white</item>
+        <item name="android:colorBackground">@color/white</item>
+        <item name="android:textColorPrimary">@color/text_primary</item>
+        <item name="android:textColorSecondary">@color/text_secondary</item>
         <!--
           状态栏用头部面板同色 #D6DEEE：这样「状态栏 + 标题 + 搜索 + 工具行」视觉上连成一块
           蓝灰头部，与下方纯白列表区之间只隔着一条分隔线，分层一眼可见。
         -->
-        <item name="android:statusBarColor">#D6DEEE</item>
-        <item name="android:navigationBarColor">#FFFFFF</item>
+        <item name="android:statusBarColor">@color/status_bar</item>
+        <item name="android:navigationBarColor">@color/white</item>
         <item name="android:windowLightStatusBar">true</item>
     </style>
 </resources>

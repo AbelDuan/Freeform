@@ -31,8 +31,8 @@ echo "== 2/6 aapt2 link =="
 
 echo "== 3/6 kotlinc =="
 find "$SRC/kotlin" -name '*.kt' > "$OUT/sources.txt"
-"$KOTLINC" -nowarn -jvm-target 17 \
-    -classpath "$ANDROID_JAR:$LIBXP" \
+"$KOTLINC" -nowarn -jvm-target 17 -no-stdlib \
+    -classpath "$ANDROID_JAR:$LIBXP:$KOTLIN_STDLIB" \
     -d "$OUT/kt" @"$OUT/sources.txt"
 
 echo "== 4/6 d8 =="

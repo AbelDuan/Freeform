@@ -29,8 +29,6 @@ class StoreProvider : ContentProvider() {
                 putBoolean(Constants.K_REMEMBER_BOUNDS, c?.getBoolean(Constants.K_REMEMBER_BOUNDS, Constants.DEF_REMEMBER_BOUNDS) ?: Constants.DEF_REMEMBER_BOUNDS)
                 putBoolean(Constants.K_REMEMBER_FOLD, c?.getBoolean(Constants.K_REMEMBER_FOLD, Constants.DEF_REMEMBER_FOLD) ?: Constants.DEF_REMEMBER_FOLD)
                 putBoolean(Constants.K_RATIO_MENU, c?.getBoolean(Constants.K_RATIO_MENU, Constants.DEF_RATIO_MENU) ?: Constants.DEF_RATIO_MENU)
-                putInt(Constants.K_DEFAULT_W, c?.getInt(Constants.K_DEFAULT_W, 0) ?: 0)
-                putInt(Constants.K_DEFAULT_H, c?.getInt(Constants.K_DEFAULT_H, 0) ?: 0)
                 putBoolean(Constants.K_GESTURE_HANDLE, c?.getBoolean(Constants.K_GESTURE_HANDLE, Constants.DEF_GESTURE_HANDLE) ?: Constants.DEF_GESTURE_HANDLE)
                 putBoolean(Constants.K_GESTURE_HANDLE_FOLLOW, c?.getBoolean(Constants.K_GESTURE_HANDLE_FOLLOW, Constants.DEF_GESTURE_HANDLE_FOLLOW) ?: Constants.DEF_GESTURE_HANDLE_FOLLOW)
                 putBoolean(Constants.K_GESTURE_HANDLE_TOUCH, c?.getBoolean(Constants.K_GESTURE_HANDLE_TOUCH, Constants.DEF_GESTURE_HANDLE_TOUCH) ?: Constants.DEF_GESTURE_HANDLE_TOUCH)

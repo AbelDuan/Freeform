@@ -22,9 +22,9 @@ object Constants {
     const val K_RATIO_MENU = "ratio_menu"
     // 注：原 K_RESIZE（"允许拖动调整尺寸"）是死开关：值存了、也读了，但全库没有任何代码用它，
     //     已移除（角柄缩放本来就是 MIUI 原生行为，模块不接管）。
-    const val K_DEFAULT_W = "default_w"              // 默认小窗宽（px，0=系统默认）
-    const val K_DEFAULT_H = "default_h"
-    const val K_GESTURES = "gestures"                // 手势总开关（全局输入挂钩）
+    // 手势总开关已移除（用户 2026-10-02）：只保留「左右下角内滑→小窗」这一个手势，常开。
+    // 仍读该键是为了兼容老配置，但设置页不再提供开关。
+    const val K_GESTURES = "gestures"
     const val K_CORNER_FREEFORM = "corner_freeform"  // 角落斜滑 → 前台应用转小窗
 
     // ---- 小白条（手势导航条）----

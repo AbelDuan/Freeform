@@ -136,11 +136,8 @@ class SettingsActivity : Activity() {
         switchRow("分应用记忆窗口尺寸", Constants.K_REMEMBER_BOUNDS, Cfg.rememberBounds) { Cfg.rememberBounds = it }
         switchRow("折叠屏状态分别记忆", Constants.K_REMEMBER_FOLD, Cfg.rememberFold) { Cfg.rememberFold = it }
         switchRow("小窗比例调节（三点菜单那排比例按钮 + 放大可调范围）", Constants.K_RATIO_MENU, Cfg.ratioMenu) { Cfg.ratioMenu = it }
-        numberRow("默认小窗宽度 (px，0=系统默认)", Constants.K_DEFAULT_W, Cfg.defaultW) { Cfg.defaultW = it }
-        numberRow("默认小窗高度 (px，0=系统默认)", Constants.K_DEFAULT_H, Cfg.defaultH) { Cfg.defaultH = it }
 
         section("手势")
-        switchRow("启用手势总开关", Constants.K_GESTURES, Cfg.gestures) { Cfg.gestures = it }
         switchRow("左右下角斜向中间滑 → 前台应用转小窗", Constants.K_CORNER_FREEFORM, Cfg.cornerFreeform) { Cfg.cornerFreeform = it }
 
         section("小白条（手势导航条）")

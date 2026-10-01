@@ -17,8 +17,6 @@ object Cfg {
     @Volatile var rememberBounds = Constants.DEF_REMEMBER_BOUNDS
     @Volatile var rememberFold = Constants.DEF_REMEMBER_FOLD
     @Volatile var ratioMenu = Constants.DEF_RATIO_MENU
-    @Volatile var defaultW = 0
-    @Volatile var defaultH = 0
     @Volatile var gestures = Constants.DEF_GESTURES
     @Volatile var cornerFreeform = Constants.DEF_CORNER_FREEFORM
     @Volatile var gestureHandle = Constants.DEF_GESTURE_HANDLE
@@ -95,8 +93,6 @@ object Cfg {
             rememberBounds = p.getBoolean(Constants.K_REMEMBER_BOUNDS, Constants.DEF_REMEMBER_BOUNDS)
             rememberFold = p.getBoolean(Constants.K_REMEMBER_FOLD, Constants.DEF_REMEMBER_FOLD)
             ratioMenu = p.getBoolean(Constants.K_RATIO_MENU, Constants.DEF_RATIO_MENU)
-            defaultW = p.getInt(Constants.K_DEFAULT_W, 0)
-            defaultH = p.getInt(Constants.K_DEFAULT_H, 0)
             gestures = p.getBoolean(Constants.K_GESTURES, Constants.DEF_GESTURES)
             cornerFreeform = p.getBoolean(Constants.K_CORNER_FREEFORM, Constants.DEF_CORNER_FREEFORM)
             gestureHandle = p.getBoolean(Constants.K_GESTURE_HANDLE, Constants.DEF_GESTURE_HANDLE)
@@ -177,8 +173,6 @@ object Cfg {
             rememberBounds = b.getBoolean(Constants.K_REMEMBER_BOUNDS, Constants.DEF_REMEMBER_BOUNDS)
             rememberFold = b.getBoolean(Constants.K_REMEMBER_FOLD, Constants.DEF_REMEMBER_FOLD)
             ratioMenu = b.getBoolean(Constants.K_RATIO_MENU, Constants.DEF_RATIO_MENU)
-            defaultW = b.getInt(Constants.K_DEFAULT_W, 0)
-            defaultH = b.getInt(Constants.K_DEFAULT_H, 0)
             gestures = b.getBoolean(Constants.K_GESTURES, Constants.DEF_GESTURES)
             cornerFreeform = b.getBoolean(Constants.K_CORNER_FREEFORM, Constants.DEF_CORNER_FREEFORM)
             gestureHandle = b.getBoolean(Constants.K_GESTURE_HANDLE, Constants.DEF_GESTURE_HANDLE)
