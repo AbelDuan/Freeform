@@ -989,6 +989,27 @@ object Hooks {
         }
     }
 
+    /**
+     * 比例按钮的外观（MIUI 自己的底 + 文字色）。方向按钮也走这里 ⇒ 两个按钮**外观一致**。
+     * 用 MIUI 资源而不是自绘：深浅色模式自动跟随（自绘深色胶囊曾被反馈"不统一"）。
+     */
+    private fun applyCaptionButtonLook(v: android.view.View, ctx: Context) {
+        val res = ctx.resources
+        val bgId = res.getIdentifier("caption_extend_selector", "drawable", "com.android.systemui")
+        val textId = res.getIdentifier("caption_extend_text_color", "color", "com.android.systemui")
+        if (bgId != 0) {
+            v.setBackgroundResource(bgId)
+        } else {
+            v.background = android.graphics.drawable.GradientDrawable().apply {
+                setColor(android.graphics.Color.argb(40, 128, 128, 128))
+                cornerRadius = 13f * ctx.resources.displayMetrics.density
+            }
+        }
+        if (v is android.widget.TextView && textId != 0) {
+            v.setTextColor(res.getColorStateList(textId, ctx.theme))
+        }
+    }
+
     private fun ratioButton(ctx: Context, label: String, onClick: () -> Unit): android.widget.TextView {
         val density = ctx.resources.displayMetrics.density
         val h = (26 * density).toInt()
@@ -1004,21 +1025,12 @@ object Hooks {
             marginEnd = (2 * density).toInt()
         }
         // 复用 MIUI 自己的按钮底与文字色：深浅色模式自动一致（自己画深色胶囊被反馈过“不统一”）
-        val res = ctx.resources
-        val bgId = res.getIdentifier("caption_extend_selector", "drawable", "com.android.systemui")
-        val textId = res.getIdentifier("caption_extend_text_color", "color", "com.android.systemui")
-        if (bgId != 0) {
-            tv.setBackgroundResource(bgId)
-        } else {
+        applyCaptionButtonLook(tv, ctx)
+        if (tv.background == null) {
             tv.background = android.graphics.drawable.GradientDrawable().apply {
                 setColor(android.graphics.Color.argb(40, 128, 128, 128))
                 cornerRadius = h / 2f
             }
-        }
-        if (textId != 0) {
-            tv.setTextColor(res.getColorStateList(textId, ctx.theme))
-        } else {
-            tv.setTextColor(android.graphics.Color.GRAY)
         }
         tv.setOnClickListener { onClick() }
         return tv
@@ -1044,13 +1056,20 @@ object Hooks {
         if (vis != null && vis.height() > 0 && vis.width() > 0) vis.width().toFloat() / vis.height() else 1f
     }.getOrDefault(1f)
 
-    /** 手机轮廓方向图标：`landscape=true` 画宽扁（横）、false 画窄高（竖）。 */
+    /**
+     * 方向按钮（点一下转 90°）。
+     * 外观与比例按钮**完全一致**：同一个 MIUI 按钮底（`caption_extend_selector`）、
+     * 同一套文字色（`caption_extend_text_color`），图标描边也取同一颜色 ⇒ 深浅色模式自动一致。
+     */
     private fun directionButton(ctx: Context, owner: Any): android.view.View {
+        val density = ctx.resources.displayMetrics.density
+        val h = (26 * density).toInt()
         val holder = android.widget.FrameLayout(ctx)
-        holder.layoutParams = android.widget.LinearLayout.LayoutParams(0, extraRowPx(), 1f).apply {
-            marginStart = (2 * ctx.resources.displayMetrics.density).toInt()
-            marginEnd = (2 * ctx.resources.displayMetrics.density).toInt()
+        holder.layoutParams = android.widget.LinearLayout.LayoutParams(0, h, 1f).apply {
+            marginStart = (2 * density).toInt()
+            marginEnd = (2 * density).toInt()
         }
+        applyCaptionButtonLook(holder, ctx)        // ← 与比例按钮共用同一个外观函数
         val phone = android.view.View(ctx)
         // 图标显示"点一下会变成哪个方向"：当前是竖（aspect<1）就画横的轮廓。
         phoneShape(phone, ctx, currentAspect(owner) < 1f)
