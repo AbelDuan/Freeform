@@ -1162,3 +1162,64 @@ Bundle 键（照抄官方）：`multiple_launch_taskIds`(int[], 互不相同的�
 
 **用户还指出**：桌面 app 是 **Rust** 写的，**不好 hook**、也不打算走"模拟点击"的路子。
 所以"由桌面提供选择界面"这条也不作为实现方向。
+
+---
+
+## 40. 尺寸记忆的真根因：WCT 提交 `freeformScale` 改不动画面（2026-10-01 实证）
+
+### 40.1 现象复盘（用户口径）
+"位置和尺寸记忆没实现"：重开小窗后位置/尺寸都不对。真机日志证明**链路是通的、但写进去的值是错的**。
+
+### 40.2 三个真机根因（都在代码里，已修）
+| # | 根因 | 证据 | 修法 |
+| --- | --- | --- | --- |
+| 1 | `persist(..., "gestureTaskInfo")`（拖动路径）**不传 scale** ⇒ 写"裸 bounds" ⇒ 跨进程 `load()` 后 `scaleCache` 为空 ⇒ `getScale()=0` ⇒ 尺寸恢复静默跳过 | 存储里 4 条记忆 3 条无 `@scale`；`尺寸记忆:` 日志 0 条 | 拖动改走 `record()`，与缩放同源，恒写 `(bounds, scale)` 一对 |
+| 2 | `Bounds.put` 只在 **bounds** 变化时落盘（`if (!changed) return`）⇒ "只改尺寸"（拖角柄时真实 bounds 恒定、只有 scale 变）**完全不写**、连日志都没有 | 真机：真实恒为 `502,494-1672,2364`，scale 0.38/0.41/0.4065 在变 | `changed` 判定加上 scale 变化；`scale<=0` 沿用旧 scale，绝不写裸值 |
+| 3 | 记录端拿**屏幕 rect**去 clamp 一个**未缩放坐标**里的 rect（MIUI 默认 `834,397-2004,2267`，屏宽只有 1672）⇒ 用户放好的位置被 `offsetTo` 成"右下贴边" | 日志：记忆 `357,494` 被夹成 `502,494`；重开永远回原位 | 记录端与恢复端都**不再夹取**；几何适配交回 MIUI |
+
+顺带删掉的死闸门：`isGestureRecord`（只认两种 why）、`rec-skip-clamped`+`heal`（按屏幕坐标比较、1px 抖动就翻脸）、`Recorder` 700ms 防抖、`gestureLayout`/`hidden` 两条永远被拦的写入、`Bounds.clamp/clampKeepRatio/getAny`（−60 行）。
+
+### 40.3 ⛔ 尺寸不能用"事后提交 scale"来恢复（**这是第 4 条，也是关键**）
+改完上面三条后，日志看"尺寸记忆: 已恢复 scale 1.0 -> 0.25066197"**成功了**，但读 SurfaceFlinger 层变换发现：
+
+```
+Layer [76907] VRI-com.ss.android.ugc.aweme/...SplashActivity
+    geomBufferSize=[0 0 1133 1672]                                  ← 真实 bounds
+    toDisplayTransform={ scale x=0.6600 y=0.6600 tx=75 ty=744 }     ← 实际渲染 0.66！
+```
+而同一时刻模块读到的字段 `freeformScale` 是 **0.2507**（我们的提交写进去的）。
+**⇒ `WindowContainerTransaction#setMiuiFreeformInfoChange(scale)` 只改 MIUI 的字段，不改渲染。**
+（对照：MIUI 自己的 task snapshot / 其它小窗 app 的 `mFreeformScale` 都是 0.66 —— 这是 MIUI 打包的"标准小窗缩放"，
+**每次新建小窗都用它**，跟我们在字段里写什么无关。）
+
+**危害**：MIUI 的装饰层（三点 / 角柄 / 底栏 / 触摸区）是按 `bounds × 字段` 摆位的 ⇒
+一提交就把「看得见的窗口」（渲染 0.66）与「摸得到的装饰」（按 0.2507 摆）拆成两套坐标 ——
+正是本文件前面记过的「手柄消失、三点找不到、整窗不可用」事故的成因。
+**该通道已删除**（`restoreScaleIfNeeded` / `applyBoundsAndScale` / `currentFreeformScale` / `scaleApplied` 全删）。
+
+### 40.4 尺寸恢复的正确入口（待办，下一轮做）
+渲染缩放由 MIUI 自己在**建窗那一步**决定，所以只能"在它算的时候给它正确答案"，不能事后改：
+1. **首选**：hook MIUI 计算初始 scale 的那一步（NOTES 提到的 `MiuiFreeformModeUtils#scaleDownIfNeeded`
+   以及 `MultiTaskingCommonUtils.scaleBounds` / `MultiTaskingAnimTarget.setAnimParam(bounds,sx,sy,anchorY)`）。
+   开工前必须按 AGENTS 约定去反编译产物里确认类名/签名（`Miui-WindowManager-Shell.jar`）。
+2. **备选**：走"关窗 → 用官方接口按目标 rect 重开"（比例菜单那条已验证一致的路），
+   但要先测出 MIUI 建窗用的标准缩放，再反算 `rect = 可视矩形 / 标准缩放`。
+3. **不要再试**：任何形式的"事后 WCT 改 scale"（见 40.3）。
+
+### 40.5 本轮已真机验证通过的部分
+- 位置记忆：`恢复 aweme@1672x2364 -> Rect(75,744,1208,2416)（记忆原样，系统默认 Rect(180,990,1350,2860)）`
+  —— 确实把 MIUI 的默认位置换成了记忆值，且**不再被 clamp 改写**。
+- 落盘成对：`落盘(gestureMove): bounds=Rect(265,744,1398,2416) scale=0.50397176` → `记住 …@0.50397176`（拖动、缩放两条路径都带 scale，不再互相抹）。
+- 持久化：`killall com.android.systemui` 换进程后重开仍恢复（新 pid 25590 日志为证）。
+- 旧键清理：`旧键清理: 迁移 0 条、删除 10 条 @P/@L`（按 prefs 原始键遍历，空值键也能清）。
+
+### 40.6 构建注意事项（容器 `aapt2` 被重建弄坏时）
+`/usr/lib/aarch64-linux-gnu` 里的 `libaapt2.so.0` / `libandroidfw` / `libbase` … 被容器重建抹掉过，
+aapt2 起不来；且 Debian 的 aapt2 是 2.19，对 `res/values/styles.xml` 里的裸色值 `#FFFFFF` 会报
+`expected reference but got (raw string)`（旧 SDK aapt2 容忍）。
+**本轮改用 `./build_dexswap.sh`**：只重编译 Kotlin → 换 `classes.dex`，复用既有 APK 的
+`AndroidManifest.xml`/`resources.arsc`/`META-INF/xposed`（资源一个字节没动时**完全等价**），
+不依赖 aapt2。签名用 `/root/workspace/os4freeformx-agent.jks`（别名 os4freeformx，口令 android，
+指纹 `BE:C0:DA:…` 与设备上那份一致，故可 `pm install -r` 直接覆盖）。
+⚠️ `pm install` **不支持 `--no-incremental`**（那是 adb 的选项），本机走
+`cp <apk> /data/local/tmp/ && pm install -r <path>`。

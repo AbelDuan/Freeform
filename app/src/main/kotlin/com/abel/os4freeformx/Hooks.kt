@@ -523,35 +523,25 @@ object Hooks {
                             if (res != null && !mini && !pkg.isNullOrEmpty()) {
                                 val ctx = (if (ctxIdx >= 0) chain.getArg(ctxIdx) as? Context else null) ?: AppCtx.get()
                                 if (ctx != null) {
-                                    val dm = ctx.resources.displayMetrics
-                                    val area = Rect(0, statusBarHeight(ctx), dm.widthPixels, dm.heightPixels)
                                     val screen = Bounds.screenKey(ctx)
                                     val pending = pendingTarget[Bounds.key(pkg, screen)]?.bounds
                                     if (pending != null) {
                                         Logx.always("套用比例目标 $pkg@$screen -> $pending（不受记忆开关限制）")
                                     }
-                                    // 旋转/换屏/重开都会重建同一个 task 的窗口；清掉 scale 去重，
-                                    // 让 restoreScaleIfNeeded 能把记忆里的 scale（比例调整写入的 1.0）重新套上，
-                                    // 否则会一直被"已纠正过"挡住，scale 停留在旧值 ⇒ 切换横竖屏后外框比例错乱。
-                                    runCatching { if (pending != null || Cfg.rememberBounds) scaleApplied.clear() }
-                                    // 优先用「当前屏幕」的记忆；没有则该应用其它屏幕的记忆按比例缩到当前屏，
-                                    // 保住形状（#1 内外屏切换 / #2 旋转：第一次遇到新几何也不退化成系统默认）
-                                    var memo = pending ?: if (Cfg.rememberBounds) Bounds.get(ctx, pkg, screen) else null
-                                    if (memo == null && Cfg.rememberBounds) {
-                                        val any = Bounds.getAny(ctx, pkg)
-                                        if (any != null) {
-                                            memo = Bounds.clampKeepRatio(any, area)
-                                            Logx.once("ffr-fallback-$pkg",
-                                                "当前屏无记忆，$pkg 用其它屏记忆 $any 等比缩到 $memo")
-                                        }
-                                    }
-                                    if (memo != null) {
+                                    val memo = pending ?: if (Cfg.rememberBounds) Bounds.get(ctx, pkg, screen) else null
+                                    if (memo == null) {
+                                        Logx.once("ffr-none-$pkg", "当前屏无 $pkg 记忆，交回系统默认（不再借其它屏记忆）")
+                                    } else {
+                                        // ★★ 2026-10-01 重构：**原样**返回，不再做任何"按屏幕夹取"。
+                                        // 这个返回值是 MIUI **未缩放**坐标里的 rect（可视 = rect × freeformScale）：
+                                        // 真机 MIUI 自己的默认就是 834,397-2004,2267，而屏宽只有 1672 —— 本来就"越界"。
+                                        // 旧代码拿屏幕 rect 去 clamp，等于把用户放好的位置改成"右下贴边"，
+                                        // 于是"重开永远回到初始位置"✗（日志：记忆 357,494 被夹成 502,494）。
+                                        // 几何适配交给 MIUI 自己的 scaleDownIfNeeded（它按 movableBounds 算）。
                                         val systemDefault = Rect(res)
-                                        // 等比夹进可视区：旋转/换屏只整体缩放、不裁边，形状不变
-                                        val fixed = Bounds.clampKeepRatio(memo, area)
-                                        if (rectIdx >= 0) (chain.getArg(rectIdx) as? Rect)?.set(fixed)
-                                        res.set(fixed)
-                                        Logx.always("恢复 $pkg@$screen -> $fixed（记忆 $memo，系统默认 $systemDefault）")
+                                        if (rectIdx >= 0) (chain.getArg(rectIdx) as? Rect)?.set(memo)
+                                        res.set(memo)
+                                        Logx.always("恢复 $pkg@$screen -> $memo（记忆原样，系统默认 $systemDefault）")
                                     }
                                 }
                             }
@@ -866,10 +856,9 @@ object Hooks {
                             val pkg = info?.let { taskPkg(it) }
                             val memo = pkg?.let { Bounds.get(ctx, it, Bounds.screenKey(ctx)) }
                             if (memo != null) {
-                                // 等比夹进当前可视区：内外屏切换/旋转后，mini 恢复也保形状、不越界
-                                val dm = ctx.resources.displayMetrics
-                                val area = Rect(0, statusBarHeight(ctx), dm.widthPixels, dm.heightPixels)
-                                rect.set(Bounds.clampKeepRatio(memo, area))
+                                // ★ 原样套用（不再按屏幕 clampKeepRatio）：记忆本来就是 MIUI 未缩放坐标里的 rect，
+                                //   夹取只会把用户放好的位置改成"右下贴边"。几何适配交回 MIUI。
+                                rect.set(memo)
                                 // 只替换恢复矩形，**不改 scale**：之前覆盖 scale 是为了修尺寸记忆，
                                 // 但后来证明那是别的原因，而覆盖 scale 会让 mini→正常的转换异常
                                 // （真机：贴边迷你态点击不再回到悬浮窗，而是点到内容）。
@@ -899,7 +888,8 @@ object Hooks {
             ),
             XposedInterface.Hooker { chain ->
                 val r = chain.proceed()
-                runCatching { restoreScaleIfNeeded(chain.thisObject) }
+                // 注：scale 恢复已从"菜单初始化"搬到 relayout（首次小窗布局）——菜单不是每次开窗都建，
+                //     挂在这里等于"只有你点过三点菜单才会恢复尺寸"✗（真机：尺寸记忆日志 0 条）。
                 try {
                     injectRatioRow(chain.thisObject as? android.view.ViewGroup, menuOwner.get())
                 } catch (t: Throwable) {
@@ -1073,9 +1063,6 @@ object Hooks {
             //（真机实测：窗口 1672×1672 而应用内容只有 284×284，因为 scale 卡在 0.17 的旧值/迷你态遗留值）。
             // 这里要的是"内容填满窗口"，所以 scale = 1.0；只写 bounds 的话应用会被渲染成一个小方块。
             Bounds.put(ctx, pkg, screenKey2, target, 1.0f)
-            // scaleApplied 的去重键是 taskId，而"关闭重开 / 切横竖屏"后仍是同一个 task，
-            // 不清掉的话新窗口会被当成"已纠正过"而跳过套用 ⇒ 又是旧 scale。这里显式允许重套。
-            runCatching { scaleApplied.remove(id) }
             Logx.always(
                 "比例调整($why): ${real ?: "无小窗"} -> 记忆 $target scale=1.0（比例 ${"%.3f".format(ratio)}，" +
                     "上下对齐 + 左右居中），随后关闭并重开小窗"
@@ -1147,15 +1134,6 @@ object Hooks {
      * 又出现 `记住 … = 0,692,1672,2364`）。
      */
     private val suppressRecord = ConcurrentHashMap<String, Long>()
-
-    /**
-     * 每个 key「上一次被替换掉的旧值」。
-     * 真机问题：拖动后立即写入是对的（`立即写入 … 122,345-1352,1985`），
-     * 但随后某个事件（窗口关闭/relayout）读到的却是**回退后的旧状态**，
-     * 经 700ms 延时落盘把旧值写了回去 → 记忆永远慢一拍（`记住 … = 442,724,1672,2364`）。
-     * 所以：要写的值若正好等于上一次被替换掉的旧值，判为回退态，跳过。
-     */
-    private val prevWritten = ConcurrentHashMap<String, Rect>()
 
     /** 全屏里点比例：直接用 MIUI 自己的「全屏→小窗」入口开小窗，打开时会套用刚写下的记忆。 */
     private fun openAsFreeform(decoration: Any, id: Int) {
@@ -1326,48 +1304,14 @@ object Hooks {
         runCatching { poster.second(runner) }.onFailure { Logx.e("投递失败(${poster.first})", it) }
     }
 
-    /** 已经纠正过 scale 的 task（每个窗口只纠正一次，避免和 MIUI 来回打）。 */
-    private val scaleApplied = java.util.Collections.newSetFromMap(ConcurrentHashMap<Int, Boolean>())
-
-    /**
-     * 打开小窗时把记忆里的 **freeformScale** 也套上。
-     *
-     * 真机取证：用户调大小后，任务真实 bounds 的尺寸恒定（836x1672），变化的是 freeformScale；
-     * 只恢复 bounds 是"尺寸记不住"的根因。所以记忆里 bounds 与 scale 一起存、一起恢复。
-     * 显示尺寸 = bounds × freeformScale，两者都还原 → 用户看到的尺寸/位置才一致。
-     */
-    private fun restoreScaleIfNeeded(decoration: Any) {
-        runCatching {
-            val ctx = AppCtx.get() ?: return
-            val id = taskId(decoration)
-            if (!scaleApplied.add(id)) return
-            val ctl = cls(Constants.CLS_MULTITASKING_CTL).getMethod("getInstance").invoke(null)
-            val repo = ctl.javaClass.getMethod("getMultiTaskingTaskRepository").invoke(ctl)
-            val ti = repo.javaClass.getMethod("getMiuiFreeformTaskInfo", Integer.TYPE).invoke(repo, id)
-                ?: return
-            val info = call(ti, "getTaskInfo") ?: return
-            if (taskWindowingMode(info) != MODE_FREEFORM) return
-            val pkg = taskPkg(info) ?: return
-            val want = Bounds.getScale(ctx, pkg, Bounds.screenKey(ctx))
-            if (want <= 0f) return
-            val now = call(ti, "getFreeformScale") as? Float ?: return
-            if (kotlin.math.abs(now - want) < 0.01f) {
-                Logx.e("尺寸记忆: scale 已一致 ($now)，无需纠正 task=$id")
-                return
-            }
-            val org = field(decoration, "mTaskOrganizer") ?: return
-            val token = field(info, "token") ?: call(info, "getToken") ?: return
-            val wctCls = cls("android.window.WindowContainerTransaction")
-            val tokenCls = cls("android.window.WindowContainerToken")
-            val wct = wctCls.getDeclaredConstructor().newInstance()
-            val changeCls = cls("miui.app.MiuiFreeFormManager\$MiuiFreeFormInfoChange")
-            val change = changeCls.getDeclaredConstructor().newInstance()
-            changeCls.getMethod("setMiuiFreeformScale", java.lang.Float.TYPE).invoke(change, want)
-            wctCls.getMethod("setMiuiFreeformInfoChange", tokenCls, changeCls).invoke(wct, token, change)
-            org.javaClass.getMethod("applyTransaction", wctCls).invoke(org, wct)
-            Logx.e("尺寸记忆: 已恢复 scale $now -> $want（task=$id pkg=$pkg）")
-        }.onFailure { Logx.e("恢复 scale 失败", it) }
-    }
+    // ★ 这里原本是 `restoreScaleIfNeeded`：开窗后用 WindowContainerTransaction 把记忆里的
+    //   freeformScale 提交给 MIUI。2026-10-01 真机实证（读 SurfaceFlinger 层变换）**它改不动画面**：
+    //     字段 freeformScale（MIUI 自报）= 0.2507     ← 我们的提交确实写进来了
+    //     实际渲染 toDisplayTransform scale = 0.66    ← MIUI 自己的值，根本没跟
+    //   而 MIUI 的装饰层（三点 / 角柄 / 底栏）是按「bounds × 字段」摆位的 ⇒ 一提交就把
+    //   "看得见的窗口" 与 "摸得到的装饰" 拆成两套坐标 —— 正是 NOTES 里记的「手柄消失、整窗不可用」。
+    //   结论：尺寸不能靠事后提交 scale。这条通道已删除；正确的入口是 MIUI 自己算初始 scale 的那一步
+    //   （见 NOTES 的「尺寸记忆」待办），不是在一个已经建好的窗口上事后改字段。
 
     private fun freeformTask(repo: Any, id: Int): Any? = runCatching {
         repo.javaClass.getMethod("getMiuiFreeformTaskInfo", Integer.TYPE).invoke(repo, id)
@@ -1408,28 +1352,17 @@ object Hooks {
             Cfg.reloadThrottled()
             val mode = windowingMode(decoration)
 
-            // 1) 记忆：自由小窗装饰每完成一次布局就（防抖）落盘。
-            //    必须放在「视图是否就绪」判断之前——首帧时 ViewHost 往往还没建好，
-            //    早期 return 会让记录整条路径永远不执行（2026-09-19 踩过）。
-            if (Cfg.rememberBounds) {
+            // 1) 布局诊断（保留一行，排查 mode/bounds 用）。
+            //    原来这里还有一条 gestureLayout 落盘：`persist(..., "gestureLayout")` 永远被
+            //    isGestureRecord 拦掉（起点既不是 gestureTaskInfo 也不是 resizeEnd）＝ 死代码，已删。
+            runCatching {
                 val info = field(decoration, "mRunningTaskInfo")
                 val b = info?.let { taskBounds(it) }
                 if (info != null && b != null && b.width() > 0 && b.height() > 0) {
-                    val p = taskPkg(info)
                     Logx.once(
                         "ff-layout-" + taskId(decoration) + "-" + mode,
-                        "小窗布局: task=${taskId(decoration)} mode=$mode pkg=$p bounds=$b"
+                        "窗口布局: task=${taskId(decoration)} mode=$mode pkg=${taskPkg(info)} bounds=$b"
                     )
-                    // 布局信号：只有在「刚发生过手势」时才落盘（否则打开窗口时的默认位置会把记忆冲掉）
-                    val endedAt = gestureEndedAt[decoration]
-                    val now2 = android.os.SystemClock.elapsedRealtime()
-                    if (endedAt != null && now2 - endedAt in 0..3000) {
-                        gestureEndedAt.remove(decoration)
-                        if (mode == MODE_FREEFORM && !isMiniOrPinned(decoration)) {
-                            Logx.once("ff-gesture-" + taskId(decoration), "手势后布局落盘: task=${taskId(decoration)} bounds=$b")
-                            persist(p, b, "gestureLayout")
-                        }
-                    }
                 }
             }
 
@@ -1454,20 +1387,12 @@ object Hooks {
         }
     }
 
-    private val lastVisible = WeakHashMap<Any, Boolean>()
-    private class LastFreeform(var pkg: String?, var bounds: Rect?, var at: Long)
-
-    private val lastFreeform = WeakHashMap<Any, LastFreeform>()
-
     /**
      * 手势结束时间戳。抬手回调里 MIUI 的 taskInfo 还是**旧 bounds**（新 bounds 由
      * WindowContainerTransaction 异步应用，实测 `up=旧值 变化=false`），
      * 所以要等随后的装饰布局再落盘：手势信号 + 布局信号一起用。
      */
     private val gestureEndedAt = WeakHashMap<Any, Long>()
-
-    /** 手势路径刚写入过的时间：关闭兜底在 10 秒内不再写，避免用旧值覆盖刚记下的新值。 */
-    private val gestureWroteAt = WeakHashMap<Any, Long>()
 
     /** 装饰视图 → 装饰对象。触摸 hook 拿到的是 View，需要反查任务与 TaskOrganizer。 */
     private val decorByView = WeakHashMap<View, Any>()
@@ -1531,104 +1456,23 @@ object Hooks {
             val ctx = AppCtx.get() ?: return@runCatching
             val pkg = taskPkg(info) ?: return@runCatching
             val screen = Bounds.screenKeyFor(ctx, dispId)
-            // 当前屏有记忆用当前屏；没有则拿其它屏记忆按比例缩到当前屏（#1 首次换屏也保形状）
-            val memo = Bounds.get(ctx, pkg, screen) ?: Bounds.getAny(ctx, pkg) ?: return@runCatching
-            // ★ 可视区必须用【任务所在显示】的尺寸，不能用 AppCtx 的默认屏：
-            // 旋转 / 切换内外屏的瞬间，默认屏的 displayMetrics 往往还是旧几何，会把正确的目标错误夹小。
-            // 真机实测：目标 1672×1672 被按旧宽 1532 夹成 1532×1532 ⇒ 窗口形状短暂错误，
-            // 几秒后 MIUI 再触发一次配置变更才纠正 —— 即用户看到的"等一会它自己又好了"。
-            val dm = runCatching {
-                val dmgr = ctx.getSystemService(Context.DISPLAY_SERVICE) as android.hardware.display.DisplayManager
-                val d = dmgr.getDisplay(if (dispId >= 0) dispId else android.view.Display.DEFAULT_DISPLAY)
-                if (d != null) ctx.createDisplayContext(d).resources.displayMetrics else ctx.resources.displayMetrics
-            }.getOrDefault(ctx.resources.displayMetrics)
-            val area = Rect(0, statusBarHeight(ctx), dm.widthPixels, dm.heightPixels)
-            val target = Bounds.clampKeepRatio(memo, area)
-            // ★ 旋转 / 切换内外屏：窗口按新几何重建，但 scale 是"上一个几何"留下的旧值。
-            // 显示尺寸 = bounds × scale ⇒ 旧 scale 会让应用内容填不满新窗口 ⇒ 底部白边、手柄贴错位置
-            //（真机实测：窗口 1672×1672 而内容只有 284×284，scale=0.17 为迷你态遗留值）。
-            // 两种情形都必须重算 scale：
-            //   · 跨屏兜底（getAny）——本屏没有精确 scale，读到 0
-            //   · bounds 被 clampKeepRatio 等比夹过 —— 说明几何变了，旧 scale 不再对应
-            // 一律取 1.0：内容正好填满窗口（MIUI 只有一个等比缩放，1.0 = 不做缩放）。
-            // ⚠️ 这里【绝不能】强制改写 freeformScale。
-            // 实测教训（2026-10-01）：曾在此把 scale 写成 1.0 以消除"内容填不满窗口"的白边，
-            // 结果【MIUI 的装饰层（左右下角拖动手柄 / 底部横条 / 顶部三点）是按 bounds × scale 的
-            // 显示区摆位的】—— 改了 scale，装饰就被摆到看不见、摸不到的地方：手柄消失、三点找不到、
-            // 整窗不可用。宁可留白边，也不能让窗口失去可操作性。
-            // 传 0 表示"不动 scale"（applyBoundsAndScale 只在 scale>0 时才提交 scale 变更）。
-            // ★★ 用户方案（2026-10-01）：旋转 / 换屏后【不再原地改 bounds/scale】。
-            // 原地改 = 跟 MIUI 的两份状态（bounds 与 freeformScale）打架，代价已经实测过两次：
-            //   ① 装饰层（左右下角手柄 / 顶部三点 / 底部横条）被反复重建后摆到看不见的地方 ⇒ 整窗不可用
-            //   ② 触摸区(按 bounds) 与 显示区(bounds × scale) 不一致 ⇒ 摸空处也在操作小窗
-            // 改用"切换比例"那条【已经验证一致】的路径：写记忆 → 关闭小窗 → 用官方接口按目标尺寸重开。
-            // 重开后窗口由 MIUI 自己的打开流程一次性建好，bounds/scale/装饰/触摸区天然一致。
-            // 代价是窗口会"消失一下再出现"——用户明确接受这一点。
-            Bounds.put(ctx, pkg, screen, target, 1.0f)   // 连 scale=1.0 一起写：显示区 = bounds
+            // 只认本屏记忆（key 里已经带着 display 几何）；不再跨屏借记忆、也不再按屏幕夹取
+            val target = Bounds.get(ctx, pkg, screen) ?: return@runCatching
+            // ★ 这里【不写记忆】：旋转/换屏是"恢复"动作，不是用户调整。
+            //   旧代码在这一步 `Bounds.put(target, 1.0f)` —— 既把 scale 写成 1.0、又把 clamp 结果
+            //   当成新记忆，正是"尺寸记忆被自己抹掉"的来源之一（真机存储里 dshfolk 的 @1.0 就是它写的）。
+            //   现在只做：关闭 → 官方接口重开；重开走 getCustomFreeformRect ⇒ 从记忆里原样套回 (bounds, scale)。
             val id0 = taskId(ctrl)
             val closed = closeFreeformViaMiui(ctrl)
             Handler(Looper.getMainLooper()).postDelayed({
                 runCatching {
                     if (!relaunchViaMiuiApi(ctrl, id0, target)) {
-                        Logx.e("配置套用: 官方接口重开失败，回退原地套用")
-                        applyBoundsAndScale(ctrl, id0, target, 0f)
+                        Logx.e("配置套用: 官方接口重开失败（不再原地改 scale —— 那条路已实证改不动画面且会拆坏装饰）")
                     }
                 }
             }, if (closed) 350 else 0)
-            Logx.always(
-                "配置套用: pkg=$pkg screen=$screen memo=$memo -> target=$target " +
-                    "（关闭→官方接口重开，scale 随记忆写为 1.0）"
-            )
+            Logx.always("配置套用: pkg=$pkg screen=$screen 记忆=$target（关闭→官方接口重开，不改记忆）")
         }.onFailure { Logx.e("配置套用失败", it) }
-    }
-
-    /**
-     * 直接把尺寸 / scale 套回一个正在运行的小窗（不改走重开，无闪烁）。
-     * 复用 restoreScaleIfNeeded 已验证可用的 WindowContainerTransaction 通道：
-     * 取装饰上的 mTaskOrganizer 与任务 token，setBounds + setMiuiFreeformInfoChange 后 applyTransaction。
-     */
-    /**
-     * 读当前 freeformScale（MIUI 把 scale 放在 MiuiFreeformTaskInfo 上，不在普通 TaskInfo 上）。
-     * 用于判断"是否真的需要提交 scale 变更" —— 幂等是这里的硬要求：
-     * 实测（2026-10-01）：只要反复提交 scale，MIUI 就会反复重建装饰层，
-     * 结果左右下角拖动手柄消失、顶部三点找不到、整窗不可用。
-     */
-    private fun currentFreeformScale(id: Int): Float? = runCatching {
-        val ctl = cls(Constants.CLS_MULTITASKING_CTL).getMethod("getInstance").invoke(null)
-        val repo = ctl.javaClass.getMethod("getMultiTaskingTaskRepository").invoke(ctl)
-        val ti = repo.javaClass.getMethod("getMiuiFreeformTaskInfo", Integer.TYPE).invoke(repo, id)
-            ?: return@runCatching null
-        call(ti, "getFreeformScale") as? Float ?: field(ti, "mFreeformScale") as? Float
-    }.getOrNull()
-
-    private fun applyBoundsAndScale(decoration: Any, id: Int, target: Rect, scale: Float) {
-        runCatching {
-            val org = field(decoration, "mTaskOrganizer") ?: return
-            val info = field(decoration, "mRunningTaskInfo") ?: return
-            val token = field(info, "token") ?: call(info, "getToken") ?: return
-            val wctCls = cls("android.window.WindowContainerTransaction")
-            val tokenCls = cls("android.window.WindowContainerToken")
-            val wct = wctCls.getDeclaredConstructor().newInstance()
-            // scale <= 0 ⇒ 自动模式：只有当当前 scale 与 1.0 明显不一致时才提交。
-            // 1.0 的含义：显示尺寸 = bounds × 1.0 = bounds ⇒ 看得见的区域与摸得到的区域一致
-            //（否则 scale<1 时"显示很小但触摸区很大"，摸空处也会操作小窗）。
-            // 幂等是硬要求：反复提交会让 MIUI 反复重建装饰层 ⇒ 手柄/三点消失、整窗不可用。
-            var submit = scale
-            if (scale <= 0f) {
-                val cur = currentFreeformScale(id)
-                submit = if (cur != null && kotlin.math.abs(cur - 1.0f) > 0.01f) 1.0f else 0f
-                Logx.always("配置套用: 当前 scale=$cur ⇒ 提交 scale=$submit（0=不动，幂等）")
-            }
-            if (submit > 0f) {
-                val changeCls = cls("miui.app.MiuiFreeFormManager\$MiuiFreeFormInfoChange")
-                val change = changeCls.getDeclaredConstructor().newInstance()
-                changeCls.getMethod("setMiuiFreeformScale", java.lang.Float.TYPE).invoke(change, submit)
-                wctCls.getMethod("setMiuiFreeformInfoChange", tokenCls, changeCls).invoke(wct, token, change)
-            }
-            wctCls.getMethod("setBounds", tokenCls, Rect::class.java).invoke(wct, token, target)
-            org.javaClass.getMethod("applyTransaction", wctCls).invoke(org, wct)
-            Logx.always("配置套用提交: task=$id -> $target submitScale=$submit（请求 $scale）")
-        }.onFailure { Logx.e("配置套用提交失败", it) }
     }
 
     private fun installBoundsRecorder(m: MainHook, cl: ClassLoader) {
@@ -1681,55 +1525,27 @@ object Hooks {
                 }, 700)
                 r
             })
-        // 每次 relayout：窗口从可见变为不可见（关闭/收进迷你）时记录，覆盖「拖动移动位置」的情况
+        // 每次 relayout：拖动结束 → 落盘位置与尺寸（一对 (bounds, scale)）；
+        // 旋转/换屏 → 走 maybeReapplyOnConfigChange 关闭重开。
         m.hookMethod(cl, Constants.CLS_DECOR_CONTROLLER, "relayout", null,
             XposedInterface.Hooker { chain ->
                 val r = chain.proceed()
                 try {
-                val ctrl = chain.thisObject
-                val info = field(ctrl, "mRunningTaskInfo")
-                // 旋转 / 内外屏切换：现存小窗 relayout 而非重开，不会走 getFreeformRect 恢复记忆，
-                // 于是被塞回默认比例。检测到 orientation/displayId 变化就套回记忆尺寸。
-                runCatching { maybeReapplyOnConfigChange(ctrl, info) }
-                val visible = info?.let { field(it, "isVisible") as? Boolean } == true
-                    if (info != null && taskWindowingMode(info) == MODE_FREEFORM) {
-                        val p = taskPkg(info)
-                        val b = taskBounds(info)
-                        lastFreeform[ctrl] = LastFreeform(p, b, android.os.SystemClock.elapsedRealtime())
-                    }
-                    // 手势结束后 MIUI 通过 onTaskInfoChanged 带来**新 bounds**（移动窗口不重排装饰，
-                    // 所以 updateRootView 不会来）。这里用「手势信号 + 新 taskInfo」落盘。
+                    val ctrl = chain.thisObject
+                    val info = field(ctrl, "mRunningTaskInfo")
+                    // 旋转 / 内外屏切换：现存小窗 relayout 而非重开，不会走 getFreeformRect 恢复记忆
+                    runCatching { maybeReapplyOnConfigChange(ctrl, info) }
+                    val freeform = info != null && taskWindowingMode(info) == MODE_FREEFORM
+                    val visible = info?.let { field(it, "isVisible") as? Boolean } == true
+
+                    // 拖动（移动位置）落盘：手势结束后 MIUI 通过 onTaskInfoChanged 带来新 bounds。
+                    // 与缩放共用 record()，保证写进去的永远是一对 (bounds, scale)。
                     val endedAt = gestureEndedAt[ctrl]
-                    val nowMs = android.os.SystemClock.elapsedRealtime()
-                    if (endedAt != null && nowMs - endedAt in 0..3000 && info != null &&
-                        taskWindowingMode(info) == MODE_FREEFORM && !isMiniOrPinned(ctrl)
+                    if (freeform && visible && endedAt != null &&
+                        android.os.SystemClock.elapsedRealtime() - endedAt in 0..3000 && !isMiniOrPinned(ctrl)
                     ) {
-                        val nb = taskBounds(info)
-                        if (nb != null) {
-                            gestureEndedAt.remove(ctrl)
-                            Logx.once("ff-relayout-" + taskId(ctrl), "手势后 taskInfo 落盘: task=${taskId(ctrl)} bounds=$nb")
-                            gestureWroteAt[ctrl] = android.os.SystemClock.elapsedRealtime()
-                            persist(taskPkg(info), nb, "gestureTaskInfo")
-                        }
-                    }
-                    val was = lastVisible.put(ctrl, visible)
-                    if (was == true && !visible) {
-                        // 关闭小窗时兜底记录：不依赖手势回调是否派发，直接用此刻的 bounds。
-                        // persist() 里已有三道闸（等于记忆 clamp 则跳过 / 满屏跳过 / 迷你态跳过），
-                        // 所以“打开后原样关闭”不会污染记忆。
-                        val wroteAt = gestureWroteAt[ctrl]
-                        val justWrote = wroteAt != null &&
-                            android.os.SystemClock.elapsedRealtime() - wroteAt < 10_000
-                        if (justWrote) {
-                            Logx.once("ff-hide-skip-" + taskId(ctrl), "关闭兜底跳过：手势已写入，避免用旧值覆盖（task=${taskId(ctrl)}）")
-                            return@Hooker r
-                        }
-                        val nb = info?.let { taskBounds(it) } ?: lastFreeform[ctrl]?.bounds
-                        val np = info?.let { taskPkg(it) } ?: lastFreeform[ctrl]?.pkg
-                        if (nb != null) {
-                            Logx.once("ff-hide-" + taskId(ctrl), "关闭时兜底记录: task=${taskId(ctrl)} pkg=$np bounds=$nb")
-                            persist(np, nb, "hidden")
-                        }
+                        gestureEndedAt.remove(ctrl)
+                        record(ctrl, "gestureMove")
                     }
                 } catch (t: Throwable) {
                     Logx.e("relayout 记录失败", t)
@@ -1794,15 +1610,23 @@ object Hooks {
                 Logx.once("rec-nobounds", "记录跳过：bounds=$bounds")
                 return
             }
-            if (why == "layout") {
-                // 只为日志对照；真正写入走 persist
-            }
             persist(pkg, bounds, why, scale, keyScreen)
         } catch (t: Throwable) {
             Logx.e("record 失败", t)
         }
     }
 
+    /**
+     * 落盘一次「用户调整结果」。2026-10-01 重构后这里只剩两道**真正需要**的闸：
+     *   · 关闭→重开小窗期间（suppressRecord）：那时 MIUI 会把任务摆成全屏，写进去就是污染
+     *   · 刚用比例按钮指定过尺寸（pendingTarget）：别让旧 bounds 立刻把它盖回去
+     * 被删掉的闸（都是"用流程掩盖模型错误"）：
+     *   · 非手势来源一律拒写 ✗ —— 结果只有"手势"能落盘，其它路径全被拦（死代码）
+     *   · 等于记忆 clamp 结果就跳过 ✗ —— 恢复端已改成原样套用，这个判据按屏幕坐标算，1px 抖动就翻脸
+     *   · heal（就地修正越界记忆）✗ —— 记忆本就是 MIUI 未缩放坐标，没有"越界"可言
+     *   · 记录时按屏幕 clamp ✗ —— 这条是把用户位置改成"右下贴边"的元凶
+     *   · 满屏判定 ✗ —— 贴边/吸附/最大化是 MIUI 自己的行为，模块不替它判断（用户 2026-10-01 要求删）
+     */
     private fun persist(pkg: String?, bounds: Rect, why: String, scale: Float = 0f, screenIn: String? = null) {
         if (pkg == null) {
             Logx.once("rec-nopkg-persist", "记录跳过：包名为空（$why）")
@@ -1810,67 +1634,29 @@ object Hooks {
         }
         val ctx = AppCtx.get() ?: return
         val screen = screenIn ?: Bounds.screenKey(ctx)
-        if (!isGestureRecord(why)) {
-            Logx.once("rec-src-$why", "记录跳过：非手势来源（$why）")
-            return
-        }
         // 关闭→重开期间一律不记录（那时 MIUI 会把任务摆成全屏，写进去就把记忆污染了）
-        val supKey = Bounds.key(pkg, screen)
-        suppressRecord[supKey]?.let { until ->
+        val key = Bounds.key(pkg, screen)
+        suppressRecord[key]?.let { until ->
             if (android.os.SystemClock.elapsedRealtime() < until) {
-                Logx.once("sup-$supKey", "记录跳过：正在关闭→重开小窗（$why）")
+                Logx.once("sup-$key", "记录跳过：正在关闭→重开小窗（$why）")
                 return
             }
-            suppressRecord.remove(supKey)
+            suppressRecord.remove(key)
         }
-        // 刚用比例按钮指定过尺寸：别让旧 bounds 把它覆盖掉（真机踩过：写进去立刻被记录链路盖回来）
-        pendingTarget[Bounds.key(pkg, screen)]?.let { p ->
+        // 刚用比例按钮指定过尺寸：别让旧 bounds 把它覆盖掉
+        pendingTarget[key]?.let { p ->
             when {
-                bounds == p.bounds -> pendingTarget.remove(Bounds.key(pkg, screen))   // 已经套用上了
+                bounds == p.bounds -> pendingTarget.remove(key)          // 已经套用上了
                 android.os.SystemClock.elapsedRealtime() - p.at < 60_000 -> {
                     Logx.once("rec-hold-$pkg", "记录跳过：刚指定过比例（$why），等重开小窗套用 ${p.bounds}")
                     return
                 }
-                else -> pendingTarget.remove(Bounds.key(pkg, screen))
+                else -> pendingTarget.remove(key)
             }
         }
-        // 恢复发生在 system_server、记录发生在 SystemUI，跨进程没法用内存标记。
-        // 于是直接判定：如果当前 bounds 恰好等于「已有记忆经过同样的 clamp」的结果，
-        // 那它就是恢复产物，不是用户调整，跳过（否则记忆会被夹取结果覆盖，表现为永远慢一拍）。
-        val memo = Bounds.get(ctx, pkg, screen)
-        if (memo != null) {
-            val dm = ctx.resources.displayMetrics
-            val area = Rect(0, statusBarHeight(ctx), dm.widthPixels, dm.heightPixels)
-            val clampedMemo = Bounds.clamp(memo, area)
-            if (clampedMemo != memo) {
-                // 历史记忆里存的越界坐标：就地修正（否则恢复时会贴状态栏）
-                Logx.once("rec-heal-$pkg", "修正越界记忆: $memo -> $clampedMemo")
-                Recorder.schedule(ctx, pkg, screen, clampedMemo, "heal")
-            }
-            if (clampedMemo == bounds) {
-                Logx.once("rec-skip-clamped-$pkg", "记录跳过：等于记忆的 clamp 结果，判为恢复产物（$bounds）")
-                return
-            }
-        }
-        // 记录时就夹到可视区（上边界=状态栏高度），这样记忆里永远不会存越界坐标：
-        // 恢复端即使还是旧的 y=0 夹取，也不会把三点栏顶到状态栏底下。
-        // 注：这里用 Bounds.clamp（位置/超限修正），与下方 heal 比较保持一致；
-        // 等比缩放（保形状）只在「恢复端」installLaunchBounds 里做，那里才会遇到
-        // 不同屏幕/旋转几何，是 #1 内外屏切换 / #2 旋转「比例被改」的真正修复点。
-        val dm = ctx.resources.displayMetrics
-        val area = Rect(0, statusBarHeight(ctx), dm.widthPixels, dm.heightPixels)
-        val safe = Bounds.clamp(bounds, area)
-        // ★ 按用户意见（2026-10-01）：**"满屏尺寸"这道闸门删掉** ✗
-        //（用户实测：调整位置/尺寸后关闭再打开，永远是初始位置 —— 因为调整结果恰好被判为"满屏"而拒写 ✗）
-        // 贴边/吸附/最大化是小米自己的行为，模块不再替它判断 ✓，忠实记录真实值即可 ✓
-        if (why == "layout") {
-            Recorder.schedule(ctx, pkg, screen, safe, why, scale)
-        } else {
-            // 手势/关闭兜底：值已经是稳定结果，立即落盘。防抖会让紧随其后的关闭事件把写入挤掉
-            // （2026-09-19 真机：手势拿到 516,804,1686,2674，随后的关闭事件触发满屏判定，写入丢失）。
-            Logx.once("pf-imm-" + pkg, "立即写入: pkg=$pkg bounds=$safe scale=$scale why=$why")
-            Bounds.put(ctx, pkg, screen, safe, scale)
-        }
+        // 忠实记录用户看到的真实值：(bounds, scale) 成对交给 Bounds.put（它保证不写裸值）
+        Logx.always("落盘($why): pkg=$pkg screen=$screen bounds=$bounds scale=$scale")
+        Bounds.put(ctx, pkg, screen, bounds, scale)
     }
 
     /**
@@ -1888,36 +1674,11 @@ object Hooks {
         false
     }
 
-    /**
-     * 只认「手势结束」这一类记录来源。
-     * 真机反复踩：关闭/relayout/重开后的记录读到的是回退或全屏态，
-     * 会把用户刚调好的尺寸/位置盖掉（`记录核对` 明明是真值，写进去却是满屏）。
-     */
-    private fun isGestureRecord(why: String) = why.startsWith("gestureTaskInfo") ||
-        why.startsWith("resizeEnd")
-
-    /** 状态栏高度：clamp 的上边界，保证小窗顶部三点栏不被状态栏压住。 */
+    /** 状态栏高度：设置页诊断与比例按钮的目标计算用。 */
     private fun statusBarHeight(ctx: Context): Int = runCatching {
         val id = ctx.resources.getIdentifier("status_bar_height", "dimen", "android")
         if (id > 0) ctx.resources.getDimensionPixelSize(id) else 0
     }.getOrDefault(0)
-
-    /** 延迟落盘：拖动过程中 bounds 会连续变化，等稳定后再写。 */
-    private object Recorder {
-        private val main = Handler(Looper.getMainLooper())
-        private val pending = ConcurrentHashMap<String, Runnable>()
-
-        fun schedule(ctx: Context, pkg: String, screen: String, bounds: Rect, why: String, scale: Float = 0f) {
-            val key = Bounds.key(pkg, screen)
-            val r = Rect(bounds)
-            val task = Runnable {
-                pending.remove(key)
-                Bounds.put(ctx, pkg, screen, r, scale)
-            }
-            pending.put(key, task)?.let { main.removeCallbacks(it) }
-            main.postDelayed(task, 700)
-        }
-    }
 
     // ---------------- 反射小工具 ----------------
 

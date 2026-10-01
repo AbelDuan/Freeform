@@ -109,39 +109,26 @@ object Bounds {
                 parseRect(raw)?.let { cache[k] = it }
                 raw?.substringAfter('@', "")?.toFloatOrNull()?.takeIf { it > 0f }?.let { scaleCache[k] = it }
             }
-            // ★★ 旧键清理 + 迁移（用户截图证据，2026-10-01）：
-            // 截图里同一应用有 3 条记忆（@P / @L / 无后缀 ✗）⇒ 打开时读哪条不确定 ⇒ "有时对有时不对" ✗
-            // @P/@L 是我早前加的"方向槽"，后来已去掉该维度 ✓ ⇒ 旧键必须清理 ✓
-            // 规则：① 按应用尽量把旧键迁移成新键（仅当新键不存在时 ✓，不丢数据 ✓）
-            //       ② 迁移后删除所有 @P/@L 旧键 ✓
+            // 旧格式键（@P/@L「方向槽」，已废弃）一次性清理：能迁的迁到新键，然后**一律删除**。
+            // 必须按 prefs 的**原始键**遍历：空值旧键解析不出 Rect，走 cache 遍历永远清不掉 ✗
+            // （真机存储里至今残留 `pkg|1672x2364@P=` / `@L=` 一串空值键，会让"读哪条"变得不确定）
             runCatching {
-                val legacy = cache.keys.filter { it.endsWith("@P") || it.endsWith("@L") }
-                if (legacy.isNotEmpty()) {
-                    var migrated = 0; var removed = 0
-                    legacy.forEach { old ->
-                        val base = old.substringBeforeLast('@')
-                        if (!cache.containsKey(base)) {
-                            cache[base] = cache[old]!!
-                            scaleCache[old]?.let { scaleCache[base] = it }
-                            runCatching {
-                                val bb = android.os.Bundle().apply {
-                                    putString("k", base)
-                                    putString("v", (cache[old]!!.let { r -> "${r.left},${r.top},${r.right},${r.bottom}" }) +
-                                        (scaleCache[old]?.let { "@$it" } ?: ""))
-                                }
-                                ctx.contentResolver.call(android.net.Uri.parse("content://${Constants.AUTHORITY}"), "put", null, bb)
-                            }
-                            migrated++
-                        }
-                        cache.remove(old); scaleCache.remove(old)
-                        runCatching {
-                            val bb = android.os.Bundle().apply { putString("k", old); putString("v", "") }
-                            ctx.contentResolver.call(android.net.Uri.parse("content://${Constants.AUTHORITY}"), "put", null, bb)
-                        }
-                        removed++
+                val legacy = b?.keySet()?.filter { it.endsWith("@P") || it.endsWith("@L") } ?: emptyList()
+                var migrated = 0
+                legacy.forEach { old ->
+                    val base = old.substringBeforeLast('@')
+                    val rr = parseRect(b?.getString(old))
+                    val sc = b?.getString(old)?.substringAfter('@', "")?.toFloatOrNull() ?: 0f
+                    if (rr != null && !cache.containsKey(base)) {
+                        cache[base] = rr
+                        if (sc > 0f) scaleCache[base] = sc
+                        write(ctx, base, rr, sc)
+                        migrated++
                     }
-                    Logx.always("旧键清理: 迁移 $migrated 条、删除 $removed 条 @P/@L 旧键")
+                    cache.remove(old); scaleCache.remove(old)
+                    write(ctx, old, null)
                 }
+                if (legacy.isNotEmpty()) Logx.always("旧键清理: 迁移 $migrated 条、删除 ${legacy.size} 条 @P/@L")
             }
 
             loaded = true
@@ -202,40 +189,45 @@ object Bounds {
         put(ctx, pkg, screen, merged, scale)
     }
 
-    fun put(ctx: Context, pkg: String, screen: String, r: Rect, scale: Float = 0f) {
-        lastLoad = android.os.SystemClock.elapsedRealtime()
-        val k = key(pkg, screen)
-        val v = "${r.left},${r.top},${r.right},${r.bottom}" + if (scale > 0f) "@$scale" else ""
-        var changed = false
-        synchronized(this) {
-            val old = cache[k]
-            if (old == null || old != r) {
-                cache[k] = Rect(r)
-                changed = true
-            }
-        }
-        if (scale > 0f) synchronized(this) { scaleCache[k] = scale }
-        // ★★ 写路径顺手清理旧格式键（用户截图证实：@P/@L 旧键与无后缀新键并存 ✗ ⇒ 读取不确定 ⇒ "有时对有时不对"✗）
-        // 为什么放在写路径：清理若只跑在模块 App 进程 ✗，SystemUI/system_server 各持旧缓存 ✗ ⇒ 会把旧键写回来 ✓
-        // 放在这里 ⇒ 任何进程的任意一次写入都会把同应用的 @P/@L 旧键清掉 ✓（持续收敛 ✓）
-        if (!screen.endsWith("@P") && !screen.endsWith("@L")) {
-            listOf("$screen@P", "$screen@L").forEach { legacy ->
-                val lk = key(pkg, legacy)
-                if (cache.remove(lk) != null || scaleCache.remove(lk) != null) {
-                    Logx.always("清理旧键 $lk")
-                }
-                runCatching {
-                    val b = Bundle().apply { putString("k", lk); putString("v", "") }
-                    ctx.contentResolver.call(android.net.Uri.parse("content://${Constants.AUTHORITY}"), "put", null, b)
-                }
-            }
-        }
-        if (!changed) return
-        Logx.always("记住 $k = $v")
+    /** 落盘一条 `左,上,右,下[@scale]`；r=null 表示删除该键。所有写入走这里，不再各处手写 Bundle。 */
+    private fun write(ctx: Context, k: String, r: Rect?, scale: Float = 0f) {
+        val v = if (r == null) "" else
+            "${r.left},${r.top},${r.right},${r.bottom}" + if (scale > 0f) "@$scale" else ""
         runCatching {
             val b = Bundle().apply { putString("k", k); putString("v", v) }
             ctx.contentResolver.call(android.net.Uri.parse("content://${Constants.AUTHORITY}"), "put", null, b)
-        }.onFailure { Logx.e("bounds 写入失败", it) }
+        }.onFailure { Logx.e("bounds 写入失败($k)", it) }
+    }
+
+    /**
+     * 写入一对 **(bounds, scale)** —— 2026-10-01 重构的核心不变量：两者同生同死。
+     *
+     * 两个真机根因（都在这几行里）：
+     *  1) 传 `scale<=0`（老调用：拖动记录、heal、配置变更）会把值写成**裸 bounds**，
+     *     跨进程 `load()` 后 `scaleCache` 没有这条 ⇒ `getScale()=0` ⇒ 恢复端静默跳过 ⇒ **尺寸永远记不住** ✗
+     *     ⇒ 现在：`scale<=0` 一律**沿用已有 scale**，绝不写裸值。
+     *  2) 拖角柄改尺寸时，任务的**真实 bounds 尺寸恒定、变的只有 freeformScale**
+     *     （真机：真实恒为 502,494-1672,2364，scale 0.38/0.41/0.4065 在变）✗
+     *     而原来 `changed` 只比 bounds ⇒ "只改尺寸"这一路**完全不落盘、连日志都没有** ✗
+     *     ⇒ 现在：scale 变了也算变化。
+     */
+    fun put(ctx: Context, pkg: String, screen: String, r: Rect, scale: Float = 0f) {
+        lastLoad = android.os.SystemClock.elapsedRealtime()
+        val k = key(pkg, screen)
+        var eff = 0f
+        var changed = false
+        synchronized(this) {
+            eff = if (scale > 0f) scale else scaleCache[k] ?: 0f
+            val old = cache[k]
+            if (old == null || old != r || eff != (scaleCache[k] ?: 0f)) {
+                cache[k] = Rect(r)
+                if (eff > 0f) scaleCache[k] = eff
+                changed = true
+            }
+        }
+        if (!changed) return
+        Logx.always("记住 $k = ${r.left},${r.top},${r.right},${r.bottom}${if (eff > 0f) "@$eff" else ""}")
+        write(ctx, k, r, eff)
     }
 
     /** 遗忘某应用在某屏幕(含方向)下的记忆：写空串，读取侧视为"无记忆"⇒交回小米默认。 */
@@ -243,10 +235,7 @@ object Bounds {
         val k = key(pkg, screen)
         synchronized(this) { cache.remove(k); scaleCache.remove(k) }
         Logx.always("遗忘 $k")
-        runCatching {
-            val b = Bundle().apply { putString("k", k); putString("v", "") }
-            ctx.contentResolver.call(android.net.Uri.parse("content://${Constants.AUTHORITY}"), "put", null, b)
-        }.onFailure { Logx.e("bounds 删除失败", it) }
+        write(ctx, k, null)
     }
 
     fun all(): Map<String, Rect> = synchronized(this) { HashMap(cache) }
@@ -260,61 +249,4 @@ object Bounds {
         }.getOrNull()?.takeIf { it.width() > 0 && it.height() > 0 }
     }
 
-    /** 把 bounds 夹回可视区域（旋转/折叠后原 bounds 可能越界）。 */
-    fun clamp(r: Rect, area: Rect): Rect {
-        val out = Rect(r)
-        if (out.width() > area.width()) out.right = out.left + area.width()
-        if (out.height() > area.height()) out.bottom = out.top + area.height()
-        if (out.left < area.left) out.offsetTo(area.left, out.top)
-        if (out.top < area.top) out.offsetTo(out.left, area.top)
-        if (out.right > area.right) out.offsetTo(area.right - out.width(), out.top)
-        if (out.bottom > area.bottom) out.offsetTo(out.left, area.bottom - out.height())
-        return out
-    }
-
-    /**
-     * 等比把 bounds 夹进 area（保持长宽比，只在越界时整体缩小，绝不单独裁一条边）。
-     *
-     * 原来的 [clamp] 是「宽、高各自独立裁切」：旋转或换到更小的外屏时，某一条边被直接砍短，
-     * 长宽比被破坏——真机现象就是「小窗变更比例和尺寸」（#1 内外屏切换 / #2 旋转）。
-     * 这里改成「整体按 min(宽比, 高比) 缩放」，形状不变，只缩到能放进新屏幕。
-     * 放得下时 scale=1，尺寸原样保留，不影响正常恢复。
-     */
-    fun clampKeepRatio(r: Rect, area: Rect): Rect {
-        val w = r.width()
-        val h = r.height()
-        if (w <= 0 || h <= 0) return Rect(r)
-        val areaW = maxOf(area.width(), 1)
-        val areaH = maxOf(area.height(), 1)
-        val scale = minOf(1f, minOf(areaW.toFloat() / w, areaH.toFloat() / h))
-        val nw = maxOf((w * scale).toInt(), 1)
-        val nh = maxOf((h * scale).toInt(), 1)
-        val out = Rect(r.left, r.top, r.left + nw, r.top + nh)
-        // 缩完再夹位置，保证完全落在可视区
-        if (out.left < area.left) out.offsetTo(area.left, out.top)
-        if (out.top < area.top) out.offsetTo(out.left, area.top)
-        if (out.right > area.right) out.offsetTo(area.right - out.width(), out.top)
-        if (out.bottom > area.bottom) out.offsetTo(out.left, area.bottom - out.height())
-        return out
-    }
-
-    /**
-     * 取该应用任意一个「屏幕」下的记忆（key 形如 `pkg|WxH`）。
-     * 当目标屏幕还没有记忆时，用来兜底：把别的屏幕的尺寸按比例缩到当前屏幕，
-     * 这样「内外屏切换 / 旋转」第一次遇到新几何也能保住原来的形状，而不是退化成系统默认。
-     */
-    fun getAny(ctx: Context, pkg: String): Rect? {
-        val now = android.os.SystemClock.elapsedRealtime()
-        if (!loaded || now - lastLoad > 300) {
-            loaded = false
-            load(ctx)
-            lastLoad = now
-        }
-        synchronized(this) {
-            for ((k, v) in cache) {
-                if (k.startsWith("$pkg|")) return Rect(v)
-            }
-        }
-        return null
-    }
 }
