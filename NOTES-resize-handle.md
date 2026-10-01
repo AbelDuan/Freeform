@@ -1223,3 +1223,19 @@ aapt2 起不来；且 Debian 的 aapt2 是 2.19，对 `res/values/styles.xml` �
 指纹 `BE:C0:DA:…` 与设备上那份一致，故可 `pm install -r` 直接覆盖）。
 ⚠️ `pm install` **不支持 `--no-incremental`**（那是 adb 的选项），本机走
 `cp <apk> /data/local/tmp/ && pm install -r <path>`。
+
+### 40.7 测试中撞到的一次 SystemUI ANR（既有隐患，不是本轮改动引入）
+拖拽小窗时抓到一次：`ANR in com.android.systemui — Input dispatching timed out
+([Gesture Monitor] MultiTaskSwitch is not responding. Waited XXms for MotionEvent(action=UP))`
+→ SystemUI 重启（本轮 buffer 内仅此一次；不计入本轮改动的回归）。
+
+**根因链（代码定位）**：`Gestures.onUp()` 第一行是**无条件** `runCatching { Cfg.reload() }`
+（`Gestures.kt:224`），而 `Cfg.reload()` 走 LSPosed 的 `getRemotePreferences` —— 一次**同步 binder 调用**。
+这个 onUp 是跑在 **MIUI 自己的全局手势监视器（MultiTaskSwitch）的输入派发线程**上的：
+连接冷/管理器忙时它就阻塞，超过输入派发时限 → ANR → SystemUI 重启。
+（本轮 `git diff` 证明 `Gestures.kt` 未被改动 = 既有隐患；刚装完模块/刚重启 SystemUI 时最容易命中。）
+
+**建议修法（下一轮，小改）**：onUp 里不要同步 reload。
+`Cfg` 已经有异步路径 `refreshAsync()/reloadThrottled()`（线程池 + StoreProvider，注释里写明
+"不能同步调 provider"）；把它换成触发异步刷新 + 用上一份快照做本次判定，
+或至少把 `Cfg.reload()` 丢到后台线程（代价：改完开关后第一次手势可能仍按旧值）。
