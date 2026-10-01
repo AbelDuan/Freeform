@@ -536,17 +536,26 @@ object Hooks {
                                     val memo = pending ?: if (Cfg.rememberBounds) Bounds.get(ctx, pkg, screen) else null
                                     if (memo == null) {
                                         Logx.once("ffr-none-$pkg", "当前屏无 $pkg 记忆，交回系统默认（不再借其它屏记忆）")
-                                    } else {
-                                        // ★★ 2026-10-01 重构：**原样**返回，不再做任何"按屏幕夹取"。
-                                        // 这个返回值是 MIUI **未缩放**坐标里的 rect（可视 = rect × freeformScale）：
-                                        // 真机 MIUI 自己的默认就是 834,397-2004,2267，而屏宽只有 1672 —— 本来就"越界"。
-                                        // 旧代码拿屏幕 rect 去 clamp，等于把用户放好的位置改成"右下贴边"，
-                                        // 于是"重开永远回到初始位置"✗（日志：记忆 357,494 被夹成 502,494）。
-                                        // 几何适配交给 MIUI 自己的 scaleDownIfNeeded（它按 movableBounds 算）。
-                                        val systemDefault = Rect(res)
+                                    } else if (pending != null) {
+                                        // 比例菜单指定的目标：**整块**（位置+尺寸）都要按用户点的比例来
                                         if (rectIdx >= 0) (chain.getArg(rectIdx) as? Rect)?.set(memo)
                                         res.set(memo)
-                                        Logx.always("恢复 $pkg@$screen -> $memo（记忆原样，系统默认 $systemDefault）")
+                                        Logx.always("套用比例目标 $pkg@$screen -> $memo（整块）")
+                                    } else {
+                                        // ★★ 2026-10-01 用户拍板：**只记位置，不碰尺寸**（尺寸交给 MIUI 自己决定）。
+                                        //    做法：保留 MIUI 刚算出来的默认矩形（它的尺寸、它的 scale 语义），
+                                        //    只把左上角挪到记忆值 ⇒ 位置按记忆对齐，尺寸行为与原生**完全一致**
+                                        //    （不会再出现"尺寸乱跳 / 偶尔变得很小"）。
+                                        //    为什么不做尺寸：MIUI 的 freeformScale 不受我们控制（实测 0.09~1.55），
+                                        //    任何用 rect 反算尺寸的做法都会在下次建窗时被另一个 scale 打乱（NOTES 40.12）。
+                                        val systemDefault = Rect(res)
+                                        val target = Rect(res).apply { offsetTo(memo.left, memo.top) }
+                                        if (rectIdx >= 0) (chain.getArg(rectIdx) as? Rect)?.set(target)
+                                        res.set(target)
+                                        Logx.always(
+                                            "恢复(仅位置) $pkg@$screen -> $target（记忆左上 ${memo.left},${memo.top}，" +
+                                                "尺寸用系统默认 $systemDefault）"
+                                        )
                                     }
                                 }
                             }
@@ -1623,6 +1632,14 @@ object Hooks {
         (call(ti, "getFreeformScale") as? Float) ?: 0f
     }.getOrDefault(0f)
 
+    /** MIUI 当前报告的**可视矩形**（getScaledBounds）——用户实际看到/操作的那块。 */
+    private fun currentVisible(ctrl: Any): Rect? = runCatching {
+        val ctl = cls(Constants.CLS_MULTITASKING_CTL).getMethod("getInstance").invoke(null)
+        val repo = ctl.javaClass.getMethod("getMultiTaskingTaskRepository").invoke(ctl)
+        val ti = repo.javaClass.getMethod("getMiuiFreeformTaskInfo", Integer.TYPE).invoke(repo, taskId(ctrl))
+        (call(ti, "getScaledBounds") as? Rect)?.takeIf { it.width() > 0 && it.height() > 0 }
+    }.getOrNull()
+
     private fun installBoundsRecorder(m: MainHook, cl: ClassLoader) {
         // 证据探针：MIUI 的手势分发层（若 handleDown/UpEvent 不派发，至少这里能看到）
         listOf("dispatchDownToDecoration", "dispatchMoveToDecoration", "dispatchUpToDecoration").forEach { name ->
@@ -1711,13 +1728,25 @@ object Hooks {
                             } else if (memo == null) {
                                 Logx.always("核对: task=$id pkg=$pkg 该屏无记忆，实际=$realNow")
                             } else if (realNow != null) {
-                                // 用户口径：**只需要左上角一致**。尺寸由 MIUI 决定，模块不参与
-                                // （见 NOTES 40.12：用 rect 反算尺寸会让窗口时而变大、时而"变得很小"）。
-                                if (memo.left == realNow.left && memo.top == realNow.top) {
-                                    Logx.always("核对通过(左上角): task=$id pkg=$pkg 左上=$realNow")
+                                // 记忆 = **可视矩形**（用户看到的左上角 + 尺寸）⇒ 对账就在可视空间比。
+                                // 实际可视优先用 MIUI 自己的 getScaledBounds；取不到就按 真实×scale 估。
+                                val visNow = currentVisible(ctrl)
+                                    ?: (if (sNow > 0f) scaled(realNow, sNow) else realNow)
+                                if (memo == visNow) {
+                                    Logx.always("核对通过(位置+尺寸): task=$id pkg=$pkg 可视=$visNow")
+                                } else if (nth == 1 && sNow > 0f) {
+                                    // 不一致 ⇒ 喂一个"在 MIUI 当前 scale 下渲染出来正好等于记忆可视矩形"的 rect
+                                    Logx.e(
+                                        "核对不一致(位置/尺寸): task=$id pkg=$pkg 目标(可视)=$memo 实际(可视)=$visNow " +
+                                            "sNow=$sNow ⇒ 按记忆可视矩形重开"
+                                    )
+                                    reopenAtMemory(ctrl, unscaled(memo, sNow))
                                 } else if (nth == 1) {
-                                    Logx.e("左上角不一致: task=$id pkg=$pkg 记忆=$memo 实际=$realNow ⇒ 按记忆左上角重开")
-                                    reopenAtMemory(ctrl, Rect(memo))
+                                    Logx.e("核对不一致且取不到 scale：只按左上角重开（$memo vs $realNow）")
+                                    reopenAtMemory(
+                                        ctrl,
+                                        Rect(memo.left, memo.top, memo.left + realNow.width(), memo.top + realNow.height())
+                                    )
                                 }
                             }
                         }
@@ -1831,13 +1860,13 @@ object Hooks {
                 Logx.e("记录核对($why): 真实=$bounds 可视=$vis scale=$scale")
             }
         }
-        // ★★ 存 **真实 rect 原样**（位置锚点就是它，恢复时原样交回 ⇒ 左上角一定一致）。
-        // ⚠️ 2026-10-01 教训（用户实测「位置不对、大小不对、有时变得很小」）：
-        //    不要试图用「可视尺寸 ÷ scale」反算 rect 来"记住尺寸" —— MIUI 的 freeformScale
-        //    不受我们控制，实测同一应用在不同会话里出现过 0.09 / 0.132 / 0.25 / 0.415 / 0.66 /
-        //    0.8796 / 1.55，反算出来的 rect 到了下一次建窗就会被按另一个 scale 渲染 ⇒ 尺寸乱跳、变小。
-        //    尺寸交回 MIUI 自己（用户口径：只需要左上角一致）。scale 只当**记录信息**写进 @scale。
-        val store = bounds
+        // ★★ 存 **可视矩形（getScaledBounds）原样** = 用户看到的「左上角 + 尺寸」。
+        //    为什么**不除 scale**：建窗时 MIUI 自己的 scale 实测是 **1.0**
+        //    （日志三次读到 `尺寸记忆: 已恢复 scale 1.0 -> …`）⇒ rect 基本就等于可视矩形；
+        //    上一版多除了一次 scale（可视÷scale），而 scale 在 0.09~1.55 间跳 ⇒ 尺寸乱跳、有时被缩得很小（用户实测）。
+        //    参照"切换比例"那条路能改尺寸：它也是把**目标矩形直接喂给建窗接口**。
+        //    若 MIUI 建窗后自己 scaleDownIfNeeded 把 scale 调小，开窗后的对账会按"可视 ÷ 当前scale"再纠正一次。
+        val store = if (vis != null && vis.width() > 0 && vis.height() > 0) vis else bounds
         // 折叠屏内外屏分开记录：用**任务所在的 display** 算 key（外屏是另一个 displayId）
         val dispId = (field(info, "displayId") as? Int) ?: -1
         val screen = Bounds.screenKeyFor(AppCtx.get(), dispId)
