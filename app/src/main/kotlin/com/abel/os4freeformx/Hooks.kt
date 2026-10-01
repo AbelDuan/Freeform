@@ -66,25 +66,12 @@ object Hooks {
         //   真机探针证实「长按焦点通知」**未进入** ModalController/小白条链路（探针零调用）
         //   ⇒ 该系统交互在本 ROM 上未启用，继续做等于自建整套系统 UI（风险与前次手势同级）。
         //   仍然可用的能力：通知**下拉即可开小窗**（系统自带，无需本模块介入）。
-        Logx.always("通知小窗功能已移除（下拉开小窗仍由系统自带能力提供）")
+        Logx.always("本模块不介入通知小窗（系统自带的下拉开小窗不受影响）")
 
         // 诊断探针：抓"双分屏 → 三分屏"真实手势调用的入口（方法名 + 参数）
         runCatching { SplitTrace.install(m, cl) }.onFailure { Logx.e("SplitTrace 安装失败", it) }
     }
 
-    /**
-     * 通知「下拉开小窗」：把通知行的滑动标志置 true。
-     *
-     * 来源：HyperCeiler `NotificationFreeform`（AGPL-3.0，2026-10-02 移植）。
-     *  · Android 16+（本机 API 37）：`ExpandableNotificationRowInjector#updateMiniWindowBar` → 字段 `canSlide`
-     *  · 更早版本：`MiuiExpandableNotificationRow#updateMiniWindowBar` → 字段 `mCanSlide`
-     * 置位后系统自己渲染底部小白条并在下拉时用小窗打开该通知对应的应用 —— 模块**不自己开窗**，
-     * 所以拿到的一定是"正经系统小窗"（不会出现不可拖动/不可关闭的窗口）。
-     */
-    /** 反射调用无参公开方法（含父类查找）。 */
-    /** 退化取值：row 的 entry.mSbn.getNotification().contentIntent。 */
-    /** 兜底取值：row.entry.mSbn 的包名（mPkgName / getOpPkg）。 */
-    /** 把对象上名为 [name] 的 boolean 字段写成 [v]（含父类查找）。 */
     /** 小白条（手势导航条）：跟随手势 / 淡入淡出 / 触摸显隐 / 空闲自动隐藏。 */
     private fun installGestureHandle(m: MainHook, cl: ClassLoader) {
         runCatching {
