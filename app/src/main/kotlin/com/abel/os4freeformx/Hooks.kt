@@ -1486,6 +1486,9 @@ object Hooks {
      */
     private val gestureEndedAt = WeakHashMap<Any, Long>()
 
+    /** 最近一次「真实手指按在这个窗口装饰上」的时间（handleDownEvent）。记录端用它挡住系统过渡态。 */
+    private val gestureTouchedAt = WeakHashMap<Any, Long>()
+
     /** 装饰视图 → 装饰对象。触摸 hook 拿到的是 View，需要反查任务与 TaskOrganizer。 */
     private val decorByView = WeakHashMap<View, Any>()
 
@@ -1635,6 +1638,7 @@ object Hooks {
         m.hookMethod(cl, Constants.CLS_DECOR_CONTROLLER, "handleDownEvent", null,
             XposedInterface.Hooker { chain ->
                 markDecorTouched()
+                gestureTouchedAt[chain.thisObject] = android.os.SystemClock.elapsedRealtime()
                 val r = chain.proceed()
                 currentBounds(chain.thisObject)?.let {
                     gestureDownBounds[chain.thisObject] = Rect(it)
@@ -1682,6 +1686,9 @@ object Hooks {
                     runCatching { maybeReapplyOnConfigChange(ctrl, info) }
                     val freeform = info != null && taskWindowingMode(info) == MODE_FREEFORM
                     val visible = info?.let { field(it, "isVisible") as? Boolean } == true
+                    // 窗口关掉/退出小窗后清掉对账计数：否则同一个 task 复用（关→开还是同一个 taskId）
+                    // 时 3 次用满就永久不再对账，自动纠偏会**静默失效**（本轮调试就是这样被坑的）。
+                    if (!freeform || !visible) memChecked.remove(taskId(ctrl))
 
                     // ★ 开窗后对账（用户要求：**左上角必须一致 + 尺寸按记忆新建**）：
                     //   记忆里存的是「可视矩形 ÷ 记录时 scale」。这里统一到**可视空间**比较：
@@ -1704,16 +1711,30 @@ object Hooks {
                             } else if (memo == null) {
                                 Logx.always("核对: task=$id pkg=$pkg 该屏无记忆，实际=$realNow")
                             } else if (realNow != null) {
-                                val visMemo = if (sMemo > 0f) scaled(memo, sMemo) else memo
-                                val visNow = if (sNow > 0f) scaled(realNow, sNow) else realNow
-                                if (visMemo == visNow) {
-                                    Logx.always("核对通过: task=$id pkg=$pkg 可视=$visNow")
+                                if (sMemo > 0f) {
+                                    // 新记忆（带 @scale）：存的是「可视 ÷ scale」⇒ 统一到**可视空间**比位置+尺寸
+                                    val visMemo = scaled(memo, sMemo)
+                                    val visNow = if (sNow > 0f) scaled(realNow, sNow) else realNow
+                                    if (visMemo == visNow) {
+                                        Logx.always("核对通过(位置+尺寸): task=$id pkg=$pkg 可视=$visNow")
+                                    } else if (nth == 1 && sNow > 0f) {
+                                        Logx.e(
+                                            "核对不一致(位置+尺寸): task=$id pkg=$pkg 目标=$visMemo 实际=$visNow " +
+                                                "sNow=$sNow ⇒ 按记忆位置+尺寸重开"
+                                        )
+                                        reopenAtMemory(ctrl, unscaled(visMemo, sNow))
+                                    }
                                 } else {
-                                    Logx.e(
-                                        "核对不一致: task=$id pkg=$pkg 目标(可视)=$visMemo 实际(可视)=$visNow " +
-                                            "sNow=$sNow ⇒ 按记忆位置+尺寸重开"
-                                    )
-                                    if (nth == 1 && sNow > 0f) reopenAtMemory(ctrl, unscaled(visMemo, sNow))
+                                    // ⚠️ 旧记忆（没有 @scale）：**只保证左上角一致**，尺寸不参与判定。
+                                    //    之前这里把"真实 rect"当成"可视 rect"去比 ⇒ 尺寸永远不一致 ⇒
+                                    //    每次开窗都多触发一次重开，反而把原来的位置改坏（用户实测：
+                                    //    "连位置都记不住了"）。用户口径也正是"只需要左上角一致"。
+                                    if (memo.left == realNow.left && memo.top == realNow.top) {
+                                        Logx.always("核对通过(左上角): task=$id pkg=$pkg 左上=$realNow")
+                                    } else if (nth == 1) {
+                                        Logx.e("左上角不一致: task=$id pkg=$pkg 记忆=$memo 实际=$realNow ⇒ 按记忆左上角重开")
+                                        reopenAtMemory(ctrl, Rect(memo))
+                                    }
                                 }
                             }
                         }
@@ -1749,15 +1770,24 @@ object Hooks {
         try {
             Cfg.reloadThrottled()
             if (!Cfg.rememberBounds) return
+            // ★ 必须"最近 4 秒内有手指按在这个窗口上"才允许记录。
+            //   真机证据：关窗/重开时 MIUI 自己会走一遍 handleUpEvent→relayout，那时窗口是
+            //   **系统重建后的默认几何**（实测把记忆从用户拖的 94,891,1227,2562 改写成 270,388,1247,1828），
+            //   于是"位置又记不住了"。系统过渡没有真实 DOWN，用 DOWN 时间戳就能挡住。
+            val touched = gestureTouchedAt[controller] ?: 0L
+            if (android.os.SystemClock.elapsedRealtime() - touched > 4000L) {
+                Logx.once("rec-notouch-$why", "记录跳过：最近 4s 内窗口没有真实触摸（$why，判为系统过渡/重建）")
+                return
+            }
             val a = snapshot(controller, why) ?: return
             Handler(Looper.getMainLooper()).postDelayed({
                 runCatching {
                     val b = snapshot(controller, if (attempt == 1) "$why/复核" else "$why/复核$attempt") ?: return@runCatching
                     if (b.bounds == a.bounds && kotlin.math.abs(b.scale - a.scale) <= 0.0001f) {
                         persist(b.pkg, b.bounds, why, b.scale, b.screen)
-                    } else if (attempt < 3) {
+                    } else if (attempt < 4) {
                         // 还在动（真机实测：350ms 后 scale 仍从 0.66 变到 0.132）⇒ 隔久一点再看，
-                        // 三次都不稳才放弃 —— 只写"两次读数一致"的最终态，绝不写过渡态。
+                        // 四次都不稳才放弃 —— 只写"两次读数一致"的最终态，绝不写过渡态。
                         Logx.once(
                             "rec-retry-$why",
                             "记录复核$attempt 不稳: ${a.bounds}@${a.scale} -> ${b.bounds}@${b.scale}，第 ${attempt + 1} 次重试"
@@ -1766,7 +1796,7 @@ object Hooks {
                     } else {
                         Logx.once(
                             "rec-unstable-final-$why",
-                            "记录放弃（$why 三次复核都不稳）: ${a.bounds}@${a.scale} -> ${b.bounds}@${b.scale}"
+                            "记录放弃（$why 四次复核都不稳）: ${a.bounds}@${a.scale} -> ${b.bounds}@${b.scale}"
                         )
                     }
                 }
@@ -1818,12 +1848,18 @@ object Hooks {
                 Logx.e("记录核对($why): 真实=$bounds 可视=$vis scale=$scale")
             }
         }
-        // ★★ 存 **可视矩形 ÷ 当时的 scale**（用户方案 + 仓库「方案 B」）：
-        //    这样恢复端**只返回一个 rect** 就能同时还原位置与尺寸 ——
-        //    MIUI 建窗时按它自己的 scale 渲染该 rect ⇒ 可视 = rect × scale = 记忆尺寸 ✓
-        //    关键：模块**从不推 scale**（见 NOTES 40.3 的装饰错位事故），尺寸靠 rect 反算出来。
+        // ★★ 存「**真实左上角** + 可视尺寸 ÷ 当时的 scale」（用户口径：左上角必须一致，尺寸按记忆新建）：
+        //    ① 位置取 **真实 rect 的 left/top** —— 真机实测可视矩形的左上角会随缩放锚点偏移
+        //       （真实 (70,511) vs 可视 (66,859)，差 348px）；上上版误用可视 left/top 当位置，
+        //       结果"连位置都记不住"✗
+        //    ② 只有**尺寸**用"可视尺寸 ÷ scale" ⇒ 建窗时把这个 rect 交给 MIUI，它按自己的 scale 渲染，
+        //       可视尺寸 = rect × scale = 记忆尺寸 ✓（模块从不推 scale，避开 NOTES 40.3 的装饰错位）
         val store = if (scale > 0f && vis != null && vis.width() > 0 && vis.height() > 0) {
-            unscaled(vis, scale)
+            Rect(
+                bounds.left, bounds.top,
+                bounds.left + maxOf((vis.width() / scale).toInt(), 1),
+                bounds.top + maxOf((vis.height() / scale).toInt(), 1)
+            )
         } else bounds
         // 折叠屏内外屏分开记录：用**任务所在的 display** 算 key（外屏是另一个 displayId）
         val dispId = (field(info, "displayId") as? Int) ?: -1
