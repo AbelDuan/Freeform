@@ -1340,3 +1340,23 @@ aapt2 起不来；且 Debian 的 aapt2 是 2.19，对 `res/values/styles.xml` �
 - 合并成一份的话：内屏调好的结果切到外屏必然明显错位/错尺寸，比"没记忆"更糟。
 - 唯一可以不区分的场景是"只记左上角、且不做任何换算"—— 正是用户刚否掉的形态。
 **结论：保留 display 维度。**
+
+### 40.15 📦 发布版行为：只对齐左上角（v0.4.1-posmem）+ 尺寸的下一步
+**发布版（已知稳定边界）**：记忆 = **真实 rect 原样**，恢复时**只把 MIUI 默认矩形的左上角挪到记忆值**，
+尺寸与 scale 语义完全交回 MIUI；开窗后**只核对左上角**，不一致才按记忆左上角走一次官方重开。
+不会出现"尺寸乱跳 / 变得很小"（那是按 scale 反算 rect 造成的）。
+
+**尺寸为什么还没做**（三次实测的证据链，写下来免得再走回头路）：
+| 方案 | 真机结果 |
+| --- | --- |
+| 存真实 rect、原样喂回 | 能改窗口（`系统默认 180,990 → 记忆 269,893`），**位置可行**，尺寸按 MIUI 的 scale 走 |
+| 存 可视÷scale | 尺寸乱跳/变小 ✗（scale 不受控，实测 0.09~1.55） |
+| 存 可视原样 | 依赖建窗时 `scale==1.0`；实测重开时 `getFreeformScale()` 常读到 **0** ⇒ 整块不生效 ✗ |
+| WCT 推 freeformScale | 只改字段不改画面（SF: 字段 0.2507 / 渲染 0.66），且装饰层错位 ⇒ 窗口不可操作 ✗ |
+
+**下一步（必须从 MIUI 建窗算 scale 的那一步入手，而不是事后改）**：
+1. 反编译 `Miui-WindowManager-Shell.jar` / `miui-framework.jar`，按 AGENTS 约定**先确认类名与签名**
+   （候选：`MiuiFreeformModeUtils#scaleDownIfNeeded`、`MultiTaskingCommonUtils.scaleBounds`、
+   `MultiTaskingAnimTarget.setAnimParam(bounds,sx,sy,anchorY)`、`MiuiFreeformModeTaskInfo#getResizeOriFreeformScale`）。
+2. 在其中找到"**建窗时把 bounds 变成可视尺寸**"那一步（乘/除 scale 的位置），在那里按记忆尺寸反推目标。
+3. 真机回归：位置 + 尺寸 + 装饰可点（三点/角柄/底栏）+ 不漂移 + 不触发 ANR。
