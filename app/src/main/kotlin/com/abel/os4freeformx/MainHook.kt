@@ -40,8 +40,10 @@ class MainHook : XposedModule() {
                 Constants.PKG_SYSTEM -> Hooks.installSystemServer(this, param.defaultClassLoader)
                 Constants.PKG_SYSTEMUI -> {
                     Hooks.installSystemUi(this, param.defaultClassLoader)
-                    // 小白条悬浮：作用域固定，只能走 SystemUI 侧（不改应用、不动 insets）
-                    NavBarTransparent.install(this, param.defaultClassLoader)
+                    // 小白条悬浮【不再 hook SystemUI】：
+                    // 实测（2026-10-01，在确实有黑条的 Mobilism 上做 A/B）该 hook 对底栏底色零效果；
+                    // 有效路径是 NBI 名单规则（写文件 + `cmd miui_navigation_bar_immersive update` +
+                    // 重启目标应用），全程不需要重启框架。详见 Nbi.kt 与 README §1.5。
                 }
                 // 作用域固定（system + com.android.systemui），不会有第三方应用进来；保留 else 仅作日志
                 else -> Logx.v("onPackageLoaded: 作用域外进程 $pkg，跳过")

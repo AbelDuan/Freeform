@@ -16,7 +16,7 @@ object Cfg {
     @Volatile var immersive = Constants.DEF_IMMERSIVE
     @Volatile var rememberBounds = Constants.DEF_REMEMBER_BOUNDS
     @Volatile var rememberFold = Constants.DEF_REMEMBER_FOLD
-    @Volatile var resize = Constants.DEF_RESIZE
+    @Volatile var ratioMenu = Constants.DEF_RATIO_MENU
     @Volatile var defaultW = 0
     @Volatile var defaultH = 0
     @Volatile var gestures = Constants.DEF_GESTURES
@@ -26,44 +26,44 @@ object Cfg {
     @Volatile var gestureHandleTouch = Constants.DEF_GESTURE_HANDLE_TOUCH
     @Volatile var gestureHandleIdle = Constants.DEF_GESTURE_HANDLE_IDLE
     @Volatile var gestureHandleArea = Constants.DEF_GESTURE_HANDLE_AREA
-    @Volatile var gestureHandleFloat = Constants.DEF_GESTURE_HANDLE_FLOAT
-    @Volatile var floatMode = Constants.DEF_FLOAT_MODE
-    @Volatile var floatPkgsRaw = Constants.DEF_FLOAT_PKGS
-    @Volatile private var floatPkgs: Set<String> = emptySet()
+    @Volatile var assignRaw = Constants.DEF_NBI_ASSIGN
+    @Volatile private var assign: Map<String, Int> = emptyMap()
 
-    /**
-     * 悬浮是否对 [pkg] 生效（热路径调用，只读 volatile，无锁无 IO）。
-     *   ALL(0)       → 恒 true
-     *   WHITELIST(1) → 命中集合才 true
-     *   BLACKLIST(2) → 不在集合里就 true
-     */
-    fun floatAppliesTo(pkg: String?): Boolean {
-        if (!gestureHandleFloat) return false
-        return when (floatMode) {
-            Constants.FLOAT_MODE_WHITELIST -> floatPkgs.contains(pkg)
-            Constants.FLOAT_MODE_BLACKLIST -> !floatPkgs.contains(pkg)
-            else -> true
-        }
+    /** 该应用的归属（0=不处理 1=隐藏 2=取色）。热路径只读 volatile。 */
+    fun assignOf(pkg: String?): Int = if (pkg == null) Constants.NBI_NONE else (assign[pkg] ?: Constants.NBI_NONE)
+
+    /** 该应用要用的 NBI 规则；不处理则 null。 */
+    fun ruleFor(pkg: String?): String? = when (assignOf(pkg)) {
+        Constants.NBI_HIDE -> Nbi.RULE_HIDE
+        Constants.NBI_SAMPLE -> Nbi.RULE_SAMPLE
+        else -> null
     }
 
-    private fun parsePkgs(s: String) {
-        floatPkgsRaw = s
-        floatPkgs = s.split('\n', ',', ' ', '\t')
-            .asSequence()
-            .map { it.trim() }
-            .filter { it.isNotEmpty() }
-            .toHashSet()
+    /** 归属映射的只读快照（UI 用）。 */
+    fun assignSnapshot(): Map<String, Int> = assign
+
+    /** 写名单用："包名 → 规则体"。 */
+    fun desiredRules(): Map<String, String> = assign.entries.associate { (p, m) ->
+        p to if (m == Constants.NBI_HIDE) Nbi.RULE_HIDE else Nbi.RULE_SAMPLE
     }
 
-    /** 设置界面展示用。 */
-    fun floatModeLabel(): String = when (floatMode) {
-        Constants.FLOAT_MODE_WHITELIST -> "仅白名单生效"
-        Constants.FLOAT_MODE_BLACKLIST -> "黑名单外生效"
-        else -> "所有应用生效"
-    }
+    fun assignCount(mode: Int): Int = assign.count { it.value == mode }
 
-    fun floatPkgsRawLineCount(): Int = floatPkgsRaw
-        .split('\n', ',', ' ', '\t').count { it.trim().isNotEmpty() }
+    /** 设置界面用：同步写入并重新解析（不等异步 reload）。 */
+    fun setAssign(v: String) = parseAssign(v)
+
+    private fun parseAssign(s: String) {
+        assignRaw = s
+        assign = s.split('\n', ',', ' ', '\t').mapNotNull { line ->
+            val t = line.trim()
+            if (t.isEmpty()) return@mapNotNull null
+            val parts = t.split('=')
+            if (parts.size != 2) return@mapNotNull null
+            val mode = parts[1].trim().toIntOrNull() ?: return@mapNotNull null
+            if (mode != Constants.NBI_HIDE && mode != Constants.NBI_SAMPLE) return@mapNotNull null
+            parts[0].trim() to mode
+        }.toMap()
+    }
 
     /** 只记住模块引用，不读 prefs（system_server 启动阶段只允许这一步）。 */
     fun setModule(m: XposedModule) {
@@ -94,7 +94,7 @@ object Cfg {
             immersive = p.getBoolean(Constants.K_IMMERSIVE, Constants.DEF_IMMERSIVE)
             rememberBounds = p.getBoolean(Constants.K_REMEMBER_BOUNDS, Constants.DEF_REMEMBER_BOUNDS)
             rememberFold = p.getBoolean(Constants.K_REMEMBER_FOLD, Constants.DEF_REMEMBER_FOLD)
-            resize = p.getBoolean(Constants.K_RESIZE, Constants.DEF_RESIZE)
+            ratioMenu = p.getBoolean(Constants.K_RATIO_MENU, Constants.DEF_RATIO_MENU)
             defaultW = p.getInt(Constants.K_DEFAULT_W, 0)
             defaultH = p.getInt(Constants.K_DEFAULT_H, 0)
             gestures = p.getBoolean(Constants.K_GESTURES, Constants.DEF_GESTURES)
@@ -104,9 +104,7 @@ object Cfg {
             gestureHandleTouch = p.getBoolean(Constants.K_GESTURE_HANDLE_TOUCH, Constants.DEF_GESTURE_HANDLE_TOUCH)
             gestureHandleIdle = p.getBoolean(Constants.K_GESTURE_HANDLE_IDLE, Constants.DEF_GESTURE_HANDLE_IDLE)
             gestureHandleArea = p.getFloat(Constants.K_GESTURE_HANDLE_AREA, Constants.DEF_GESTURE_HANDLE_AREA)
-            gestureHandleFloat = p.getBoolean(Constants.K_GESTURE_HANDLE_FLOAT, Constants.DEF_GESTURE_HANDLE_FLOAT)
-            floatMode = p.getInt(Constants.K_FLOAT_MODE, Constants.DEF_FLOAT_MODE)
-            parsePkgs(p.getString(Constants.K_FLOAT_PKGS, Constants.DEF_FLOAT_PKGS) ?: Constants.DEF_FLOAT_PKGS)
+            parseAssign(p.getString(Constants.K_NBI_ASSIGN, Constants.DEF_NBI_ASSIGN) ?: Constants.DEF_NBI_ASSIGN)
             Logx.verbose = log
         }.onFailure { Logx.e("reload 失败", it) }
     }
@@ -155,13 +153,13 @@ object Cfg {
             Logx.once("cfgNull", "读配置失败: provider 返回 null（authority=${Constants.AUTHORITY}）")
             return
         }
-        val before = "$log|$immersive|$rememberBounds"
+        val before = "$log|$immersive|$rememberBounds|$assignRaw"
         runCatching {
             log = b.getBoolean(Constants.K_ENABLE_LOG, Constants.DEF_ENABLE_LOG)
             immersive = b.getBoolean(Constants.K_IMMERSIVE, Constants.DEF_IMMERSIVE)
             rememberBounds = b.getBoolean(Constants.K_REMEMBER_BOUNDS, Constants.DEF_REMEMBER_BOUNDS)
             rememberFold = b.getBoolean(Constants.K_REMEMBER_FOLD, Constants.DEF_REMEMBER_FOLD)
-            resize = b.getBoolean(Constants.K_RESIZE, Constants.DEF_RESIZE)
+            ratioMenu = b.getBoolean(Constants.K_RATIO_MENU, Constants.DEF_RATIO_MENU)
             defaultW = b.getInt(Constants.K_DEFAULT_W, 0)
             defaultH = b.getInt(Constants.K_DEFAULT_H, 0)
             gestures = b.getBoolean(Constants.K_GESTURES, Constants.DEF_GESTURES)
@@ -171,13 +169,18 @@ object Cfg {
             gestureHandleTouch = b.getBoolean(Constants.K_GESTURE_HANDLE_TOUCH, Constants.DEF_GESTURE_HANDLE_TOUCH)
             gestureHandleIdle = b.getBoolean(Constants.K_GESTURE_HANDLE_IDLE, Constants.DEF_GESTURE_HANDLE_IDLE)
             gestureHandleArea = b.getFloat(Constants.K_GESTURE_HANDLE_AREA, Constants.DEF_GESTURE_HANDLE_AREA)
-            gestureHandleFloat = b.getBoolean(Constants.K_GESTURE_HANDLE_FLOAT, Constants.DEF_GESTURE_HANDLE_FLOAT)
-            floatMode = b.getInt(Constants.K_FLOAT_MODE, Constants.DEF_FLOAT_MODE)
-            parsePkgs(b.getString(Constants.K_FLOAT_PKGS, Constants.DEF_FLOAT_PKGS) ?: Constants.DEF_FLOAT_PKGS)
+            parseAssign(b.getString(Constants.K_NBI_ASSIGN, Constants.DEF_NBI_ASSIGN) ?: Constants.DEF_NBI_ASSIGN)
             Logx.verbose = log
         }.onFailure { Logx.e("读配置失败", it) }
-        val after = "$log|$immersive|$rememberBounds"
-        if (before != after) Logx.always("配置更新: log/immersive/top/bottom/remember = $after")
+        val after = "$log|$immersive|$rememberBounds|$assignRaw"
+        // 把悬浮门禁（开关/模式/名单）一并打出来：实测排查中，"名单为空 ⇒ 门禁恒 false ⇒ hook 空转"
+        // 曾让人误判成"名单和开关都无效"。这条日志让配置是否送达被 hook 进程一眼可见。
+        if (before != after) {
+            Logx.always(
+                "配置更新: log=$log immersive=$immersive rememberBounds=$rememberBounds " +
+                        "导航栏归属=[$assignRaw]"
+            )
+        }
     }
 
     /** 兼容旧调用点。 */

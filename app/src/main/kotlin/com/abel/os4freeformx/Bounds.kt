@@ -35,6 +35,10 @@ object Bounds {
         val id = if (displayId >= 0) displayId else runCatching { ctx?.display?.displayId }.getOrNull() ?: 0
         val (w, h) = displaySize(ctx, id)
         if (w <= 0 || h <= 0) return "0x0"
+        // ★ 用户要求（2026-10-01）：**横竖屏完全一致** —— 形态/比例/尺寸/方向都用同一个值，
+        // 记忆只按【内屏/外屏】区分（display），不再区分方向。
+        //   （曾按 @P/@L 分槽，导致旋转时要"挑槽/同步对侧槽"，多次踩坑：取错槽、
+        //    对侧为空时套用了另一方向的尺寸 ⇒ 第一次旋转变大 ✗。去掉这个维度后这些分支全部消失。）
         return "${minOf(w, h)}x${maxOf(w, h)}"
     }
 
@@ -105,6 +109,41 @@ object Bounds {
                 parseRect(raw)?.let { cache[k] = it }
                 raw?.substringAfter('@', "")?.toFloatOrNull()?.takeIf { it > 0f }?.let { scaleCache[k] = it }
             }
+            // ★★ 旧键清理 + 迁移（用户截图证据，2026-10-01）：
+            // 截图里同一应用有 3 条记忆（@P / @L / 无后缀 ✗）⇒ 打开时读哪条不确定 ⇒ "有时对有时不对" ✗
+            // @P/@L 是我早前加的"方向槽"，后来已去掉该维度 ✓ ⇒ 旧键必须清理 ✓
+            // 规则：① 按应用尽量把旧键迁移成新键（仅当新键不存在时 ✓，不丢数据 ✓）
+            //       ② 迁移后删除所有 @P/@L 旧键 ✓
+            runCatching {
+                val legacy = cache.keys.filter { it.endsWith("@P") || it.endsWith("@L") }
+                if (legacy.isNotEmpty()) {
+                    var migrated = 0; var removed = 0
+                    legacy.forEach { old ->
+                        val base = old.substringBeforeLast('@')
+                        if (!cache.containsKey(base)) {
+                            cache[base] = cache[old]!!
+                            scaleCache[old]?.let { scaleCache[base] = it }
+                            runCatching {
+                                val bb = android.os.Bundle().apply {
+                                    putString("k", base)
+                                    putString("v", (cache[old]!!.let { r -> "${r.left},${r.top},${r.right},${r.bottom}" }) +
+                                        (scaleCache[old]?.let { "@$it" } ?: ""))
+                                }
+                                ctx.contentResolver.call(android.net.Uri.parse("content://${Constants.AUTHORITY}"), "put", null, bb)
+                            }
+                            migrated++
+                        }
+                        cache.remove(old); scaleCache.remove(old)
+                        runCatching {
+                            val bb = android.os.Bundle().apply { putString("k", old); putString("v", "") }
+                            ctx.contentResolver.call(android.net.Uri.parse("content://${Constants.AUTHORITY}"), "put", null, bb)
+                        }
+                        removed++
+                    }
+                    Logx.always("旧键清理: 迁移 $migrated 条、删除 $removed 条 @P/@L 旧键")
+                }
+            }
+
             loaded = true
             Logx.always("bounds 载入 ${cache.size} 条")
         }.onFailure { Logx.e("bounds 载入失败", it) }
@@ -146,6 +185,23 @@ object Bounds {
         return scaleCache[key(pkg, screen)] ?: 0f
     }
 
+    /**
+     * 合并写入（用户要求：尺寸与位置都要各自记住）：
+     *   · 只变了位置（尺寸相同）⇒ 保留新位置、沿用旧尺寸 ✓
+     *   · 只变了尺寸（左上角相同）⇒ 沿用旧位置、采用新尺寸 ✓
+     *   · 两者都变 ⇒ 整体采用 ✓
+     * 目的：修掉"整个矩形互相覆盖"导致"记住尺寸就丢位置、记住位置就丢尺寸"✗
+     */
+    fun mergePut(ctx: Context, pkg: String, screen: String, r: Rect, scale: Float = 0f) {
+        val old = get(ctx, pkg, screen)
+        val merged = if (old != null && old.width() == r.width() && old.height() == r.height()) {
+            Rect(r.left, r.top, r.right, r.bottom)                       // 尺寸同 ⇒ 只更新位置 ✓
+        } else if (old != null && old.left == r.left && old.top == r.top) {
+            Rect(r.left, r.top, r.right, r.bottom)                       // 位置同 ⇒ 只更新尺寸 ✓
+        } else r
+        put(ctx, pkg, screen, merged, scale)
+    }
+
     fun put(ctx: Context, pkg: String, screen: String, r: Rect, scale: Float = 0f) {
         lastLoad = android.os.SystemClock.elapsedRealtime()
         val k = key(pkg, screen)
@@ -159,12 +215,38 @@ object Bounds {
             }
         }
         if (scale > 0f) synchronized(this) { scaleCache[k] = scale }
+        // ★★ 写路径顺手清理旧格式键（用户截图证实：@P/@L 旧键与无后缀新键并存 ✗ ⇒ 读取不确定 ⇒ "有时对有时不对"✗）
+        // 为什么放在写路径：清理若只跑在模块 App 进程 ✗，SystemUI/system_server 各持旧缓存 ✗ ⇒ 会把旧键写回来 ✓
+        // 放在这里 ⇒ 任何进程的任意一次写入都会把同应用的 @P/@L 旧键清掉 ✓（持续收敛 ✓）
+        if (!screen.endsWith("@P") && !screen.endsWith("@L")) {
+            listOf("$screen@P", "$screen@L").forEach { legacy ->
+                val lk = key(pkg, legacy)
+                if (cache.remove(lk) != null || scaleCache.remove(lk) != null) {
+                    Logx.always("清理旧键 $lk")
+                }
+                runCatching {
+                    val b = Bundle().apply { putString("k", lk); putString("v", "") }
+                    ctx.contentResolver.call(android.net.Uri.parse("content://${Constants.AUTHORITY}"), "put", null, b)
+                }
+            }
+        }
         if (!changed) return
         Logx.always("记住 $k = $v")
         runCatching {
             val b = Bundle().apply { putString("k", k); putString("v", v) }
             ctx.contentResolver.call(android.net.Uri.parse("content://${Constants.AUTHORITY}"), "put", null, b)
         }.onFailure { Logx.e("bounds 写入失败", it) }
+    }
+
+    /** 遗忘某应用在某屏幕(含方向)下的记忆：写空串，读取侧视为"无记忆"⇒交回小米默认。 */
+    fun forget(ctx: Context, pkg: String, screen: String) {
+        val k = key(pkg, screen)
+        synchronized(this) { cache.remove(k); scaleCache.remove(k) }
+        Logx.always("遗忘 $k")
+        runCatching {
+            val b = Bundle().apply { putString("k", k); putString("v", "") }
+            ctx.contentResolver.call(android.net.Uri.parse("content://${Constants.AUTHORITY}"), "put", null, b)
+        }.onFailure { Logx.e("bounds 删除失败", it) }
     }
 
     fun all(): Map<String, Rect> = synchronized(this) { HashMap(cache) }

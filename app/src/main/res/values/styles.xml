@@ -6,7 +6,11 @@
       标题栏也会变成黑底白字与内容区风格割裂。这里显式锁一套浅色 AppCompat-free 主题，
       不依赖 AndroidX（本项目无 AndroidX 依赖）。
     -->
-    <style name="AppTheme" parent="@android:style/Theme.DeviceDefault.Light">
+    <style name="AppTheme" parent="@android:style/Theme.DeviceDefault.Light.NoActionBar">
+        <!-- 界面自绘头部（状态栏同色 + 标题 + 副标题），必须关掉主题自带的 ActionBar，
+             否则会出现"双层顶栏"：主题 ActionBar 与自绘头部叠在一起（真机截图可见露出的边）。 -->
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowNoTitle">true</item>
         <item name="android:windowBackground">#FFFFFF</item>
         <item name="android:colorBackground">#FFFFFF</item>
         <item name="android:textColorPrimary">#111114</item>

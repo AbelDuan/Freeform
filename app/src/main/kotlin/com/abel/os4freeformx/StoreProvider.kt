@@ -15,16 +15,6 @@ class StoreProvider : ContentProvider() {
     private fun prefs(): android.content.SharedPreferences? =
         context?.getSharedPreferences(Constants.PREFS_BOUNDS, Context.MODE_PRIVATE)
 
-    /** FLOAT_MODE 既可能是 putInt 写的 Int，也可能是 putCfg 写的 String，统一成 Int。 */
-    private fun floatModeOf(c: android.content.SharedPreferences?): Int {
-        if (c == null) return Constants.DEF_FLOAT_MODE
-        return runCatching {
-            c.getInt(Constants.K_FLOAT_MODE, Int.MIN_VALUE).takeIf { it != Int.MIN_VALUE }
-                ?: c.getString(Constants.K_FLOAT_MODE, null)?.trim()?.toIntOrNull()
-                ?: Constants.DEF_FLOAT_MODE
-        }.getOrDefault(Constants.DEF_FLOAT_MODE)
-    }
-
     override fun call(method: String, arg: String?, extras: Bundle?): Bundle? {
         val p = prefs() ?: return null
         return when (method) {
@@ -38,7 +28,7 @@ class StoreProvider : ContentProvider() {
                 putBoolean(Constants.K_IMMERSIVE, c?.getBoolean(Constants.K_IMMERSIVE, Constants.DEF_IMMERSIVE) ?: Constants.DEF_IMMERSIVE)
                 putBoolean(Constants.K_REMEMBER_BOUNDS, c?.getBoolean(Constants.K_REMEMBER_BOUNDS, Constants.DEF_REMEMBER_BOUNDS) ?: Constants.DEF_REMEMBER_BOUNDS)
                 putBoolean(Constants.K_REMEMBER_FOLD, c?.getBoolean(Constants.K_REMEMBER_FOLD, Constants.DEF_REMEMBER_FOLD) ?: Constants.DEF_REMEMBER_FOLD)
-                putBoolean(Constants.K_RESIZE, c?.getBoolean(Constants.K_RESIZE, Constants.DEF_RESIZE) ?: Constants.DEF_RESIZE)
+                putBoolean(Constants.K_RATIO_MENU, c?.getBoolean(Constants.K_RATIO_MENU, Constants.DEF_RATIO_MENU) ?: Constants.DEF_RATIO_MENU)
                 putInt(Constants.K_DEFAULT_W, c?.getInt(Constants.K_DEFAULT_W, 0) ?: 0)
                 putInt(Constants.K_DEFAULT_H, c?.getInt(Constants.K_DEFAULT_H, 0) ?: 0)
                 putBoolean(Constants.K_GESTURE_HANDLE, c?.getBoolean(Constants.K_GESTURE_HANDLE, Constants.DEF_GESTURE_HANDLE) ?: Constants.DEF_GESTURE_HANDLE)
@@ -46,10 +36,7 @@ class StoreProvider : ContentProvider() {
                 putBoolean(Constants.K_GESTURE_HANDLE_TOUCH, c?.getBoolean(Constants.K_GESTURE_HANDLE_TOUCH, Constants.DEF_GESTURE_HANDLE_TOUCH) ?: Constants.DEF_GESTURE_HANDLE_TOUCH)
                 putBoolean(Constants.K_GESTURE_HANDLE_IDLE, c?.getBoolean(Constants.K_GESTURE_HANDLE_IDLE, Constants.DEF_GESTURE_HANDLE_IDLE) ?: Constants.DEF_GESTURE_HANDLE_IDLE)
                 putFloat(Constants.K_GESTURE_HANDLE_AREA, c?.getFloat(Constants.K_GESTURE_HANDLE_AREA, Constants.DEF_GESTURE_HANDLE_AREA) ?: Constants.DEF_GESTURE_HANDLE_AREA)
-                putBoolean(Constants.K_GESTURE_HANDLE_FLOAT, c?.getBoolean(Constants.K_GESTURE_HANDLE_FLOAT, Constants.DEF_GESTURE_HANDLE_FLOAT) ?: Constants.DEF_GESTURE_HANDLE_FLOAT)
-                // FLOAT_MODE 可能被 putCfg 以字符串写进来（adb 调试通道只传 String），两种类型都要能读
-                putInt(Constants.K_FLOAT_MODE, floatModeOf(c))
-                putString(Constants.K_FLOAT_PKGS, c?.getString(Constants.K_FLOAT_PKGS, Constants.DEF_FLOAT_PKGS) ?: Constants.DEF_FLOAT_PKGS)
+                putString(Constants.K_NBI_ASSIGN, c?.getString(Constants.K_NBI_ASSIGN, Constants.DEF_NBI_ASSIGN) ?: Constants.DEF_NBI_ASSIGN)
                 putBoolean(Constants.K_GESTURES, c?.getBoolean(Constants.K_GESTURES, Constants.DEF_GESTURES) ?: Constants.DEF_GESTURES)
                 putBoolean(Constants.K_CORNER_FREEFORM, c?.getBoolean(Constants.K_CORNER_FREEFORM, Constants.DEF_CORNER_FREEFORM) ?: Constants.DEF_CORNER_FREEFORM)
             }
@@ -58,6 +45,25 @@ class StoreProvider : ContentProvider() {
                 val v = extras?.getString("v")
                 if (k != null && v != null) p.edit().putString(k, v).apply()
                 Bundle()
+            }
+            // ★ 读回一个 bounds 记忆（自测/诊断用；之前只有 put 没有 get ✗ ⇒ 无法验证写入 ✓）
+            "get" -> {
+                val k = extras?.getString("k") ?: arg
+                Bundle().apply { putString("v", if (k == null) null else p.getString(k, null)) }
+            }
+            // ★ 自检：写入→读回→清理，一条命令验证"记忆链路"是否正常（我自己驱动测试用 ✓）
+            "selfcheck" -> {
+                val k = extras?.getString("k") ?: "selftest|key"
+                val v = extras?.getString("v") ?: "300,500,1200,1400@1.0"
+                p.edit().putString(k, v).apply()
+                val back = p.getString(k, null)
+                p.edit().remove(k).apply()
+                Bundle().apply {
+                    putString("wrote", v)
+                    putString("readBack", back)
+                    putBoolean("ok", back == v)
+                    putString("file", context?.let { "${it.filesDir?.parentFile?.absolutePath}" })
+                }
             }
             "remove" -> {
                 arg?.let { p.edit().remove(it).apply() }

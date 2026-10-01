@@ -34,6 +34,10 @@ HyperOS 4（Android 17 / API 37）**小窗（freeform）与分屏体验增强** 
 | **折叠屏内外屏分开** | 记忆 key 带 display 维度（内屏 `1672x2364` / 外屏 `1168x1712` 等），内外屏各记一份 |
 | **迷你/贴边恢复** | 贴边胶囊态点击恢复到记忆的位置尺寸（只替换恢复矩形、不动 scale，保证 mini→悬浮窗状态转换正常） |
 | **沉浸栏** | 顶部三点栏 / 底部手势条**不绘制**（视图与触摸逻辑保留），且不再为其预留 window insets，内容区铺满 |
+| **导航栏·隐藏** | 选中的应用**整个底栏消失**（内容铺到屏幕最底）；走 HyperOS 自带沉浸导航名单，**不 hook SystemUI**（见 §1.5） |
+| **导航栏·取色** | 选中的应用导航栏**跟随界面主色**（采样） |
+
+> 两个功能共用**一份名单**：每个应用只归属一个功能（先选功能、再勾应用，勾选即覆盖原归属）⇒ 结构上不存在"同一应用两边都选"。 |
 | **清理系统干扰视觉** | 隐藏系统自带缩放描边；分屏场景下的镜像栏、应用图标遮罩、快照替身不显示 |
 
 
@@ -66,6 +70,61 @@ HyperOS 4（Android 17 / API 37）**小窗（freeform）与分屏体验增强** 
 >①**必须先判开关再决定是否吞事件**（否则"关掉"也会拦死官方手势），
 >②起手区必须给底部正中留让位区，③角滑只在单应用全屏生效。
 
+### 1.5 导航栏：隐藏底栏 / 取色（一份名单，每个应用只归属一个功能）
+
+在 HyperOS 自带的**沉浸导航名单**上做，**不 hook SystemUI**。
+
+界面：设置页「导航栏」→ **导航栏调整** → 打开**全部应用列表**，每个应用左侧一个**下拉三选一**
+（不启用 / 隐藏 / 取色），**已启用的应用置顶**；改动**不即时写盘**，点底部「应用」才一次性提交
+（写名单 → `cmd … update` → **模块代劳 `am force-stop` 重启所有涉及的应用**，立即生效）。
+
+| 功能 | 规则（`activityRules."*"`） | 效果 |
+|---|---|---|
+| **一、隐藏导航栏** | `{ "mode": 2 }` | **整个底栏消失**：`setNavigationBarForceImmersive()`，应用内容铺到屏幕最底、不再为导航栏预留区域。与小鹏当初那条厂商规则完全一致 |
+| **二、导航栏取色** | `{ "mode": 1 }` | **不带 `color`** ⇒ 走采样 `getNavZoneDominantColor()`，跟随界面主色 |
+
+⚠️ 别把「隐藏」写成 `{ "mode": 1, "color": 0 }`：那只是**把底色变透明**，底栏区域仍然占位，
+透出来的是应用自己的窗口背景（深色应用上看起来还是一条黑带）。真机对照（Mobilism，底部 55px）：
+
+```
+无规则          → (0,0,0)      纯黑条
+mode:1+color:0  → (239,239,239) 平坦背景色，方差 ~80（只是底色透明）
+mode:2          → (238~242)     应用内容铺到底，方差 ~2900（内容纹理，整个底栏消失）✓
+```
+
+**落地链路（三条，全程不需要重启系统）**
+
+1. 写 `/data/system/cloudFeature_navigation_bar_immersive_rules_list.json`（`dataVersion` 钉 `999999` 防云端覆盖）
+2. **`cmd miui_navigation_bar_immersive update`** —— 让 system_server 重读名单。
+   **缺这一步，文件写了也不生效**（取证：`MiuiNBIManagerService$Shell.onCommand` 的 `"update"` 分支 → `mService.applyNewNBIConfig()`）
+3. **重启目标应用**（不是框架）—— NBI 服务自己的要求："restart the application to take effect"
+
+**字段语义（反编译取证）**
+
+- 文件解析 `com.android.nbi.MiuiParsingNBIRule`：支持 `mode` / `color` / `sf_sampling_mode` / `viewRules` / `appNavColorDisabled` / …
+- 策略选择 `com.android.internal.policy.NavigationBarImmersiveController.handleActivityImmersive`：
+  `mode` 是**策略选择器** —— `0`=DISABLED · `1`=用自定义颜色（唯一读 `color` 的分支）· `2`=强制沉浸布局
+- `color` 是可空 Integer：`null`=不覆盖（走采样）· `0`=全透明
+
+**踩坑记录**
+
+- 曾用 SystemUI hook（`NavBarTransparent`）改 `BarBackgroundDrawable.mMode`：在**确实有黑条**的 Mobilism 上 A/B 实测**零效果**，已删除（连带 1s 轮询线程）。
+- 「命令不存在」是误判：`cmd … activityRule` **不带参数**会落到 `handleDefaultCommands`；它要 `<包名> <规则JSON>` 两个参数。
+- 名单文件是**持久载体**（只在框架启动时读），`reload-rule` 不被识别、重启 SystemUI 也刷不动 ⇒ 必须走第 2 步的 `update`。
+- 写 `/data/system` 与执行 `cmd` 都需要 root：**首次保存会弹 KernelSU 授权，必须允许**，否则写入静默失败（界面上会 Toast 出失败原因）。
+- NBI 服务要求"restart the application to take effect" ⇒ 点「应用」后由模块 `am force-stop` 所有涉及的应用（新选的 + 之前选过的）。
+- 原 `K_RESIZE`（"允许拖动调整尺寸"）是**死开关**（值存了、读了，全库无人使用），已移除；
+  新增 **`K_RATIO_MENU`（小窗比例调节）** 真正管住「三点菜单那排比例按钮 + 放大可调尺寸范围」——
+  关掉后模块完全不碰 MIUI 的菜单与缩放上限，可避免"背景框大于应用可操作区、底部一片白"。
+
+**验收**
+
+```bash
+cmd miui_navigation_bar_immersive list <包名>    # 隐藏：mode=2；取色：mode=1
+logcat -s NavImmersive                          # 隐藏：start choosing immersive policy …, mode: 2
+```
+
+- 单测：`./check.sh`（Nbi 48 条断言：两种规则形状 / 按规则值合并 / JSON 生成 / 回读 / su 脚本含 `update`）
 ### 1.2 分屏（2 应用）—— 可调比例
 
 默认 5:5，松手时的落位规则：

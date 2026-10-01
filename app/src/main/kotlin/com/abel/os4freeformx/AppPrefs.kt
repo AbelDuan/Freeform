@@ -41,6 +41,10 @@ object AppPrefs {
         de(ctx)?.edit()?.putFloat(key, value)?.apply()
     }
 
+    fun getString(ctx: Context, key: String): String? = runCatching {
+        ce(ctx).getString(key, null)
+    }.getOrNull()
+
     fun getBoolean(ctx: Context, key: String, def: Boolean): Boolean =
         runCatching { ce(ctx).getBoolean(key, def) }.getOrDefault(def)
 

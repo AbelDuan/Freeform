@@ -23,7 +23,10 @@ object Logx {
         if (line != null) {
             runCatching { mod?.log(Log.INFO, Constants.TAG, line) }
         }
-        if (verbose || line != null) runCatching { Log.i(Constants.TAG, msg) }
+        // logcat 侧**无条件**写：Xposed 日志有 400 条上限（防刷屏），但那个上限曾让
+        // "没执行" 和 "执行了但日志被丢" 无法区分（本次排查为此误判两次）。
+        // always 只用于里程碑，不是热路径（热路径用 v/once），logcat 自身有环形缓冲。
+        runCatching { Log.i(Constants.TAG, msg) }
     }
 
     fun v(msg: String) {

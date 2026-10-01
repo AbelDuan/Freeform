@@ -42,6 +42,10 @@ class SettingsActivity : Activity() {
     }
 
     private fun buildUi() {
+        // 防御：某些 ROM 会按 Activity 的 label 生成一层"decor 标题"（清单里已去掉 label），
+        // 万一仍存在就直接隐藏，避免与自绘顶栏重叠成"双层顶栏"。
+        runCatching { actionBar?.hide() }
+        runCatching { title = "" }
         val headerBg = Color.parseColor("#D6DEEE")
         val divider = Color.parseColor("#AEBBD4")
         val accent = Color.parseColor("#3B6EF5")
@@ -62,13 +66,50 @@ class SettingsActivity : Activity() {
         val header = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(headerBg)
-            setPadding(dp(20), dp(10), dp(20), dp(12))
+            setPadding(dp(20), dp(10), dp(20), 0)   // 底部不留白：否则头部色会在标题与内容之间露出一条色带
         }
-        header.addView(TextView(this).apply {
+        // 标题行：左标题 + 右上角小按钮（重启 SystemUI）。界面本身要自绘，不能用 ActionBar 按钮。
+        val titleRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER_VERTICAL
+        }
+        titleRow.addView(TextView(this).apply {
             text = "OS4FreeFromX  v${Constants.VERSION}"
             textSize = 22f
             setTextColor(Color.parseColor("#111114"))
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         })
+        titleRow.addView(TextView(this).apply {
+            text = "重启 SystemUI"
+            textSize = 11f
+            setTextColor(Color.WHITE)
+            gravity = android.view.Gravity.CENTER
+            setPadding(dp(10), dp(5), dp(10), dp(5))
+            background = android.graphics.drawable.GradientDrawable().apply {
+                setColor(accent)
+                cornerRadius = dp(14).toFloat()
+            }
+            setOnClickListener {
+                Toast.makeText(this@SettingsActivity, "正在重启 SystemUI…", Toast.LENGTH_SHORT).show()
+                Thread {
+                    val r = runCatching {
+                        val p2 = ProcessBuilder("su", "-c", "killall com.android.systemui")
+                            .redirectErrorStream(true).start()
+                        p2.inputStream.bufferedReader().readText()
+                        p2.waitFor()
+                    }
+                    runOnUiThread {
+                        Toast.makeText(
+                            this@SettingsActivity,
+                            if (r.isSuccess) "已重启 SystemUI（需要 root 授权）"
+                            else "重启失败：${r.exceptionOrNull()}",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }.apply { isDaemon = true }.start()
+            }
+        })
+        header.addView(titleRow)
         header.addView(TextView(this).apply {
             text = "HyperOS 4 小窗增强 · LSPosed"
             textSize = 12f
@@ -76,8 +117,7 @@ class SettingsActivity : Activity() {
             setPadding(0, dp(4), 0, 0)
         })
         outer.addView(header)
-        outer.addView(View(this).apply { setBackgroundColor(divider) },
-            LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(1)))
+        // （原来这里有一条 1px 分隔色条；用户反馈"顶栏跟内容之间还有一条颜色条"，已去掉。）
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -95,7 +135,7 @@ class SettingsActivity : Activity() {
         section("小窗尺寸")
         switchRow("分应用记忆窗口尺寸", Constants.K_REMEMBER_BOUNDS, Cfg.rememberBounds) { Cfg.rememberBounds = it }
         switchRow("折叠屏状态分别记忆", Constants.K_REMEMBER_FOLD, Cfg.rememberFold) { Cfg.rememberFold = it }
-        switchRow("允许拖动调整尺寸", Constants.K_RESIZE, Cfg.resize) { Cfg.resize = it }
+        switchRow("小窗比例调节（三点菜单那排比例按钮 + 放大可调范围）", Constants.K_RATIO_MENU, Cfg.ratioMenu) { Cfg.ratioMenu = it }
         numberRow("默认小窗宽度 (px，0=系统默认)", Constants.K_DEFAULT_W, Cfg.defaultW) { Cfg.defaultW = it }
         numberRow("默认小窗高度 (px，0=系统默认)", Constants.K_DEFAULT_H, Cfg.defaultH) { Cfg.defaultH = it }
 
@@ -109,17 +149,21 @@ class SettingsActivity : Activity() {
         switchRow("触摸小白条区域时显隐", Constants.K_GESTURE_HANDLE_TOUCH, Cfg.gestureHandleTouch) { Cfg.gestureHandleTouch = it }
         switchRow("空闲时自动隐藏（沉浸）", Constants.K_GESTURE_HANDLE_IDLE, Cfg.gestureHandleIdle) { Cfg.gestureHandleIdle = it }
         sliderRow("底部命中带距离（触发宽度，dp）", Constants.K_GESTURE_HANDLE_AREA, Cfg.gestureHandleArea, 0, 48) { Cfg.gestureHandleArea = it }
-        // 「小白条悬浮」= SystemUI 侧把手势导航栏底色恒置为全透明，pill 直接浮在应用内容上。
-        // 实现见 NavBarTransparent.kt：hook NavigationBarTransitions.onTransition，把 mode 改成 TRANSPARENT。
-        // 作用域固定（system + com.android.systemui），无需也不允许把第三方应用勾进来。
-        switchRow(
-            "小白条悬浮：底栏完全透明，pill 浮在应用内容上",
-            Constants.K_GESTURE_HANDLE_FLOAT, Cfg.gestureHandleFloat
-        ) { Cfg.gestureHandleFloat = it }
-
-        section("悬浮生效范围")
-        modeRow()
-        pkgListRow()
+        // ── 导航栏（NBI）：两个功能，各带自己的应用名单 ──
+        // 实现见 Nbi.kt / NbiApply.kt：写进 HyperOS 自带的沉浸导航名单
+        // （/data/system/cloudFeature_navigation_bar_immersive_rules_list.json），
+        // 再 `cmd miui_navigation_bar_immersive update` 让 system_server 重读 —— 全程免重启。
+        // 两条规则只差一个字段：隐藏 = mode:1 + color:0（全透明）；取色 = mode:1（走采样）。
+        // ── 导航栏（NBI）：一份名单，每个应用只归属一个功能 ──
+        // 隐藏 = mode:2（整个底栏消失、内容铺到最底，与小鹏原版一致）；
+        // 取色 = mode:1（不带 color ⇒ 采样界面主色）。
+        // 落地：写系统名单 → `cmd miui_navigation_bar_immersive update` → 重启目标应用（免重启系统）。
+        // ── 导航栏（NBI）──
+        // 「导航栏调整」= 应用列表里给每个应用三选一（不启用 / 隐藏 / 取色），已启用置顶，
+        // 改完点「应用」一次性提交：写系统名单 → `cmd miui_navigation_bar_immersive update`
+        // → 模块代劳重启目标应用（NBI 要求 restart the application）。
+        section("导航栏")
+        navRow()
 
         section("其他")
         switchRow("记录详细日志", Constants.K_ENABLE_LOG, Cfg.log) { Cfg.log = it; Logx.verbose = it }
@@ -163,122 +207,42 @@ class SettingsActivity : Activity() {
         })
     }
 
-    /** 悬浮生效范围：所有应用 / 仅白名单 / 黑名单外。用 RadioGroup 表达三选一。 */
-    private fun modeRow() {
-        // 实时状态行：把「当前到底是不是所有应用都生效」写清楚，避免用户以为开了开关却只对个别应用生效
-        val live = TextView(this).apply {
-            textSize = 12f
-            setTextColor(Color.parseColor("#3B6EF5"))
-            setPadding(0, dp(2), 0, dp(2))
-            text = liveModeSummary()
-        }
-        body.addView(live)
-
-        val group = android.widget.RadioGroup(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            setPadding(0, dp(6), 0, dp(2))
-        }
-        val items = listOf(
-            Constants.FLOAT_MODE_ALL to "所有应用",
-            Constants.FLOAT_MODE_WHITELIST to "仅白名单",
-            Constants.FLOAT_MODE_BLACKLIST to "黑名单外",
-        )
-        items.forEach { (mode, label) ->
-            group.addView(android.widget.RadioButton(this).apply {
-                id = mode + 1000
-                text = label
-                textSize = 13f
-                isChecked = Cfg.floatMode == mode
-                setPadding(0, dp(4), dp(14), dp(4))
-            })
-        }
-        group.setOnCheckedChangeListener { _, checkedId ->
-            val mode = checkedId - 1000
-            AppPrefs.putInt(this, Constants.K_FLOAT_MODE, mode)
-            Cfg.floatMode = mode
-            live.text = liveModeSummary()
-            Toast.makeText(this@SettingsActivity, "范围已改为：${Cfg.floatModeLabel()}", Toast.LENGTH_SHORT).show()
-        }
-        body.addView(group)
-    }
-
-    /** 一句话说明当前范围 + 名单条数，用于消除"到底对谁生效"的疑惑。 */
-    private fun liveModeSummary(): String {
-        val n = Cfg.floatPkgsRawLineCount()
-        val sw = if (Cfg.gestureHandleFloat) "悬浮开关：已开启" else "悬浮开关：已关闭（下面范围不生效）"
-        val scope = when (Cfg.floatMode) {
-            Constants.FLOAT_MODE_WHITELIST -> "当前范围：仅所列 $n 个应用生效"
-            Constants.FLOAT_MODE_BLACKLIST -> "当前范围：除所列 $n 个应用外都生效"
-            else -> "当前范围：所有应用生效（名单忽略）"
-        }
-        return "$sw  ·  $scope"
-    }
-
-    /**
-     * 白/黑名单包名编辑 + 从已安装应用一键勾选。
-     * 写入 K_FLOAT_PKGS（换行分隔），Cfg 侧按逗号/空格/换行切分。
-     */
-    private fun pkgListRow() {
+    /** 「导航栏调整」入口：显示当前统计，点进去打开应用列表。 */
+    private fun navRow() {
         val label = TextView(this).apply {
             textSize = 12f
             setTextColor(Color.parseColor("#55555A"))
             setPadding(0, dp(4), 0, dp(2))
-            text = "名单（${Cfg.floatModeLabel()}）：共 ${Cfg.floatPkgsRawLineCount()} 项"
         }
+        fun refresh() {
+            label.text = "当前：隐藏 ${Cfg.assignCount(Constants.NBI_HIDE)} 个应用 · " +
+                    "取色 ${Cfg.assignCount(Constants.NBI_SAMPLE)} 个应用"
+        }
+        refresh()
         body.addView(label)
 
-        val edit = EditText(this).apply {
-            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE
-            setText(Cfg.floatPkgsRaw)
-            textSize = 12f
-            minLines = 3
-            gravity = Gravity.TOP or Gravity.START
-            setPadding(dp(8), dp(8), dp(8), dp(8))
-            layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        }
-        body.addView(edit)
-
-        val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        row.addView(Button(this).apply {
-            text = "保存名单"
+        body.addView(Button(this).apply {
+            text = "导航栏调整（选择应用）"
             setOnClickListener {
-                val v = edit.text.toString()
-                AppPrefs.putString(this@SettingsActivity, Constants.K_FLOAT_PKGS, v)
-                Cfg.floatPkgsRaw = v
-                // 触发 Cfg 重新切分集合（直接经 provider 拉一次最稳）
-                Cfg.reloadThrottled(0)
-                label.text = "名单（${Cfg.floatModeLabel()}）：共 ${Cfg.floatPkgsRawLineCount()} 项"
-                Toast.makeText(this@SettingsActivity, "已保存，1~2 秒内生效", Toast.LENGTH_SHORT).show()
+                AppPickerActivity.open(this@SettingsActivity, Cfg.assignRaw) { map ->
+                    val v = map.entries.sortedBy { it.key }.joinToString("\n") { "${it.key}=${it.value}" }
+                    AppPrefs.putString(this@SettingsActivity, Constants.K_NBI_ASSIGN, v)
+                    Cfg.setAssign(v)
+                    Cfg.reloadThrottled(0)
+                    refresh()
+                    NbiApply.applyAsync(this@SettingsActivity) { r ->
+                        runOnUiThread {
+                            Toast.makeText(
+                                this@SettingsActivity,
+                                if (r.ok) "已应用并重启目标应用；立即生效"
+                                else "写入失败：${r.msg.take(160)}",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
+                    }
+                }
             }
         })
-        row.addView(Button(this).apply {
-            text = "从应用列表勾选"
-            setOnClickListener { showAppPicker(edit, label) }
-        })
-        body.addView(row)
-    }
-
-    /**
-     * 可搜索的已安装应用多选界面（纯框架控件，不依赖 AndroidX）。
-     *
-     * 旧版把所有应用一次性塞进 AlertDialog 的 ScrollView —— 几百个条目既卡又难找，
-     * 而且 AlertDialog 里的 ScrollView 高度会被标题/按钮挤扁。这里改成：
-     *   · 独立 Activity（AppPickerActivity）承载，整屏可用；
-     *   · 顶部 EditText 实时过滤（名称 / 包名，忽略大小写）；
-     *   · ListView + 稳定 id，勾选状态不因滚动错位；
-     *   · 已选数量实时显示，支持「只显示已选」。
-     */
-    private fun showAppPicker(edit: EditText, label: TextView) {
-        AppPickerActivity.open(this, Cfg.floatPkgsRaw) { picked ->
-            val v = picked.joinToString("\n")
-            edit.setText(v)
-            AppPrefs.putString(this, Constants.K_FLOAT_PKGS, v)
-            Cfg.floatPkgsRaw = v
-            Cfg.reloadThrottled(0)
-            label.text = "名单（${Cfg.floatModeLabel()}）：共 ${Cfg.floatPkgsRawLineCount()} 项"
-            Toast.makeText(this, "已保存 ${picked.size} 个应用", Toast.LENGTH_SHORT).show()
-        }
     }
 
     private fun switchRow(title: String, key: String, checked: Boolean, onChange: (Boolean) -> Unit) {

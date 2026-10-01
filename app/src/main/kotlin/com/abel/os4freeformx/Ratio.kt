@@ -11,7 +11,6 @@ package com.abel.os4freeformx
 
 /** 菜单里那排比例按钮：标签 → 比例数值（宽/高）。横竖屏按钮不放这里（它取当前比例的倒数）。 */
 val RATIO_BUTTONS = listOf(
-    "18:9" to 18f / 9f,
     "16:9" to 16f / 9f,
     "4:3" to 4f / 3f,
     "1:1" to 1f

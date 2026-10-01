@@ -17,7 +17,11 @@ object Constants {
     const val K_IMMERSIVE = "immersive"              // 2.4 沉浸式底栏
     const val K_REMEMBER_BOUNDS = "remember_bounds"  // 2.2 分应用记忆
     const val K_REMEMBER_FOLD = "remember_fold"      // 折叠态分别记忆
-    const val K_RESIZE = "resize_enabled"            // 2.3 拖动调整
+    // 小窗比例调节（三点菜单那排比例按钮 + 放大可调尺寸范围）。
+    // 关掉后模块完全不碰 MIUI 的菜单与缩放上限 —— 避免"背景框大于应用可操作区、底部一片白"。
+    const val K_RATIO_MENU = "ratio_menu"
+    // 注：原 K_RESIZE（"允许拖动调整尺寸"）是死开关：值存了、也读了，但全库没有任何代码用它，
+    //     已移除（角柄缩放本来就是 MIUI 原生行为，模块不接管）。
     const val K_DEFAULT_W = "default_w"              // 默认小窗宽（px，0=系统默认）
     const val K_DEFAULT_H = "default_h"
     const val K_GESTURES = "gestures"                // 手势总开关（全局输入挂钩）
@@ -29,21 +33,17 @@ object Constants {
     const val K_GESTURE_HANDLE_TOUCH = "gesture_handle_touch"    // 触摸小白条区域时显隐
     const val K_GESTURE_HANDLE_IDLE = "gesture_handle_idle"      // 空闲自动隐藏（沉浸）
     const val K_GESTURE_HANDLE_AREA = "gesture_handle_area"      // 底部命中带距离(dp，float)
-    const val K_GESTURE_HANDLE_FLOAT = "gesture_handle_float"     // 小白条悬浮（隐藏导航栏背景，悬浮于应用之上）
-    /** 悬浮的作用范围：0=所有应用(默认) / 1=仅白名单 / 2=黑名单外 */
-    const val K_FLOAT_MODE = "gesture_handle_float_mode"
-    /** 白/黑名单包名集合，换行或逗号分隔 */
-    const val K_FLOAT_PKGS = "gesture_handle_float_pkgs"
-
-    const val FLOAT_MODE_ALL = 0
-    const val FLOAT_MODE_WHITELIST = 1
-    const val FLOAT_MODE_BLACKLIST = 2
+    // ── 导航栏（NBI）：一份名单，每个应用只归属一个功能（避免两边都选）──
+    const val K_NBI_ASSIGN = "nbi_assign"   // 逐行 "包名=模式"：1=隐藏导航栏 2=导航栏取色
+    const val NBI_NONE = 0
+    const val NBI_HIDE = 1
+    const val NBI_SAMPLE = 2
 
     const val DEF_ENABLE_LOG = false
     const val DEF_IMMERSIVE = true
     const val DEF_REMEMBER_BOUNDS = true
     const val DEF_REMEMBER_FOLD = true
-    const val DEF_RESIZE = true
+    const val DEF_RATIO_MENU = true
     const val DEF_GESTURES = true
     const val DEF_CORNER_FREEFORM = true
     const val DEF_GESTURE_HANDLE = true
@@ -51,10 +51,7 @@ object Constants {
     const val DEF_GESTURE_HANDLE_TOUCH = true
     const val DEF_GESTURE_HANDLE_IDLE = true
     const val DEF_GESTURE_HANDLE_AREA = 24f
-    const val DEF_GESTURE_HANDLE_FLOAT = false
-    const val DEF_FLOAT_MODE = FLOAT_MODE_ALL
-    /** 默认名单预置几个「底栏自带大字/色块、悬浮观感最好」的常见应用，用户可自行增删 */
-    const val DEF_FLOAT_PKGS = ""
+        const val DEF_NBI_ASSIGN = ""
 
     // ---- 目标类（HyperOS 4 / Android 17 实测确认）----
     /** wm shell 小窗装饰（systemui 进程，来自 /system_ext/framework/Miui-WindowManager-Shell.jar） */
