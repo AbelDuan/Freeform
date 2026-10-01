@@ -21,6 +21,10 @@ object Hooks {
 
     private const val MODE_FREEFORM = 5
 
+
+
+
+
     fun installSystemServer(m: MainHook, cl: ClassLoader) {
         Logx.always("installSystemServer: remember=${Cfg.rememberBounds}")
         installLaunchBounds(m, cl)
@@ -47,14 +51,40 @@ object Hooks {
         installRatioMenu(m, cl)
         installBoundsRecorder(m, cl)
         installSplitRatio(m, cl)
-        // 新手势：全局输入（MulWinSwitchEventController$EventReceiver）+ 手势动作
-        installGestures(m, cl)
+        // ★★ 手势功能已整体移除（用户 2026-10-02）。
+        //    原因：角滑必须"参与/吞掉 MIUI 手势流的事件"才能屏蔽系统手势，
+        //    而这条链路在真机上反复导致
+        //      `ANR in com.android.systemui [Gesture Monitor] MultiTaskSwitch ... action=MOVE`
+        //      → `Process com.android.systemui has died`（多次实测，最后一次仍复发）。
+        //    结论：只要 hook 住那条流，就有崩 SystemUI 的风险 —— 收益远小于代价，故整体关停。
+        //    （保留 Gestures.kt 源码备查，但不再安装任何挂钩/通道。）
+        Logx.always("手势功能已移除：不安装任何输入挂钩（角滑下线）")
         // 小白条（手势导航条）：跟随手势 / 淡入淡出 / 触摸显隐 / 空闲自动隐藏
         installGestureHandle(m, cl)
+        // 通知「下拉开小窗」相关功能已整体移除（用户 2026-10-02 决定放弃）：
+        //   原因：试过 HyperCeiler 的 canSlide 置位 + 名单补足 + 代理包还原 + 强制刷新 + 入口探针，
+        //   真机探针证实「长按焦点通知」**未进入** ModalController/小白条链路（探针零调用）
+        //   ⇒ 该系统交互在本 ROM 上未启用，继续做等于自建整套系统 UI（风险与前次手势同级）。
+        //   仍然可用的能力：通知**下拉即可开小窗**（系统自带，无需本模块介入）。
+        Logx.always("通知小窗功能已移除（下拉开小窗仍由系统自带能力提供）")
+
         // 诊断探针：抓"双分屏 → 三分屏"真实手势调用的入口（方法名 + 参数）
         runCatching { SplitTrace.install(m, cl) }.onFailure { Logx.e("SplitTrace 安装失败", it) }
     }
 
+    /**
+     * 通知「下拉开小窗」：把通知行的滑动标志置 true。
+     *
+     * 来源：HyperCeiler `NotificationFreeform`（AGPL-3.0，2026-10-02 移植）。
+     *  · Android 16+（本机 API 37）：`ExpandableNotificationRowInjector#updateMiniWindowBar` → 字段 `canSlide`
+     *  · 更早版本：`MiuiExpandableNotificationRow#updateMiniWindowBar` → 字段 `mCanSlide`
+     * 置位后系统自己渲染底部小白条并在下拉时用小窗打开该通知对应的应用 —— 模块**不自己开窗**，
+     * 所以拿到的一定是"正经系统小窗"（不会出现不可拖动/不可关闭的窗口）。
+     */
+    /** 反射调用无参公开方法（含父类查找）。 */
+    /** 退化取值：row 的 entry.mSbn.getNotification().contentIntent。 */
+    /** 兜底取值：row.entry.mSbn 的包名（mPkgName / getOpPkg）。 */
+    /** 把对象上名为 [name] 的 boolean 字段写成 [v]（含父类查找）。 */
     /** 小白条（手势导航条）：跟随手势 / 淡入淡出 / 触摸显隐 / 空闲自动隐藏。 */
     private fun installGestureHandle(m: MainHook, cl: ClassLoader) {
         runCatching {

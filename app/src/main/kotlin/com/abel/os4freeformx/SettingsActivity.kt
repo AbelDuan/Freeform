@@ -138,7 +138,8 @@ class SettingsActivity : Activity() {
         switchRow("小窗比例调节（三点菜单那排比例按钮 + 放大可调范围）", Constants.K_RATIO_MENU, Cfg.ratioMenu) { Cfg.ratioMenu = it }
 
         section("手势")
-        switchRow("左右下角斜向中间滑 → 前台应用转小窗", Constants.K_CORNER_FREEFORM, Cfg.cornerFreeform) { Cfg.cornerFreeform = it }
+        // 角滑已下线（2026-10-02）：该手势需要吞 MIUI 输入流才能屏蔽系统手势，
+        // 而这条链路会 ANR → SystemUI 被杀，故整体移除。设置项一并移除。
 
         section("小白条（手势导航条）")
         switchRow("启用小白条（淡入淡出 / 跟随手势）", Constants.K_GESTURE_HANDLE, Cfg.gestureHandle) { Cfg.gestureHandle = it }

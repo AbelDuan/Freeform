@@ -81,7 +81,7 @@ object Gestures {
      * 「滑到中间停住」判定时长。用户口径：**不强制角度**，滑到中间停住一会儿就切。
      * 260ms 实测太灵敏（刚滑到就触发）⇒ 放宽到 400ms。
      */
-    private val cornerHoldMs get() = 300L
+    private val cornerHoldMs get() = 400L
 
     /** 停住判定允许的抖动范围（按屏幕短边比例，不写死 dp）。 */
     private val cornerHoldSlop get() = minOf(screenW, screenH) * 0.008f
@@ -104,6 +104,9 @@ object Gestures {
 
     /** 命中后本串事件不再交给 MIUI 自己的手势逻辑（避免它再解释一遍）。 */
     @Volatile private var ownMonitor: Any? = null
+    /** 接管中（起手区内屏蔽系统手势用）：只吞 MOVE/UP，DOWN 一律放行。 */
+    @Volatile private var capture = false
+    @Volatile private var captureAt = 0L
     @Volatile private var probeCount = 0
     @Volatile private var lastDispRefresh = 0L
     @Volatile private var swallow = false
@@ -130,21 +133,18 @@ object Gestures {
         val hooked = m.hookMethod(cl, CLS_EVENT_RECEIVER, "onInputEvent",
             arrayOf(android.view.InputEvent::class.java),
             XposedInterface.Hooker { chain ->
+                var consumed = false
                 try {
                     val ev = chain.getArg(0) as? MotionEvent
                     if (ev != null && Cfg.gestures) {
-                        if (probeCount < 8) {
-                            probeCount++
-                            Logx.always(
-                                "探针: 收到事件 action=${ev.actionMasked} x=${ev.rawX.toInt()} y=${ev.rawY.toInt()} " +
-                                    "屏=${screenW}x${screenH}"
-                            )
-                        }
-                        onMotion(ev)
+                        consumed = onMotion(ev)     // ★ 只有"起手区内接管中"才会返回 true
                     }
                 } catch (t: Throwable) {
                     Logx.e("手势处理失败", t)
                 }
+                // ★ 起手区内接管中：吞掉事件（屏蔽系统手势，消除双重手势）；
+                //   其余一切情况原样放行（绝不吞掉别的事件）。
+                if (consumed) return@Hooker null
                 // ★ 永远放行：不吞事件 ⇒ 不屏蔽系统手势（底部上滑回桌面/多分屏照常）
                 chain.proceed()
             })
@@ -260,6 +260,24 @@ object Gestures {
             if (android.os.SystemClock.uptimeMillis() - swallowAt > 700) swallow = false
             return true
         }
+        // ★ 接管窗口（起手区屏蔽）：只吞 MOVE / UP / CANCEL，DOWN 永远放行；
+        //   超时 800ms 或事件结束时立即解除（防"多指通道不投 UP"导致永久吞事件）。
+        val nowMs = android.os.SystemClock.uptimeMillis()
+        if (capture) {
+            if (nowMs - captureAt > 800L) {
+                capture = false
+                Logx.once("cap-timeout", "角滑: 接管超时解除（800ms）")
+            } else {
+                when (ev.actionMasked) {
+                    MotionEvent.ACTION_MOVE -> { onMove(ev); return true }
+                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                        onUp(ev)
+                        capture = false
+                        return true          // 吞掉抬起：不再让系统把它当成"上滑回桌面"
+                    }
+                }
+            }
+        }
         return when (ev.actionMasked) {
             MotionEvent.ACTION_DOWN -> onDown(ev)
             MotionEvent.ACTION_POINTER_DOWN -> onPointerDown(ev)
@@ -278,14 +296,17 @@ object Gestures {
         reset()
         // ★ 每次按下都按当前显示重算一次尺寸：内外屏切换后立即生效，不依赖启动快照
         //   （真机曾出现"展开态仍按外屏 1168 算"⇒ 起手区宽度偏窄、真人摸不到）
-        if (android.os.SystemClock.uptimeMillis() - lastDispRefresh > 2000) {
+        val x = ev.rawX
+        val y = ev.rawY
+        // ★ 用**事件坐标**反推当前是哪块屏（最可靠）：事件 y 超过外屏高度 ⇒ 必定在展开态内屏。
+        //   这样即使 DisplayManager 返回的活跃显示不准，也能立刻纠正（内屏失效就是这么来的）。
+        if (y > screenH || (screenH <= 1712 && y > 1712)) refreshDisplay()
+        else if (android.os.SystemClock.uptimeMillis() - lastDispRefresh > 3000) {
             lastDispRefresh = android.os.SystemClock.uptimeMillis()
             refreshDisplay()
         }
         val w = screenW.toFloat()
         val h = screenH.toFloat()
-        val x = ev.rawX
-        val y = ev.rawY
         // ① 底部正中让位（只让中间那一块，且只在最底 1/8 高之内）：
         //    MIUI 自己的「底部中间上滑进多分屏 / 上滑回桌面」就在这一片。
         val half = CENTER_KEEP_W / 2f
@@ -307,8 +328,14 @@ object Gestures {
                 cornerLastY = y
                 cornerHoldAt = 0L
                 Logx.always("手势: 角滑起手 ✓ 侧=${if (left) "左" else "右"} @${x.toInt()},${y.toInt()} 屏=${screenW}x$screenH（区内=底${(h*(1-CORNER_ZONE_H)).toInt()}以下）")
+                // ★ 起手区内**最小屏蔽**：仅从此刻起接管，只吞 MOVE/UP（DOWN 已放行给系统，
+                //   不影响系统判定起点）；吞咽判定纯算术、无查询无日志 ⇒ 不会像上次那样拖出 ANR。
+                capture = true
+                captureAt = android.os.SystemClock.uptimeMillis()
                 cornerTime = ev.eventTime
-                Logx.v("手势: 角滑起手 侧=${if (left) "左" else "右"} @${x.toInt()},${y.toInt()} 屏=${screenW}x$screenH")
+                // ★ 屏蔽生效的关键：**连 DOWN 一起吞**（返回 true）。
+                //   之前放行 DOWN ⇒ 系统在按下那一刻已进入自己的手势状态机 ⇒ 双重手势（用户实测）。
+                return true
             }
         }
         return false
@@ -456,6 +483,7 @@ object Gestures {
         cornerArmed = false
         cornerBad = false
         cornerHoldAt = 0L
+        capture = false
     }
 
     private fun hypot(dx: Float, dy: Float): Float =
@@ -538,8 +566,19 @@ object Gestures {
     private fun isPlainFullscreen(): Boolean {
         if (splitActive() || soScActive()) return false
         val info = topTask() ?: return false
+        // ★ 桌面不介入（用户 2026-10-02）：桌面是 Rust 进程、滑动不可控，且桌面手势很多，
+        //   模块在桌面上动手势会"很不可控"。前台是桌面 ⇒ 一律不判定、不动作。
+        val pkg = pkgOf(info)
+        if (pkg == null || pkg == DESKTOP_PKG || DESKTOP_ALT.any { pkg.startsWith(it) }) {
+            Logx.once("corner-desktop", "角滑: 前台是桌面/无任务（$pkg），不介入")
+            return false
+        }
         return modeOf(info) == MODE_FULLSCREEN
     }
+
+    /** 桌面进程（本机桌面为 Rust 实现的 hyper_launcher）。 */
+    private const val DESKTOP_PKG = "com.miui.home"
+    private val DESKTOP_ALT = listOf("com.miui.home", "hyper_launcher", "com.android.launcher")
 
     /** `WINDOWING_MODE_FULLSCREEN`。 */
     private const val MODE_FULLSCREEN = 1
@@ -715,19 +754,25 @@ object Gestures {
             //   （实测回来的是 1168x1712，而机器在内屏 1672x2364）⇒ 起手区按错的宽度算，
             //   用户在内屏摸的位置会落在"区外"（我合成坐标能中、真人摸不到）。
             //   用 DisplayManager 取**默认显示**的真实尺寸；失败再退回老办法。
+            // ★★ 2026-10-02 再修：`Display.DEFAULT_DISPLAY` 在展开态**仍解析到外屏**
+            //    （日志一直是 1168x1712），所以"内屏手势失效"。改为遍历所有显示，取
+            //    **state==ON 且尺寸最大**的那块（展开态=内屏 1672x2364；折叠态=外屏 1168x1712）。
             val ok = runCatching {
                 val dmgr = ctx.getSystemService(Context.DISPLAY_SERVICE)
-                    as? android.hardware.display.DisplayManager
-                val d = dmgr?.getDisplay(android.view.Display.DEFAULT_DISPLAY)
-                if (d != null) {
+                    as? android.hardware.display.DisplayManager ?: return@runCatching false
+                var bestW = 0; var bestH = 0
+                for (d in dmgr.displays) {
+                    if (d.state != android.view.Display.STATE_ON) continue
                     val p = android.graphics.Point()
                     d.getRealSize(p)
-                    if (p.x > 0 && p.y > 0) {
-                        dm.widthPixels = p.x
-                        dm.heightPixels = p.y
-                        dm.density = ctx.resources.displayMetrics.density
-                        true
-                    } else false
+                    if (p.x <= 0 || p.y <= 0) continue
+                    // 取"长边更大"的活跃显示（展开态内屏长边 2364 > 外屏 1712）
+                    if (maxOf(p.x, p.y) > maxOf(bestW, bestH)) { bestW = p.x; bestH = p.y }
+                }
+                if (bestW > 0) {
+                    dm.widthPixels = bestW; dm.heightPixels = bestH
+                    dm.density = ctx.resources.displayMetrics.density
+                    true
                 } else false
             }.getOrDefault(false)
             if (!ok) {
