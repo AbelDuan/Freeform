@@ -218,10 +218,12 @@ object Gestures {
     }
 
     private fun onUp(ev: MotionEvent): Boolean {
-        // 命中时**强制同步**读一次配置：`Cfg` 平时是节流异步刷新（1500ms），
-        // 否则用户刚改完开关、手势仍按旧快照执行（真机踩过：开关已开却报 开关=false）。
-        // 这里在抬指时才调用一次，不在热路径上，开销可接受。
-        runCatching { Cfg.reload() }
+        // ⚠️ 这里是 MIUI 全局手势监视器的**输入派发线程**：任何同步 binder 都可能让它错过派发时限
+        //    → `ANR in com.android.systemui [Gesture Monitor] MultiTaskSwitch ... MotionEvent(action=UP)`
+        //    → SystemUI 被杀（2026-10-01 真机复现两次）。而 reload() 每次都同步走 LSPosed
+        //    `getRemotePreferences`；后果是"抬手那一刻窗口连同刚拖好的位置一起没了"，
+        //    看起来就像"位置记不住"。所以这里只允许**异步**刷新：本次判定用上一份快照。
+        runCatching { Cfg.reloadAsync() }
         var consumed = false
         if (cornerArmed && !cornerBad) {
             val dx = ev.rawX - cornerX

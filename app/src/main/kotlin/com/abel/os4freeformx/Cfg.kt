@@ -112,6 +112,23 @@ object Cfg {
     private var lastReload = 0L
 
     /**
+     * **输入热路径专用**：异步取一次配置，绝不阻塞调用线程。
+     *
+     * 为什么必须异步（2026-10-01 真机复现两次，SystemUI 被杀的元凶）：
+     * `Gestures.onUp()` 跑在 MIUI 全局手势监视器 `[Gesture Monitor] MultiTaskSwitch` 的
+     * **输入派发线程**上，而 `reload()` 每次都同步走 LSPosed 的 `getRemotePreferences`（binder）。
+     * 这次调用一超时，输入派发就报
+     * `Input dispatching timed out ... MotionEvent(action=UP)` → ANR → **SystemUI 进程被杀**。
+     * 后果正是用户看到的现象：抬手那一刻窗口连同"刚拖好的位置"一起没了，记录链路（relayout）
+     * 来不及落盘 ⇒ 表现为「位置记不住 / 记忆不生效」。
+     *
+     * 代价：改完开关后**当次**手势仍按上一份快照判定，下一次手势生效 —— 不能拿 SystemUI 的命换。
+     */
+    fun reloadAsync() {
+        runCatching { pool.execute { runCatching { reload() } } }
+    }
+
+    /**
      * 热路径用的配置刷新：节流后**异步**经模块 App 的 [StoreProvider] 取真实值。
      *
      * 为什么不用 LSPosed 的 remote preferences：它在被 hook 的进程里是快照，App 改配置后

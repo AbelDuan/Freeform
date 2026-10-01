@@ -511,7 +511,12 @@ object Hooks {
                         try {
                             Cfg.reloadThrottled()
                             val pkg = if (pkgIdx >= 0) chain.getArg(pkgIdx) as? String else null
-                            if (pkg != null) Logx.once("ffr-$sig-$pkg", "小窗 bounds 计算: $sig pkg=$pkg -> $res")
+                            // 前几次调用都打出来（不能只 once）：用户反馈"位置记不住"时，
+                            // 必须能看出**他用的那条打开路径到底有没有走进这个钩子**。
+                            if (pkg != null) {
+                                val hit = ffrHits.merge("$sig|$pkg", 1, Int::plus) ?: 1
+                                if (hit <= 6) Logx.always("小窗 bounds 计算[$hit]: $sig pkg=$pkg -> $res")
+                            }
                             // isMiniFreeformMode 只对 13 参数版可判断；更短的定制重载一律按普通小窗处理
                             val mini = miniIdx >= 0 && (chain.getArg(miniIdx) as? Boolean == true)
                             // ★ 注意：不能再写 `Cfg.rememberBounds &&` 作为整段门禁。
@@ -555,6 +560,25 @@ object Hooks {
                 }
             }
         Logx.always("小窗 bounds 计算共挂 ${n} 个重载")
+
+        // ★ 诊断（用户反馈"位置记不住"）：把可能产出小窗 bounds 的入口全列出来。
+        //   只挂 getFreeformRect/getCustomFreeformRect 是**盲区** —— 别的打开路径（例如
+        //   defaultLaunchBounds 系列）根本不经过这两个方法，记忆就不会被套用。
+        //   先靠这行日志确认还有哪些入口，再决定补挂。
+        listOf(
+            Constants.CLS_MULTIWINDOW_UTILS,
+            "com.android.wm.shell.multitasking.miuifreeform.MiuiFreeformModeUtils",
+            "com.android.wm.shell.multitasking.common.utils.MultiTaskingCommonUtils"
+        ).forEach { cn ->
+            val c = runCatching { Class.forName(cn, false, cl) }.getOrNull()
+            if (c == null) {
+                Logx.always("候选入口类不存在: $cn")
+            } else {
+                c.declaredMethods.filter { it.returnType == Rect::class.java }.forEach { mm ->
+                    Logx.always("候选入口 $cn#${mm.name}${mm.parameterTypes.joinToString(",", "(", ")") { it.simpleName }}")
+                }
+            }
+        }
     }
 
     // ---------------- 2.4 沉浸式底栏 ----------------
@@ -906,6 +930,13 @@ object Hooks {
     private fun injectRatioRow(container: android.view.ViewGroup?, owner: Any?) {
         if (container == null || owner == null) return
         if (container.findViewWithTag<View>(TAG_RATIO_ROW) != null) return
+        // ★ 只在小窗里注入（用户 2026-10-01 反馈：全屏界面点三点时也出现了这些比例功能）。
+        //   MIUI 在非小窗场景同样会建 caption 容器 ⇒ 必须按窗口模式门禁。
+        val mode = field(owner, "mRunningTaskInfo")?.let { taskWindowingMode(it) } ?: -1
+        if (mode != MODE_FREEFORM) {
+            Logx.always("比例行跳过：非小窗（mode=$mode）")
+            return
+        }
         val ctx = container.context
         val row = android.widget.LinearLayout(ctx)
         row.orientation = android.widget.LinearLayout.HORIZONTAL
@@ -916,15 +947,17 @@ object Hooks {
         row.layoutParams = android.widget.LinearLayout.LayoutParams(
             android.view.ViewGroup.LayoutParams.MATCH_PARENT, extraRowPx()
         )
-        val key = menuKey(owner)
+        // ① 原始：清掉本应用的尺寸记忆，交回 MIUI 自己的默认比例/尺寸（用户要求：能切回"原始"）
+        row.addView(ratioButton(ctx, "原始") { resetToOriginal(owner) })
         RATIO_BUTTONS.forEach { (label, ratio) ->
             row.addView(ratioButton(ctx, label) { pickRatio(owner, ratio, label, row) })
         }
-        // 用户要求：暂时取消横竖屏切换，只做比例调整，方向交给系统。
-        // 因此这一行只放比例按钮，不再放手机形状的方向按钮。
+        // ② 横竖屏：手机轮廓图标（显示"点一下会变成哪个方向"），点了把窗口转 90°。
+        //    BASELINE 版就有它；上一版"暂时取消横竖屏切换"后用户明确要回来 ⇒ 恢复。
+        row.addView(directionButton(ctx, owner))
         container.addView(row)
         container.requestLayout()
-        Logx.always("比例行已注入三点菜单（${RATIO_BUTTONS.size} 个按钮，无方向按钮）")
+        Logx.always("比例行已注入三点菜单（原始 + ${RATIO_BUTTONS.joinToString("/") { it.first }} + 方向，共 ${RATIO_BUTTONS.size + 2} 个）")
     }
 
 
@@ -983,21 +1016,75 @@ object Hooks {
         return tv
     }
 
-    /** 菜单方向状态的 key：与 `applyRatio` 里的记忆 key 保持一致（pkg|屏幕）。 */
-    private fun menuKey(owner: Any): String {
-        val pkg = field(owner, "mRunningTaskInfo")?.let { taskPkg(it) } ?: return "?"
-        val ctx = AppCtx.get() ?: return pkg
-        return Bounds.key(pkg, Bounds.screenKey(ctx))
-    }
+    /** 关掉三点菜单（一次进菜单就完成"方向 + 比例"）。 */
+    private fun closeMenu(owner: Any) = runCatching {
+        val controller = field(owner, "mMiuiDecorationController") ?: return@runCatching
+        controller.javaClass.getMethod("closeHandleMenu").invoke(controller)
+    }.onFailure { Logx.e("关菜单失败", it) }
 
     /** 点某个比例：按当前方向状态定下尺寸，然后关掉菜单（一次进菜单就完成）。 */
     private fun pickRatio(owner: Any, picked: Float, label: String, row: android.view.View) {
         applyRatio(owner, picked, false, "比例$label")
-        // 关掉菜单：一次进菜单就完成「方向 + 比例」
+        closeMenu(owner)
+    }
+
+    /** 当前小窗的**可视**宽高比（宽/高）；取不到按 1 处理。 */
+    private fun currentAspect(owner: Any): Float = runCatching {
+        val ctl = cls(Constants.CLS_MULTITASKING_CTL).getMethod("getInstance").invoke(null)
+        val repo = ctl.javaClass.getMethod("getMultiTaskingTaskRepository").invoke(ctl)
+        val vis = call(freeformTask(repo, taskId(owner)), "getScaledBounds") as? Rect
+        if (vis != null && vis.height() > 0 && vis.width() > 0) vis.width().toFloat() / vis.height() else 1f
+    }.getOrDefault(1f)
+
+    /** 手机轮廓方向图标：`landscape=true` 画宽扁（横）、false 画窄高（竖）。 */
+    private fun directionButton(ctx: Context, owner: Any): android.view.View {
+        val holder = android.widget.FrameLayout(ctx)
+        holder.layoutParams = android.widget.LinearLayout.LayoutParams(0, extraRowPx(), 1f).apply {
+            marginStart = (2 * ctx.resources.displayMetrics.density).toInt()
+            marginEnd = (2 * ctx.resources.displayMetrics.density).toInt()
+        }
+        val phone = android.view.View(ctx)
+        // 图标显示"点一下会变成哪个方向"：当前是竖（aspect<1）就画横的轮廓。
+        phoneShape(phone, ctx, currentAspect(owner) < 1f)
+        holder.addView(phone)
+        holder.setOnClickListener {
+            val aspect = currentAspect(owner).takeIf { it > 0f } ?: 1f
+            // 转 90°：目标形状 = 当前形状的倒数。applyRatio 的 picked 是"横屏形态的比例"，
+            // 所以竖屏窗要传它的倒数（见 Ratio.kt 的 ratioFor 约定）。
+            val portraitNow = aspect < 1f
+            val target = 1f / aspect
+            val picked = if (portraitNow) 1f / target else target
+            Logx.always("横竖屏: 当前 aspect=%.3f -> 目标 %.3f（task=%d）".format(aspect, target, taskId(owner)))
+            applyRatio(owner, picked, false, "横竖屏")
+            closeMenu(owner)
+        }
+        return holder
+    }
+
+    /**
+     * 「原始」：忘掉该应用在当前屏的记忆，关窗 → 官方接口重开 ⇒ 回到 MIUI 自己的默认比例与尺寸。
+     * （用户 2026-10-01 要求：比例调过头以后要有路切回原始。）
+     */
+    private fun resetToOriginal(owner: Any) {
         runCatching {
-            val controller = field(owner, "mMiuiDecorationController") ?: return@runCatching
-            controller.javaClass.getMethod("closeHandleMenu").invoke(controller)
-        }.onFailure { Logx.e("关菜单失败", it) }
+            val ctx = AppCtx.get() ?: return@runCatching
+            val info = field(owner, "mRunningTaskInfo") ?: return@runCatching
+            val pkg = taskPkg(info) ?: return@runCatching
+            val screen = Bounds.screenKeyFor(ctx, (field(info, "displayId") as? Int) ?: -1)
+            val key = Bounds.key(pkg, screen)
+            Bounds.forget(ctx, pkg, screen)
+            pendingTarget.remove(key)
+            val at = taskBounds(info) ?: Rect()
+            val id = taskId(owner)
+            Logx.always("回原始: 已遗忘 $key，关窗→官方接口重开（位置 $at 保留，比例交回系统）")
+            closeMenu(owner)
+            Handler(Looper.getMainLooper()).postDelayed({
+                val closed = closeFreeformViaMiui(owner)
+                Handler(Looper.getMainLooper()).postDelayed({
+                    runCatching { relaunchViaMiuiApi(owner, id, at) }
+                }, if (closed) 350 else 0)
+            }, 150)
+        }.onFailure { Logx.e("回原始失败", it) }
     }
 
     /**
@@ -1134,6 +1221,11 @@ object Hooks {
      * 又出现 `记住 … = 0,692,1672,2364`）。
      */
     private val suppressRecord = ConcurrentHashMap<String, Long>()
+
+    /** 诊断：每个（重载签名|包名）被调了几次 —— 只打前 6 次，用来确认"哪条打开路径走进来了"。 */
+    private val ffrHits = ConcurrentHashMap<String, Int>()
+    /** 诊断：每个 task 做过几次"记忆 vs 实际左上角"核对（前 3 次）。 */
+    private val memChecked = ConcurrentHashMap<Int, Int>()
 
     /** 全屏里点比例：直接用 MIUI 自己的「全屏→小窗」入口开小窗，打开时会套用刚写下的记忆。 */
     private fun openAsFreeform(decoration: Any, id: Int) {
@@ -1475,6 +1567,59 @@ object Hooks {
         }.onFailure { Logx.e("配置套用失败", it) }
     }
 
+    /**
+     * 把"没走建窗钩子"的小窗补到记忆位置。
+     *
+     * ⚠️ 2026-10-01 真机教训：**不能只发 setBounds**。只推 bounds 不动装饰 ⇒
+     * 触摸区/三点栏/角柄仍按旧位置摆 ⇒ 用户实测「小窗处于不可操作状态」。
+     * 走本仓库**已经验证一致**的那条路：关闭小窗 → 用 MIUI 官方接口按目标位置重开
+     * （与三点菜单切比例同一条路径），重开后 bounds/scale/装饰/触摸区由 MIUI 一次建好。
+     */
+    private fun reopenAtMemory(ctrl: Any, target: Rect) = runCatching {
+        val id = taskId(ctrl)
+        val ctx = AppCtx.get()
+        val info = field(ctrl, "mRunningTaskInfo")
+        val pkg = info?.let { taskPkg(it) }
+        if (ctx != null && pkg != null) {
+            val key = Bounds.key(pkg, Bounds.screenKey(ctx))
+            // ★ 关键：把"这次要用的 rect"登记成 pendingTarget —— 重开时建窗钩子会优先用它
+            //   （与三点菜单切比例同一条机制），否则重开又拿到旧的记忆值，白重开一次。
+            pendingTarget[key] = PendingTarget(Rect(target), android.os.SystemClock.elapsedRealtime())
+            // 关闭→重开期间屏蔽记录（否则 MIUI 摆成全屏那一下会被写进记忆）
+            suppressRecord[key] = android.os.SystemClock.elapsedRealtime() + 8000
+        }
+        Logx.always("位置/尺寸对齐: 关闭→官方接口重开到 $target（task=$id）")
+        val closed = closeFreeformViaMiui(ctrl)
+        Handler(Looper.getMainLooper()).postDelayed({
+            runCatching {
+                if (!relaunchViaMiuiApi(ctrl, id, target)) Logx.e("对齐: 官方接口重开失败")
+            }
+        }, if (closed) 350 else 0)
+    }.onFailure { Logx.e("位置/尺寸对齐失败", it) }
+
+    /** 真实 rect → 可视 rect（MIUI 的 scaleBounds 就是"以左上角为锚"乘 scale）。 */
+    private fun scaled(r: Rect, s: Float): Rect =
+        if (s <= 0f || kotlin.math.abs(s - 1f) < 0.0001f) Rect(r)
+        else Rect(r.left, r.top, r.left + (r.width() * s).toInt(), r.top + (r.height() * s).toInt())
+
+    /** 可视 rect → 真实 rect（反算）。"按记忆中的尺寸新建"就靠它：新建时把 rect 给 MIUI， */
+    /** MIUI 按**它自己的** scale 渲染 ⇒ 可视 = rect × scale = 记忆尺寸（我们从不推 scale）。 */
+    private fun unscaled(v: Rect, s: Float): Rect =
+        if (s <= 0f || kotlin.math.abs(s - 1f) < 0.0001f) Rect(v)
+        else Rect(
+            v.left, v.top,
+            v.left + maxOf((v.width() / s).toInt(), 1),
+            v.top + maxOf((v.height() / s).toInt(), 1)
+        )
+
+    /** MIUI 当前的 freeformScale（只读；模块从不写它）。 */
+    private fun currentScale(ctrl: Any): Float = runCatching {
+        val ctl = cls(Constants.CLS_MULTITASKING_CTL).getMethod("getInstance").invoke(null)
+        val repo = ctl.javaClass.getMethod("getMultiTaskingTaskRepository").invoke(ctl)
+        val ti = repo.javaClass.getMethod("getMiuiFreeformTaskInfo", Integer.TYPE).invoke(repo, taskId(ctrl))
+        (call(ti, "getFreeformScale") as? Float) ?: 0f
+    }.getOrDefault(0f)
+
     private fun installBoundsRecorder(m: MainHook, cl: ClassLoader) {
         // 证据探针：MIUI 的手势分发层（若 handleDown/UpEvent 不派发，至少这里能看到）
         listOf("dispatchDownToDecoration", "dispatchMoveToDecoration", "dispatchUpToDecoration").forEach { name ->
@@ -1538,6 +1683,42 @@ object Hooks {
                     val freeform = info != null && taskWindowingMode(info) == MODE_FREEFORM
                     val visible = info?.let { field(it, "isVisible") as? Boolean } == true
 
+                    // ★ 开窗后对账（用户要求：**左上角必须一致 + 尺寸按记忆新建**）：
+                    //   记忆里存的是「可视矩形 ÷ 记录时 scale」。这里统一到**可视空间**比较：
+                    //   不一致（位置或尺寸任一不对）就按 `可视 ÷ 当前 scale` 反算 rect，关闭→官方接口重开一次。
+                    //   MIUI 自己的 scale 一直由 MIUI 决定（模块从不写），所以这条不会拆坏装饰。
+                    if (freeform && visible) {
+                        val id = taskId(ctrl)
+                        val nth = memChecked.merge(id, 1, Int::plus) ?: 1
+                        if (nth <= 3) runCatching {
+                            val ctx = AppCtx.get()
+                            val pkg = taskPkg(info)
+                            val dispId = (field(info, "displayId") as? Int) ?: -1
+                            val screen = Bounds.screenKeyFor(ctx, dispId)
+                            val memo = if (ctx != null && pkg != null) Bounds.get(ctx, pkg, screen) else null
+                            val sMemo = if (ctx != null && pkg != null) Bounds.getScale(ctx, pkg, screen) else 0f
+                            val sNow = currentScale(ctrl)
+                            val realNow = taskBounds(info)
+                            if (pkg == null) {
+                                Logx.always("核对: task=$id 取不到包名")
+                            } else if (memo == null) {
+                                Logx.always("核对: task=$id pkg=$pkg 该屏无记忆，实际=$realNow")
+                            } else if (realNow != null) {
+                                val visMemo = if (sMemo > 0f) scaled(memo, sMemo) else memo
+                                val visNow = if (sNow > 0f) scaled(realNow, sNow) else realNow
+                                if (visMemo == visNow) {
+                                    Logx.always("核对通过: task=$id pkg=$pkg 可视=$visNow")
+                                } else {
+                                    Logx.e(
+                                        "核对不一致: task=$id pkg=$pkg 目标(可视)=$visMemo 实际(可视)=$visNow " +
+                                            "sNow=$sNow ⇒ 按记忆位置+尺寸重开"
+                                    )
+                                    if (nth == 1 && sNow > 0f) reopenAtMemory(ctrl, unscaled(visMemo, sNow))
+                                }
+                            }
+                        }
+                    }
+
                     // 拖动（移动位置）落盘：手势结束后 MIUI 通过 onTaskInfoChanged 带来新 bounds。
                     // 与缩放共用 record()，保证写进去的永远是一对 (bounds, scale)。
                     val endedAt = gestureEndedAt[ctrl]
@@ -1554,66 +1735,101 @@ object Hooks {
             })
     }
 
-    private fun record(controller: Any, why: String) {
+    /**
+     * 记录一次「用户调整结果」——**先做稳定性判定，两次读数一致才落盘**。
+     *
+     * ⚠️ 2026-10-01 真机 bug（用户实测）："每开关一次小窗，窗口就往屏幕右下漂一点"。
+     * 根因：关闭/重开的那一刻 MIUI 会把任务摆成**过渡态**（越界/偏移的 rect，日志实测
+     * `真实=Rect(671,660-1841,2530)`），旧代码把这份过渡值**原样**写进记忆 ⇒ 下次开窗就从
+     * 更右下的位置开始，一轮一轮累积成"不断往右下移动"。
+     * 现在：读一次快照 → 350ms 后再读一次，两次 (bounds, scale) 完全一致才写；
+     * 窗口已关 / 已不是小窗 / 读数还在变 ⇒ 放弃这一次（宁可不记，也绝不记错）。
+     */
+    private fun record(controller: Any, why: String, attempt: Int = 1) {
         try {
             Cfg.reloadThrottled()
             if (!Cfg.rememberBounds) return
-            val info = field(controller, "mRunningTaskInfo") ?: return
-            val mode = taskWindowingMode(info)
-            if (mode != MODE_FREEFORM) {
-                Logx.once("rec-mode-$mode", "记录跳过：windowingMode=$mode（非自由小窗）")
-                return
-            }
-            // 窗口已经不可见（关闭/切走）时读到的 bounds 往往是回退后的旧状态 —— 不记，
-            // 否则延时/收尾的 gestureTaskInfo 会把旧值写回记忆（真机：记忆"永远慢一拍"）。
-            val visible = field(info, "isVisible") as? Boolean == true
-            if (!visible) {
-                Logx.once("rec-hidden", "记录跳过：任务不可见，bounds 可能是回退态（$why）")
-                return
-            }
-            val pkg = taskPkg(info)
-            if (pkg == null) {
-                Logx.once("rec-nopkg", "记录跳过：取不到包名（$info）")
-                return
-            }
-            // 用户调的大小体现在 freeformScale 上 → 必须一起记（真机：bounds 尺寸恒定 836x1672）
-            var scale = 0f
-            runCatching {
-                val ctl2 = cls(Constants.CLS_MULTITASKING_CTL).getMethod("getInstance").invoke(null)
-                val repo2 = ctl2.javaClass.getMethod("getMultiTaskingTaskRepository").invoke(ctl2)
-                val ti2 = repo2.javaClass.getMethod("getMiuiFreeformTaskInfo", Integer.TYPE)
-                    .invoke(repo2, taskId(controller))
-                scale = (call(ti2, "getFreeformScale") as? Float) ?: 0f
-            }
-            // 对照日志：真实 bounds（我们记的） vs 可视 rect（用户看到/操作的） vs scale
-            runCatching {
-                // 控制器上没有这个字段（在装饰基类上），必须走单例，否则永远打不出来
-                val ctl = cls(Constants.CLS_MULTITASKING_CTL).getMethod("getInstance").invoke(null)
-                val repo = ctl.javaClass.getMethod("getMultiTaskingTaskRepository").invoke(ctl)
-                val ti = repo.javaClass.getMethod("getMiuiFreeformTaskInfo", Integer.TYPE)
-                    .invoke(repo, taskId(controller))
-                if (ti != null) {
-                    Logx.e(
-                        "记录核对($why): 真实=${taskBounds(info)} 可视=${call(ti, "getScaledBounds")} " +
-                            "scale=${call(ti, "getFreeformScale")} 将存scale=$scale"
-                    )
+            val a = snapshot(controller, why) ?: return
+            Handler(Looper.getMainLooper()).postDelayed({
+                runCatching {
+                    val b = snapshot(controller, if (attempt == 1) "$why/复核" else "$why/复核$attempt") ?: return@runCatching
+                    if (b.bounds == a.bounds && kotlin.math.abs(b.scale - a.scale) <= 0.0001f) {
+                        persist(b.pkg, b.bounds, why, b.scale, b.screen)
+                    } else if (attempt < 3) {
+                        // 还在动（真机实测：350ms 后 scale 仍从 0.66 变到 0.132）⇒ 隔久一点再看，
+                        // 三次都不稳才放弃 —— 只写"两次读数一致"的最终态，绝不写过渡态。
+                        Logx.once(
+                            "rec-retry-$why",
+                            "记录复核$attempt 不稳: ${a.bounds}@${a.scale} -> ${b.bounds}@${b.scale}，第 ${attempt + 1} 次重试"
+                        )
+                        record(controller, why, attempt + 1)
+                    } else {
+                        Logx.once(
+                            "rec-unstable-final-$why",
+                            "记录放弃（$why 三次复核都不稳）: ${a.bounds}@${a.scale} -> ${b.bounds}@${b.scale}"
+                        )
+                    }
                 }
-            }
-            // 折叠屏内外屏分开记录：用**任务所在的 display** 算 key（外屏是另一个 displayId）
-            val dispId = (field(info, "displayId") as? Int) ?: -1
-            val keyScreen = Bounds.screenKeyFor(AppCtx.get(), dispId)
-            if (boundsLog.add("$pkg|$keyScreen")) {
-                Logx.e("记忆 key: pkg=$pkg displayId=$dispId -> $keyScreen")
-            }
-            val bounds = taskBounds(info)
-            if (bounds == null || bounds.width() <= 0 || bounds.height() <= 0) {
-                Logx.once("rec-nobounds", "记录跳过：bounds=$bounds")
-                return
-            }
-            persist(pkg, bounds, why, scale, keyScreen)
+            }, 350L * attempt)
         } catch (t: Throwable) {
             Logx.e("record 失败", t)
         }
+    }
+
+    /** 一次读数快照（小窗 + 可见 + 非迷你/贴边 + 包名 + bounds + scale + 屏幕键）。 */
+    private class Snap(val pkg: String, val bounds: Rect, val scale: Float, val screen: String)
+
+    private fun snapshot(controller: Any, why: String): Snap? {
+        val info = field(controller, "mRunningTaskInfo") ?: return null
+        val mode = taskWindowingMode(info)
+        if (mode != MODE_FREEFORM) {
+            Logx.once("rec-mode-$mode", "记录跳过：windowingMode=$mode（非自由小窗）")
+            return null
+        }
+        if (field(info, "isVisible") as? Boolean != true) {
+            Logx.once("rec-hidden", "记录跳过：任务不可见，bounds 可能是回退态（$why）")
+            return null
+        }
+        val pkg = taskPkg(info)
+        if (pkg == null) {
+            Logx.once("rec-nopkg", "记录跳过：取不到包名（$why）")
+            return null
+        }
+        if (isMiniOrPinned(controller)) {
+            Logx.once("rec-mini-$pkg", "记录跳过：迷你/贴边态（$why）")
+            return null
+        }
+        val bounds = taskBounds(info)
+        if (bounds == null || bounds.width() <= 0 || bounds.height() <= 0) {
+            Logx.once("rec-nobounds", "记录跳过：bounds=$bounds（$why）")
+            return null
+        }
+        // 用户调的大小体现在 freeformScale 上 → 必须一起记（真机：bounds 尺寸恒定、只有 scale 变）
+        var scale = 0f
+        var vis: Rect? = null
+        runCatching {
+            // 控制器上没有这个字段（在装饰基类上），必须走单例，否则永远打不出来
+            val ctl = cls(Constants.CLS_MULTITASKING_CTL).getMethod("getInstance").invoke(null)
+            val repo = ctl.javaClass.getMethod("getMultiTaskingTaskRepository").invoke(ctl)
+            val ti = repo.javaClass.getMethod("getMiuiFreeformTaskInfo", Integer.TYPE).invoke(repo, taskId(controller))
+            if (ti != null) {
+                scale = (call(ti, "getFreeformScale") as? Float) ?: 0f
+                vis = call(ti, "getScaledBounds") as? Rect
+                Logx.e("记录核对($why): 真实=$bounds 可视=$vis scale=$scale")
+            }
+        }
+        // ★★ 存 **可视矩形 ÷ 当时的 scale**（用户方案 + 仓库「方案 B」）：
+        //    这样恢复端**只返回一个 rect** 就能同时还原位置与尺寸 ——
+        //    MIUI 建窗时按它自己的 scale 渲染该 rect ⇒ 可视 = rect × scale = 记忆尺寸 ✓
+        //    关键：模块**从不推 scale**（见 NOTES 40.3 的装饰错位事故），尺寸靠 rect 反算出来。
+        val store = if (scale > 0f && vis != null && vis.width() > 0 && vis.height() > 0) {
+            unscaled(vis, scale)
+        } else bounds
+        // 折叠屏内外屏分开记录：用**任务所在的 display** 算 key（外屏是另一个 displayId）
+        val dispId = (field(info, "displayId") as? Int) ?: -1
+        val screen = Bounds.screenKeyFor(AppCtx.get(), dispId)
+        if (boundsLog.add("$pkg|$screen")) Logx.e("记忆 key: pkg=$pkg displayId=$dispId -> $screen")
+        return Snap(pkg, store, scale, screen)
     }
 
     /**

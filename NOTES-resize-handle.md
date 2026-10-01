@@ -1239,3 +1239,53 @@ aapt2 起不来；且 Debian 的 aapt2 是 2.19，对 `res/values/styles.xml` �
 `Cfg` 已经有异步路径 `refreshAsync()/reloadThrottled()`（线程池 + StoreProvider，注释里写明
 "不能同步调 provider"）；把它换成触发异步刷新 + 用上一份快照做本次判定，
 或至少把 `Cfg.reload()` 丢到后台线程（代价：改完开关后第一次手势可能仍按旧值）。
+
+### 40.8 用户三轮实测暴露的 3 个真 bug（已修）+ 尺寸记忆的最终设计（2026-10-01）
+
+**① 小窗"不可操作"** —— 我在 40.7 之前加过一版"只 push setBounds"的位置对齐：
+只改 bounds 不动装饰 ⇒ 触摸区/三点/角柄仍按旧位置摆 ⇒ 用户实测「小窗处于不可操作状态」。
+**已删**，改成**关闭 → MIUI 官方接口重开**（与三点菜单切比例同一条已验证一致的路径；
+重开前把目标 rect 登记进 `pendingTarget`，否则建窗钩子又会拿到旧记忆）。
+
+**② 每开关一次小窗就往屏幕右下漂** —— 关闭/重开那一刻 MIUI 会把任务摆成**过渡态**
+（实测 `真实=Rect(671,660-1841,2530)`、scale 从 0.66 变到 0.132），记录端把过渡值原样写进记忆
+⇒ 一轮一轮累积成"不断向屏幕右下移动"。
+**已修**：记录前做**稳定性判定** —— 读一次快照 → 350/700/1050ms 各复核一次，
+**两次 (bounds, scale) 完全一致才落盘**，三次都不稳就放弃（宁可不记，绝不记错）。
+实测：三轮开关后记忆值三轮完全一致（`816,1178,1986,3048` 不再变化）。
+
+**③ SystemUI 被 ANR 杀掉（用户"位置记不住"的真凶）** ——
+`Gestures.onUp()` 跑在 MIUI 全局手势监视器 `[Gesture Monitor] MultiTaskSwitch` 的**输入派发线程**上，
+却同步调 `Cfg.reload()`（每次都走 LSPosed `getRemotePreferences` binder）。超时即：
+`Input dispatching timed out ... MotionEvent(action=UP)` → ANR → `Process com.android.systemui has died`。
+后果正好是用户现象：**抬手那一刻窗口连同刚拖好的位置一起没了**，记录链路（relayout）来不及落盘
+⇒ 重开当然是旧位置。真机复现两次（18:22 与 18:36，同一签名）。
+**已修**：新增 `Cfg.reloadAsync()`（走线程池），输入线程上禁止任何同步 binder。
+代价：改完开关后当次手势按上一份快照判定。
+
+**④ 尺寸记忆的最终设计（用户口径：「只需要左上角一致 + 按记忆中的尺寸新建」）**
+```
+记录：store = 可视矩形(getScaledBounds) ÷ 当时的 freeformScale      // 方案 B
+恢复：把 store 原样返回给建窗钩子 → MIUI 按**它自己的** scale 渲染     // 从不推 scale
+对账：小窗出现后比较【可视空间】的目标 vs 实际
+      不一致（位置或尺寸）⇒ 按 `目标可视 ÷ 当前 scale` 反算 rect，
+      登记 pendingTarget → 关闭 → 官方接口重开一次 ⇒ 位置与尺寸一起到位
+```
+实测日志：`核对通过: 可视=Rect(824,455,1594,1689)`、
+`核对不一致: 目标(可视)=Rect(824,455,1594,1689) 实际=Rect(824,455,1309,1231) ⇒ 按记忆位置+尺寸重开`
+—— 两次的**左上角 (824,455) 完全一致**，只重建尺寸 ✓。
+⚠️ 旧记忆（没有 `@scale`，或旧版漂移写入的脏值）会被当成"只有位置"处理；用三点菜单新的
+**「原始」按钮**（遗忘该应用记忆 + 官方接口重开）即可清掉脏值回到系统默认。
+
+### 40.9 三点菜单（用户 2026-10-01 要求）
+- **只在小窗里注入**：`injectRatioRow()` 现在先判 `mRunningTaskInfo.windowingMode == 5`，
+  非小窗（含"小窗最大化成全屏后仍带 caption"的场景）打 `比例行跳过：非小窗（mode=…）` 并退出。
+- **比例行内容恢复为**：`原始` + `16:9` + `4:3` + `1:1` + **方向（手机轮廓）按钮**。
+  `原始` = 遗忘该应用记忆 → 官方接口重开（回到 MIUI 默认比例/尺寸）；
+  方向按钮 = 按当前形状的倒数转 90°（上一版"暂时取消横竖屏切换"把 `phoneShape` 变成了死代码，现已恢复）。
+
+### 40.10 部署纪律（本轮踩了 3 次，已脚本化）
+每次 `pm install -r` 都会换 codePath，而 LSPosed v2.2.0 **不会**跟着更新 `modules.apk_path`
+⇒ 模块完全不注入（logcat 里 OS4FreeFromX 一条都没有）。已修的表：
+`update modules set apk_path=? where module_pkg_name='com.abel.os4freeformx'`（+ 清 -wal/-shm/journal）。
+**一键脚本：`tools/deploy.sh`**（构建 → 安装 → 改表 → 重启 SystemUI → 校验 `Loaded module`）。
