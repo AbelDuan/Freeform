@@ -566,13 +566,16 @@ object Hooks {
                                         //        adjustFreeFormBoundsInMovableBounds / scaleDownIfNeeded
                                         //        边界判定仍然成立，超出就由 MIUI 弹回，**模块不自己做夹取**
                                         //    （整块替换曾经绕过这套机制 ⇒ 真机出现"半截在屏幕外"✗）
+                                        // ★★★ 2026-10-05 用户反馈：**旋转后比例被切回原始**。
+                                        //    根因就是这几行"只挪左上角、尺寸用系统默认"⇒ 比例必然回到 MIUI 原始比例。
+                                        //    现在改为：**位置 + 比例一起套用**（整块用记忆矩形）：
+                                        //      · 位置/尺寸都来自记忆（由"切换比例"或用户拖拽写入）
+                                        //      · 超界仍由 MIUI 自己的边界机制弹回（不自己做夹取）
                                         val systemDefault = Rect(res)
-                                        val target = Rect(res).apply { offsetTo(memo.left, memo.top) }
-                                        if (rectIdx >= 0) (chain.getArg(rectIdx) as? Rect)?.set(target)
-                                        res.set(target)
+                                        if (rectIdx >= 0) (chain.getArg(rectIdx) as? Rect)?.set(memo)
+                                        res.set(memo)
                                         Logx.always(
-                                            "恢复(记忆位置+系统尺寸) $pkg@$screen -> $target（记忆左上 ${memo.left},${memo.top}，" +
-                                                "系统默认 $systemDefault；超界由 MIUI 弹回）"
+                                            "恢复(位置+比例) $pkg@$screen -> $memo（系统默认 $systemDefault）"
                                         )
                                     }
                                 }
@@ -992,8 +995,27 @@ object Hooks {
     private fun captionTextColor(ctx: Context): Int = runCatching {
         val res = ctx.resources
         val id = res.getIdentifier("caption_extend_text_color", "color", "com.android.systemui")
-        if (id == 0) android.graphics.Color.GRAY else res.getColorStateList(id, ctx.theme).defaultColor
-    }.getOrDefault(android.graphics.Color.GRAY)
+        val fromRes = if (id == 0) null else runCatching {
+            res.getColorStateList(id, ctx.theme)?.defaultColor
+        }.getOrNull()
+        // ★ 2026-10-05 用户反馈：**浅色模式下比例文字仍是浅色**（与旁边旋转按钮不一致）。
+        //   根因：`caption_extend_text_color` 在浅色主题下解析出的仍是"浅色系"值。
+        //   这里按 **主题明暗** 兜底修正：
+        //     · 浅色主题（LIGHT）→ 用深色文字（保证可读、与系统浅色文字一致）
+        //     · 深色主题（DARK） → 用浅色文字
+        val night = (ctx.resources.configuration.uiMode and
+            android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+            android.content.res.Configuration.UI_MODE_NIGHT_YES
+        val fallback = if (night) 0xFFFFFFFF.toInt() else 0xFF111114.toInt()
+        val c = fromRes ?: fallback
+        if (!night) {
+            // 浅色主题下若取到的是"浅色"（亮度偏高），替换为深色，避免看不见
+            val lum = (0.299 * android.graphics.Color.red(c) +
+                0.587 * android.graphics.Color.green(c) +
+                0.114 * android.graphics.Color.blue(c))
+            if (lum > 170) fallback else c
+        } else c
+    }.getOrDefault(0xFF111114.toInt())
 
     private fun phoneShape(phone: android.view.View, ctx: Context, landscape: Boolean) {
         val density = ctx.resources.displayMetrics.density
@@ -1205,7 +1227,9 @@ object Hooks {
             pendingTarget[memoKey] = PendingTarget(target, android.os.SystemClock.elapsedRealtime())
             // 关闭→重开期间屏蔽记录；重开稳定后再按真实结果写一次（下面 3.5s 后解除并记录）
             suppressRecord[memoKey] = android.os.SystemClock.elapsedRealtime() + 10_000
-            // 记忆读侧缓存已降到 300ms，所以不用再原地等 1.8s（用户反馈等太久）
+            // ★ 2026-10-05 用户反馈"点比例后等很久才出新小窗"：这里的 1800ms 等待是元凶
+            //   （注释自己都写着"不用再原地等 1.8s"）。记忆读侧缓存已是 300ms，
+            //   改为 **立即** 走"关闭→重开"，只保留 close 之后必要的 350ms 稳定窗。
             Handler(Looper.getMainLooper()).postDelayed({
                 if (!inFreeform) {
                     openAsFreeform(decoration, id)
@@ -1249,7 +1273,7 @@ object Hooks {
                         }
                     }, if (closed) 1_500 else 1_200)
                 }
-            }, 1_800)
+            }, 120)
         } catch (t: Throwable) {
             Logx.e("比例调整失败", t)
         }

@@ -56,6 +56,7 @@ cp -f "$STDLIB_DEX" "$OUT/dex/classes2.dex"
 
 echo "== 6/6 签名 =="
 if [ ! -f "$KS" ]; then
+    mkdir -p "$(dirname "$KS")"   # keytool 不自建父目录，缺目录会报 FileNotFoundException
     keytool -genkeypair -keystore "$KS" -alias os4freeformx -keyalg RSA -keysize 2048 \
         -validity 10000 -storepass android -keypass android \
         -dname "CN=OS4FreeFromX,O=AbelDuan,C=CN"
