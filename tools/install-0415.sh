@@ -1,0 +1,10 @@
+#!/system/bin/sh
+R=/data/data/top.funcun.dshfolk/files/rootfs/root/workspace/Freeform
+cp -f $R/dist/OS4FreeFromX-v0.4.15.apk /data/local/tmp/os4ffx.apk
+chmod 644 /data/local/tmp/os4ffx.apk
+pm install -r /data/local/tmp/os4ffx.apk 2>&1
+dumpsys package com.abel.os4freeformx 2>/dev/null | grep -E 'versionName' | head -1
+killall com.android.systemui
+sleep 16
+echo "systemui=$(pidof com.android.systemui)"
+logcat -d 2>/dev/null | grep -F OS4FreeFromX | grep -E '手势功能已移除' | tail -1

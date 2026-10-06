@@ -1054,11 +1054,23 @@ object Hooks {
         tv.textSize = 12f
         tv.gravity = android.view.Gravity.CENTER
         tv.setTextColor(android.graphics.Color.WHITE)
+        // ★★ 2026-10-06 用户反馈（外屏三点菜单）：比例文字被折成两行 ——
+        //   「原始」变「原/始」、「21:9」变「21:/9」、「17.5:9」变「17./5:9」。
+        //   根因：外屏菜单更窄，而这排按钮是 weight=1 平分宽度，固定 12sp 放不下就自动换行。
+        //   修法：**单行 + 自动缩放**（放不下就把字号往下缩，永不折行）。
+        tv.maxLines = 1
+        tv.isSingleLine = true
+        runCatching {
+            tv.setAutoSizeTextTypeUniformWithConfiguration(
+                8, 12, 1, android.util.TypedValue.COMPLEX_UNIT_SP
+            )
+        }
         // 用 weight=1 的弹性宽度：四个按钮平分菜单宽度，无论内屏/外屏（菜单背景窄）都不会超出背景。
         // 之前写死 42dp 固定宽，外屏菜单背景比内屏窄，四个按钮加起来就超出背景了（#3）。
+        // 边距从 2dp 收到 1dp：给窄屏的文字多留一点宽度，配合自动缩放更不容易触底。
         tv.layoutParams = android.widget.LinearLayout.LayoutParams(0, h, 1f).apply {
-            marginStart = (2 * density).toInt()
-            marginEnd = (2 * density).toInt()
+            marginStart = (1 * density).toInt()
+            marginEnd = (1 * density).toInt()
         }
         // 复用 MIUI 自己的按钮底与文字色：深浅色模式自动一致（自己画深色胶囊被反馈过“不统一”）
         applyCaptionButtonLook(tv, ctx)
@@ -1385,6 +1397,39 @@ object Hooks {
         return true
     }
 
+    /**
+     * 用**纯 ActivityOptions** 以小窗模式重开（等价于 `am start --windowingMode 5`）。
+     *
+     * ★★★ 2026-10-06 关键：**这是唯一会听我们尺寸的重开方式**。
+     *   · `am start --windowingMode 5`（本函数这条路）：MIUI 走**自己的建窗流程**，
+     *     会问我们的钩子要矩形（`getFreeformDefaultLaunchBounds`/`getCustomFreeformRect`）
+     *     ⇒ 记忆的位置与**比例**都被采用（真机取证：`核对通过(位置+尺寸) rect=Rect(0,397-1672,2069)`）。
+     *   · `MiuiMultiWindowUtils.getActivityOptions(ctx,pkg,true,x,y)`：那两个 int 只是**位置提示**，
+     *     尺寸由 MIUI 自己定（NOTES:414 取证「小窗就落在起手点附近」）⇒ 永远不听我们的尺寸 ✗。
+     *   所以重开一律优先走本函数，MIUI 那条只作兜底。
+     */
+    private fun relaunchPlainFreeform(decoration: Any, id: Int, target: Rect): Boolean = runCatching {
+        val ctx = AppCtx.get() ?: return false
+        val info = field(decoration, "mRunningTaskInfo") as? android.app.ActivityManager.RunningTaskInfo
+            ?: return false
+        val intent = (field(info, "baseIntent") as? android.content.Intent)?.let { android.content.Intent(it) }
+            ?: info.topActivity?.let {
+                android.content.Intent(android.content.Intent.ACTION_MAIN)
+                    .addCategory(android.content.Intent.CATEGORY_LAUNCHER).setComponent(it)
+            } ?: return false
+        intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+        val opts = android.app.ActivityOptions.makeBasic()
+        // `setLaunchWindowingMode` 是 @hide API（公开 android.jar 里没有），必须反射
+        runCatching {
+            opts.javaClass.getMethod("setLaunchWindowingMode", Integer.TYPE).invoke(opts, 5)   // 5 = FREEFORM
+        }.onFailure { Logx.e("setLaunchWindowingMode 反射失败", it) }
+        ctx.startActivity(intent, opts.toBundle())
+        Logx.always(
+            "重开: plain freeform 启动（与 am start --windowingMode 5 同路，建窗钩子会套用记忆 @${target.left},${target.top}）"
+        )
+        true
+    }.onFailure { Logx.e("plain freeform 启动失败", it) }.getOrDefault(false)
+
     private fun relaunchViaMiuiApi(decoration: Any, id: Int, target: Rect): Boolean = runCatching {
         val ctx = AppCtx.get() ?: return false
         val info = field(decoration, "mRunningTaskInfo") as? android.app.ActivityManager.RunningTaskInfo
@@ -1680,11 +1725,17 @@ object Hooks {
             // 关闭→重开期间屏蔽记录（否则 MIUI 摆成全屏那一下会被写进记忆）
             suppressRecord[key] = android.os.SystemClock.elapsedRealtime() + 8000
         }
-        Logx.always("位置/尺寸对齐: 关闭→官方接口重开到 $target（task=$id）")
+        Logx.always("位置/尺寸对齐: 关闭→重开到 $target（task=$id）")
         val closed = closeFreeformViaMiui(ctrl)
         Handler(Looper.getMainLooper()).postDelayed({
             runCatching {
-                if (!relaunchViaMiuiApi(ctrl, id, target)) Logx.e("对齐: 官方接口重开失败")
+                // ⚠️ 2026-10-06 真机：plain freeform（反射 setLaunchWindowingMode(5) + startActivity）
+                //   **建不出小窗** —— 任务变成 `mode=fullscreen visible=false`，小窗直接消失（比原来更糟）。
+                //   所以顺序反过来：MIUI 官方接口优先（它稳定能把小窗建回来，装饰/触摸区一致、无白边），
+                //   plain 只作兜底。
+                if (!relaunchViaMiuiApi(ctrl, id, target)) {
+                    if (!relaunchPlainFreeform(ctrl, id, target)) Logx.e("对齐: 重开失败（MIUI 接口与 plain 都没成）")
+                }
             }
         }, if (closed) 350 else 700)   // close 没成功也要给足安定时间，否则重开等于把旧窗口带到前台
     }.onFailure { Logx.e("位置/尺寸对齐失败", it) }
