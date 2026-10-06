@@ -48,6 +48,7 @@ object Hooks {
         Cfg.reload()
         Logx.always("installSystemUi: immersive=${Cfg.immersive} remember=${Cfg.rememberBounds}")
         installLaunchBounds(m, cl)
+        runCatching { installRotationGeometryHook(m, cl) }.onFailure { Logx.e("旋转几何钩子失败", it) }
         installImmersive(m, cl)
         installRatioMenu(m, cl)
         installBoundsRecorder(m, cl)
@@ -783,6 +784,74 @@ object Hooks {
             }
         }
         Logx.always("系统探针: 共挂 $n 个")
+    }
+
+    /**
+     * ★★★ v0.4.43 正解（用户 2026-10-06 点破："能不能把记忆里的比例值直接就给它？"）——**能**。
+     *
+     * 反编译取证（`tools/dexscan.py` 扫 `Miui-WindowManager-Shell.jar`）：
+     *   `com.android.wm.shell.multitasking.miuifreeform.MiuiFreeformModeUtils`
+     *     `android.util.Pair calculateBoundsAndScaleAfterScreenRotation(
+     *          Context, MiuiFreeformModeTaskInfo, DisplayLayout, int, int)`
+     *   —— 方法名就是"算旋转后的 bounds 与 scale"。这就是**旋转时 MIUI 现算几何的那一步**。
+     *
+     * 之前所有方案（关闭重开 / WCT / skipAutoLayout 杆）都是"等它算完再纠正"，代价就是：
+     * 闪一下原始比例、连续旋转时几条路互相打架。这里改成**在它算的这一步把记忆矩形直接给它**：
+     * 不关窗、不重开、无过渡帧；连续旋转每次都会重新问一次 ⇒ 天然稳定。
+     *
+     * 返回 `java.util.Pair`（public 字段 `first`/`second`），反射写回 `first`(Rect)。
+     * 任何异常都吞掉并退回 MIUI 原值 —— 宁可不改，也绝不把窗口搞坏。
+     */
+    private fun installRotationGeometryHook(m: MainHook, cl: ClassLoader) {
+        val cls = runCatching { Class.forName(Constants.CLS_FREEFORM_MODE_UTILS, false, cl) }.getOrNull()
+        if (cls == null) {
+            Logx.e("旋转几何钩子: 找不到 ${Constants.CLS_FREEFORM_MODE_UTILS}")
+            return
+        }
+        var n = 0
+        cls.declaredMethods.filter { it.name == "calculateBoundsAndScaleAfterScreenRotation" }
+            .forEach { method ->
+                if (m.hookExecutable(method, XposedInterface.Hooker { chain ->
+                        val res = chain.proceed()
+                        runCatching {
+                            Cfg.reloadThrottled()
+                            if (!Cfg.rememberBounds) return@runCatching
+                            val info = chain.getArg(1)
+                            val pkg = info?.let { field(it, "mPackageName") } as? String
+                            val first = res?.javaClass?.getField("first")?.get(res)
+                            if (info == null || pkg == null || first !is Rect) return@runCatching
+                            val ctx = (chain.getArg(0) as? Context) ?: AppCtx.get() ?: return@runCatching
+                            val dispId = (field(info, "mDisplayId") as? Int) ?: -1
+                            val screen = Bounds.screenKeyFor(ctx, dispId)
+                            val memo = Bounds.get(ctx, pkg, screen) ?: Bounds.getAny(ctx, pkg)
+                                ?: return@runCatching
+                            val dm = ctx.resources.displayMetrics
+                            val area = Rect(0, statusBarHeight(ctx), dm.widthPixels, dm.heightPixels)
+                            val target = Bounds.clampKeepRatio(memo, area)
+                            val before = Rect(first)
+                            if (before.left == target.left && before.top == target.top &&
+                                before.width() == target.width() && before.height() == target.height()
+                            ) {
+                                Logx.always("旋转几何: MIUI 算的 $before 已符合记忆（$pkg）")
+                            } else {
+                                first.set(target)
+                                Logx.always(
+                                    "旋转几何: 直接给 MIUI 记忆矩形 $pkg " +
+                                        "${before.width()}x${before.height()} -> " +
+                                        "${target.width()}x${target.height()} @${target.left},${target.top}"
+                                )
+                            }
+                        }.onFailure { Logx.e("旋转几何钩子执行失败（已退回 MIUI 原值）", it) }
+                        res
+                    })) {
+                    n++
+                    Logx.always(
+                        "旋转几何钩子: 挂上 ${method.name}" +
+                            method.parameterTypes.joinToString(",", "(", ")") { it.simpleName }
+                    )
+                }
+            }
+        if (n == 0) Logx.e("旋转几何钩子: calculateBoundsAndScaleAfterScreenRotation 一个重载都没挂上")
     }
 
     private fun installLaunchBounds(m: MainHook, cl: ClassLoader) {
@@ -2038,8 +2107,15 @@ object Hooks {
                         // ⛔ 2026-10-06 回退：曾试过 WCT `removeTask` + 全新打开（想复刻用户手动"关掉再打开"），
                         //   但那会**把用户正在用的窗口直接移除**（真机：移除后小窗消失）—— 违背"不能搞出不可用的窗"
                         //   的红线，故回退为安全的 `reopenAtMemory`（只关小窗状态，不销毁 task）。
-                        Logx.always("配置变更(延迟套用): $pkgCfg 记忆=$memo -> $t（等 MIUI 安定 3s 后重开）")
-                        reopenAtMemory(ctrl, t)
+                        val cur = runCatching { field(ctrl, "mRunningTaskInfo")?.let { taskBounds(it) } }.getOrNull()
+                        if (cur != null && cur.left == t.left && cur.top == t.top &&
+                            cur.width() == t.width() && cur.height() == t.height()
+                        ) {
+                            Logx.always("配置变更(延迟套用): 已是目标几何 $cur ⇒ 跳过（不关窗、不闪）")
+                        } else {
+                            Logx.always("配置变更(延迟套用): $pkgCfg 记忆=$memo -> $t（等 MIUI 安定 3s 后重开）")
+                            reopenAtMemory(ctrl, t)
+                        }
                     }
                 }
             }, 3_000)

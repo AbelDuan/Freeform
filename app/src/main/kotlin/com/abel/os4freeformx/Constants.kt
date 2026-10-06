@@ -66,6 +66,9 @@ object Constants {
     const val CLS_DECOR_IMMERSIVE = "com.android.wm.shell.multitasking.miuimultiwinswitch.miuiwindowdecor.decoration.MiuiDecorationImmersiveHelper"
     const val CLS_BOTTOM_VIEW_HOST = "com.android.wm.shell.multitasking.miuimultiwinswitch.miuiwindowdecor.decoration.MiuiDecorationBottomViewHost"
     const val CLS_DOT_VIEW_HOST = "com.android.wm.shell.multitasking.miuimultiwinswitch.miuiwindowdecor.decoration.MiuiDecorationDotViewHost"
+    /** ★ v0.4.43：旋转时"算旋转后的 bounds 与 scale"的那个类（用户点破的正解入口） */
+    const val CLS_FREEFORM_MODE_UTILS = "com.android.wm.shell.multitasking.miuifreeform.MiuiFreeformModeUtils"
+
     /** MIUI 小窗装饰的触摸监听（探针：确认装饰层是否收得到触摸） */
     const val CLS_DECOR_TOUCH = "com.android.wm.shell.multitasking.miuimultiwinswitch.miuiwindowdecor.decoration.MiuiDecorationTouchListener"
     /** MIUI 自带的小窗角标/缩放描边视觉（角柄已交回原生，不再 hook） */

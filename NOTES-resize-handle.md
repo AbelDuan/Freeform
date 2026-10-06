@@ -1454,3 +1454,40 @@ relayout 里的"对账"、以及重开自身的重试；每条都要"关窗→�
 **仍剩一次**：MIUI 旋转重排不接受外部矩形（见 §42 遗留），所以"重建一次"目前是必要的；
 要 0 次得靠 system 侧 `resolveTaskOrientation → setSkipAutoLayout(true)` 那条杆（需框架级重启才生效）。
 开窗那一段仍有 1 次重建，原因是 `am start --windowingMode 5` 入口不经过 `getFreeformRect`（侧边栏入口不会）。
+
+### 42.2 v0.4.43：连续旋转验收 + 旋转几何入口的取证结论
+
+**用户口径（2026-10-06）**：关窗重开这条路不行——多次/连续旋转会出很多错误；关开时会一闪而过原始比例的小窗。
+
+**连续旋转验收（tools/rc-rot3.sh，4 次来回旋转）**
+
+| 步骤 | bounds | 期望 |
+|---|---|---|
+| 开窗后（竖屏） | `0,397-1672,2069` | 记忆 ✓ |
+| 旋转 1（横） | `0,140-1532,1672` | 1532×1532 = 1:1 ✓ |
+| 旋转 2（竖） | `0,397-1672,2069` | ✓ |
+| 旋转 3（横） | `0,140-1532,1672` | ✓ |
+| 旋转 4（竖） | `0,397-1672,2069` | ✓ |
+| 崩溃 | 0 | ✓ |
+
+⇒ **几何不再累积漂移**（"多次旋转出很多错误"这一半解决）；但**每次旋转仍有 1 次关窗重开**（计数：`关闭→重开到` ×4、
+`已按 MIUI 自己的方式关闭` ×4），即用户说的"闪一下原始比例"仍在。
+
+**为消灭这次重建所做的取证（结论：本 ROM 旋转路径不由 SystemUI 侧算几何）**
+
+1. 反编译找到理想入口（`tools/dexscan.py`）：
+   `com.android.wm.shell.multitasking.miuifreeform.MiuiFreeformModeUtils`
+   `Pair calculateBoundsAndScaleAfterScreenRotation(Context, MiuiFreeformModeTaskInfo, DisplayLayout, int, int)`
+   —— 方法名就是"算旋转后的 bounds 与 scale"。
+2. 已实现并挂上（v0.4.43）：日志实证
+   `旋转几何钩子: 挂上 calculateBoundsAndScaleAfterScreenRotation(Context,MiuiFreeformModeTaskInfo,DisplayLayout,int,int)`。
+3. **但真机旋转时它一次都没被调用**（专用诊断脚本 tools/rc-hookdiag.sh：旋转窗口内 `旋转几何:` 命中 0）。
+   同一轮里 SystemUI 侧其它候选（`形变探针`：autoLayoutFreeFormStackIfNeed / restoreFreeformWindowBounds /
+   clipFreeformBounds / getMiuiFreeformBounds）也是 0 命中。
+4. 旋转时**确实在跑**的只有 system_server 侧：`MiuiFreeFormActivityStack#resolveTaskOrientation(Task)`（1 次/旋转）、
+   `getFreeFormScale()`（81 次）、`setFreeformScale(float)`、`setMiuiFreeformPreExitScale(float)`。
+   ⇒ **旋转后的几何是 system_server 定的**，而 system 作用域钩子**只在开机注入** ⇒
+   要在此处注入记忆矩形（或接通 `setSkipAutoLayout` 杆）**必须做一次框架级重启**（`setprop ctl.restart zygote`，非重启设备）。
+
+**顺带**：`maybeReapplyOnConfigChange` 的 3s 延迟套用已加"已是目标几何就跳过"，实测 `跳过（不关窗）` ×4 ——
+冗余的那次重建已被消掉，剩下的 1 次来自"对账发现几何不对"（真实需要）。
