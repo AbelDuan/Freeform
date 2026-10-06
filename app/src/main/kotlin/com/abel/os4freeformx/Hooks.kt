@@ -1696,11 +1696,41 @@ object Hooks {
             //     （登记 pendingTarget ⇒ 建窗钩子优先用它 + 屏蔽记录 + 关闭 + MIUI 官方接口重开）。
             //     这条路真机已验证装饰/触摸区一致（无白边、无错位）。
             val target = Bounds.clampKeepRatio(memo, area)
-            // ★ 这里【不写记忆】：旋转/换屏是"恢复"动作，不是用户调整
-            //   （旧代码在这一步 `Bounds.put(target, 1.0f)`，既把 scale 写成 1.0、又把 clamp 结果
-            //    当成新记忆，正是"尺寸记忆被自己抹掉"的来源之一）。
-            Logx.always("配置套用: pkg=$pkg screen=$screen 记忆=$memo -> $target（走与比例按钮同一条重开路）")
-            reopenAtMemory(ctrl, target)
+            // ★ 登记 pendingTarget：建窗钩子会优先用它（与三点菜单比例按钮同一条机制）
+            val key = Bounds.key(pkg, screen)
+            pendingTarget[key] = PendingTarget(Rect(target), android.os.SystemClock.elapsedRealtime())
+            suppressRecord[key] = android.os.SystemClock.elapsedRealtime() + 12_000
+            val id0 = taskId(ctrl)
+            val closed = closeFreeformViaMiui(ctrl)
+            // ★★ 2026-10-06 用户建议的时序（关键）：**先关闭小窗，等旋转完成后再打开**。
+            //   之前的错在"检测到旋转 → 立刻关 + 立刻开（0/350/700ms）"：那时 MIUI 的旋转
+            //   还没安定，它随后的一次最终布局就把我们刚开的窗口覆盖回默认比例
+            //   （日志实证：重开后真实=1170x1870 = 系统默认）。
+            //   现在：关窗后**等 1.5s 让旋转完成**再开窗 —— 此时没有现存窗口可被覆盖，
+            //   开出来的是**全新窗口**，MIUI 会走建窗流程问我们的钩子 ⇒ 记忆的位置与比例都被采用。
+            Handler(Looper.getMainLooper()).postDelayed({
+                runCatching {
+                    if (!relaunchViaMiuiApi(ctrl, id0, target)) {
+                        if (!relaunchPlainFreeform(ctrl, id0, target)) Logx.e("配置套用: 重开失败（两条路都没成）")
+                    }
+                }
+                if (!isRetry) {
+                    Handler(Looper.getMainLooper()).postDelayed({
+                        runCatching {
+                            val now = field(ctrl, "mRunningTaskInfo")?.let { taskBounds(it) }
+                            if (now != null && now != target) {
+                                Logx.always("配置套用复核: 实际=$now 期望=$target ⇒ 再套一次")
+                                reapplyBoundsFromMemory(ctrl, dispId, true)
+                            } else {
+                                Logx.always("配置套用复核通过: 实际=$now")
+                            }
+                        }
+                    }, 1_500)
+                }
+            }, 1_500)
+            Logx.always(
+                "配置套用: pkg=$pkg screen=$screen 记忆=$memo -> $target（先关窗，等旋转完成再开；closed=$closed）"
+            )
         }.onFailure { Logx.e("配置套用失败", it) }
     }
 
