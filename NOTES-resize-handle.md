@@ -1512,3 +1512,20 @@ relayout 里的"对账"、以及重开自身的重试；每条都要"关窗→�
 ①`MiuiFreeformModeUtils#calculateBoundsAndScaleAfterScreenRotation` 钩子已挂上但 0 命中；
 ②`形变探针`（autoLayoutFreeFormStackIfNeed / restoreFreeformWindowBounds / clipFreeformBounds）0 命中。
 ⇒ **旋转后的几何不是 SystemUI 进程算的**，它由 framework/system_server 侧决定后推下来。
+
+### 42.4 免重启注入的两条候选路线，都被证据否掉（v0.4.44）
+
+用户口径：不要重启方案，要在 MIUI 重建小窗的逻辑里注入。
+
+| 候选入口 | 取证方式 | 结论 |
+|---|---|---|
+| `MiuiFreeformModeUtils#calculateBoundsAndScaleAfterScreenRotation`（名字最贴切） | ①设备：v0.4.43 钩子已挂、旋转时 0 命中；②静态 `dexscan callers`：**wmshell jar / miui-services.jar / MiuiSystemUI.apk / framework.jar / miui-less-{services,framework}.jar 全部 0 个调用者** | **本 ROM 上是死代码** ❌ |
+| SystemUI 进程内的 `WindowContainerTransaction#setBounds/setAppBounds`（"改写 MIUI 自己的事务"） | v0.4.44 log-only 探针（旋转后 8s 窗口内记录） | 旋转时只有 **1 次**调用且是 `Rect(0,0-0,0)` + BinderProxy（清空/重置），**几何不经过 SystemUI 的 WCT** ❌ |
+
+⇒ **旋转后的几何是 system_server 侧算好并直接落到窗口上的**（与设备取证一致：旋转时 system 侧
+`resolveTaskOrientation(Task)`×1、`getFreeFormScale()`×81、`setFreeformScale(float)`/`setMiuiFreeformPreExitScale`）。
+`system` 作用域钩子**只在开机注入** ⇒ 注入点写在 `installSystemServer` 里，**在手机下一次自然重启时生效**（无需强制重启）。
+
+**剩下的免重启线索**：MIUI 的**用户拖动**路径是由 **shell 侧**算新 bounds 并推下去的（拖动时装饰/触摸区跟着走，
+这是用户日常验证过的）。若拖动路径同样走 SystemUI 的 WCT（探针可验），就能在旋转后**借用同一条路径**把记忆矩形推下去 ——
+既不是 v0.4.10 的"自造 bounds"（装饰不跟），也不是写 scale 字段（两套坐标）。**待验**。

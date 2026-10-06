@@ -48,6 +48,7 @@ object Hooks {
         Cfg.reload()
         Logx.always("installSystemUi: immersive=${Cfg.immersive} remember=${Cfg.rememberBounds}")
         installLaunchBounds(m, cl)
+        runCatching { installWctProbe(m, cl) }.onFailure { Logx.e("WCT 探针失败", it) }
         runCatching { installRotationGeometryHook(m, cl) }.onFailure { Logx.e("旋转几何钩子失败", it) }
         installImmersive(m, cl)
         installRatioMenu(m, cl)
@@ -852,6 +853,43 @@ object Hooks {
                 }
             }
         if (n == 0) Logx.e("旋转几何钩子: calculateBoundsAndScaleAfterScreenRotation 一个重载都没挂上")
+    }
+
+    /**
+     * WCT 探针（log-only）：旋转后 MIUI 把新几何推给 shell 时，**必然经过一次
+     * `WindowContainerTransaction#setBounds/setAppBounds`**。这里只记录"旋转后 8s 内"的每一次调用，
+     * 目的是确认：旋转后的几何是否走 SystemUI 进程内的 WCT —— 若走，就能**改写 MIUI 自己的这次事务**
+     * （而不是像 v0.4.10 那样自造一份 bounds），从而免重启、免关窗地把记忆矩形注入进去。
+     * 只记录、不改行为。
+     */
+    private fun installWctProbe(m: MainHook, cl: ClassLoader) {
+        val cls = runCatching { Class.forName("android.window.WindowContainerTransaction", false, cl) }
+            .getOrNull()
+        if (cls == null) {
+            Logx.e("WCT 探针: 找不到 android.window.WindowContainerTransaction")
+            return
+        }
+        var n = 0
+        listOf("setBounds", "setAppBounds").forEach { name ->
+            cls.declaredMethods.filter { it.name == name }.forEach { mm ->
+                if (m.hookExecutable(mm, XposedInterface.Hooker { chain ->
+                        val res = chain.proceed()
+                        runCatching {
+                            val since = android.os.SystemClock.elapsedRealtime() - lastConfigChangeAt
+                            if (lastConfigChangeAt > 0L && since in 0..8_000) {
+                                val rect = (0 until chain.args.size)
+                                    .map { chain.getArg(it) }
+                                    .firstOrNull { it is Rect }
+                                Logx.always("WCT探针[$name] +${since}ms: rect=$rect 参数=${chain.args.toList()}")
+                            }
+                        }
+                        res
+                    })) {
+                    n++
+                }
+            }
+        }
+        Logx.always("WCT 探针: 共挂 $n 个 setBounds/setAppBounds")
     }
 
     private fun installLaunchBounds(m: MainHook, cl: ClassLoader) {
@@ -1689,6 +1727,9 @@ object Hooks {
      */
     private val aligningUntil = ConcurrentHashMap<Int, Long>()
 
+    /** 最近一次"检测到旋转/换屏"的时刻（WCT 探针只在它之后 8s 内记录，避免刷屏）。 */
+    @Volatile private var lastConfigChangeAt = 0L
+
     private val memChecked = ConcurrentHashMap<Int, Int>()
 
     /** 全屏里点比例：直接用 MIUI 自己的「全屏→小窗」入口开小窗，打开时会套用刚写下的记忆。 */
@@ -2082,6 +2123,7 @@ object Hooks {
         if (prev == null) { lastConfigKey[id] = configKey; return }
         if (prev == configKey) { lastConfigKey[id] = configKey; return }
         lastConfigKey[id] = configKey
+        lastConfigChangeAt = android.os.SystemClock.elapsedRealtime()
         // ★★ 2026-10-06：配置变更（旋转/换屏）时**重置对账计数**。
         //   对账路径只允许每个窗口纠正一次（nth == 1），第一次旋转纠正过之后
         //   再旋转就不再纠了（真机：转回竖屏又变回 1170x1870 ✗）。
