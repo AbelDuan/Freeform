@@ -19,16 +19,20 @@
 ```bash
 ./build.sh                                     # 产物 dist/OS4FreeFromX-v<VER>.apk
 adb install --no-incremental -r dist/…apk
-bash tools/fix-lsposed-module.sh               # ← 必须！见下
+adb shell "su -c 'killall com.android.systemui'"   # ← 只需这一步（见 §7.1）
 ```
 1. **必须用 `--no-incremental`**：增量安装不触发 LSPosed 的包变更处理。
-2. **`adb install` 之后必须跑 `tools/fix-lsposed-module.sh`**：
-   LSPosed(v2.2.0) 不会跟着更新 `modules.apk_path` / `modules_state`（enabled）/ `scope` 三张表，
-   症状是"模块装了但完全不注入"。脚本会修表并重启 `lspd` + SystemUI。
+2. ⚠️ **不要再无脑跑 `tools/fix-lsposed-module.sh`**（2026-10-06 更正）：它会 `kill lspd`，
+   而**重启 daemon 会打断整条注入链路**（§7.1），恢复要框架级重启。
+   - `pm install -r`（同签名覆盖）：LSPosed **自己会更新** `modules.apk_path`；
+     只要 `modules_state`(enabled) 与 `scope` 还在（用 `tools/lspd-dump.sh` 复核），
+     **只需 `killall com.android.systemui`**。
+   - 只有 `uninstall`（换签名）才丢 enabled/scope 两张表；那时才需要改库，
+     而改库脚本重启 daemon 后**必须再跟一次框架级重启**（`setprop ctl.restart zygote`，需用户授权）。
 3. **改了配置后必须 `am force-stop com.abel.os4freeformx`**，否则模块 App 内存里的
    SharedPreferences 还是旧值，`StoreProvider` 会一直回旧配置（真机踩过三次）。
 4. **`system` 作用域的钩子只在开机时注入** → 改 `installSystemServer` 的内容需要软重启；
-   SystemUI 侧钩子 `killall` 即可。
+   SystemUI 侧钩子 `killall` 即可（本模块的比例/记忆/颜色钩子都在 SystemUI 侧）。
 
 ## 三、代码层面的硬性约定
 
