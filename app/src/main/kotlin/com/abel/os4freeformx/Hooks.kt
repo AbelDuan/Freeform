@@ -1610,6 +1610,16 @@ object Hooks {
      */
     @Volatile private var lastFreeformPkg: String? = null
     /** 诊断：每个 task 做过几次"记忆 vs 实际左上角"核对（前 3 次）。 */
+    /**
+     * "正在关闭→重开对齐"的任务：taskId → 冷却到的时刻（elapsedRealtime）。
+     *
+     * ★★★ v0.4.42 真机根因：**旋转后有 3 条路都想纠正几何**——`maybeReapplyOnConfigChange` 的 3s 延迟套用、
+     * relayout 里的"对账"、以及重开自身的重试；每条都会"关窗→重开"，于是用户看到窗口连关带开好几次。
+     * 实测（v0.4.41，12:34 旋转窗口）：`关闭→重开到` ×3、`已按 MIUI 自己的方式关闭` ×3、`未重开小窗，重试` ×3。
+     * ⇒ 这里做**串行化**：同一任务在冷却期内只允许做一次关窗重开，其余路径让位（只记一行 skip）。
+     */
+    private val aligningUntil = ConcurrentHashMap<Int, Long>()
+
     private val memChecked = ConcurrentHashMap<Int, Int>()
 
     /** 全屏里点比例：直接用 MIUI 自己的「全屏→小窗」入口开小窗，打开时会套用刚写下的记忆。 */
@@ -2130,6 +2140,12 @@ object Hooks {
      */
     private fun reopenAtMemory(ctrl: Any, target: Rect) = runCatching {
         val id = taskId(ctrl)
+        val now = android.os.SystemClock.elapsedRealtime()
+        if ((aligningUntil[id] ?: 0L) > now) {
+            Logx.once("align-busy-$id", "对齐跳过：task=$id 正在关窗重开对齐中，不叠第二次（剩余 ${(aligningUntil[id] ?: 0L) - now}ms）")
+            return@runCatching
+        }
+        aligningUntil[id] = now + 6_000
         val ctx = AppCtx.get()
         val info = field(ctrl, "mRunningTaskInfo")
         val pkg = info?.let { taskPkg(it) }
@@ -2167,7 +2183,8 @@ object Hooks {
                         }
                     }
                 }
-            }, 1_500)
+                // 核验延时 2.0s：MIUI 进小窗动画约 1.5~2s，1.5s 会把"正在出现"误判成"没出现"再多打一次
+            }, 2_000)
         }
         Handler(Looper.getMainLooper()).postDelayed({ relaunchOnce(1) }, if (closed) 350 else 700)
         if (key != null) {
@@ -2323,10 +2340,16 @@ object Hooks {
                                 if (samePos && sameSize) {
                                     Logx.always("核对通过(位置+尺寸): task=$id pkg=$pkg rect=$realNow 目标=$target")
                                 } else if (nth == 1) {
-                                    Logx.e(
-                                        "位置/尺寸不一致: task=$id pkg=$pkg 目标=$target（记忆=$memo）实际=$realNow ⇒ 按目标整块重开"
-                                    )
-                                    reopenAtMemory(ctrl, target)
+                                    val busy = (aligningUntil[id] ?: 0L) >
+                                        android.os.SystemClock.elapsedRealtime()
+                                    if (busy) {
+                                        Logx.once("rec-align-busy-$id", "对账跳过：task=$id 正在关窗重开对齐中（不叠第二次）")
+                                    } else {
+                                        Logx.e(
+                                            "位置/尺寸不一致: task=$id pkg=$pkg 目标=$target（记忆=$memo）实际=$realNow ⇒ 按目标整块重开"
+                                        )
+                                        reopenAtMemory(ctrl, target)
+                                    }
                                 }
                             }
                         }
