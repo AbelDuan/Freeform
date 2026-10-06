@@ -1505,12 +1505,23 @@ object Hooks {
             val target = Rect(left, top, left + w, top + h)
             val dispId2 = (ti?.let { call(it, "getTaskInfo") }?.let { field(it, "displayId") } as? Int) ?: -1
             val screenKey2 = Bounds.screenKeyFor(ctx, dispId2)
-            // ★ 必须连 freeformScale 一起写：显示尺寸 = bounds × freeformScale
-            //（真机实测：窗口 1672×1672 而应用内容只有 284×284，因为 scale 卡在 0.17 的旧值/迷你态遗留值）。
-            // 这里要的是"内容填满窗口"，所以 scale = 1.0；只写 bounds 的话应用会被渲染成一个小方块。
-            Bounds.put(ctx, pkg, screenKey2, target, 1.0f)
+            // ★★★ 2026-10-06 真机对照实验（关键）：
+            //   同样一条 `0,397,1672,2069` 记忆，写成 **@0.66** ⇒ MIUI 采用（窗口保持 1672×1672，
+            //   旋转后不变 ✓）；写成 **@1.0** ⇒ **MIUI 完全不采用**（直接回默认 1170×1870 ✗）。
+            //   而这里原来硬编码 `1.0f`（旧注释以为"scale=1.0 才让内容填满窗口"—— 按 NOTES §40.3 的
+            //   SurfaceFlinger 实证，这个字段**根本不驱动渲染**，写 1.0 只会让 MIUI 不认这条记忆）。
+            //   ⇒ 现在写 **MIUI 当前真实缩放（可视 ÷ 真实）**，与它自己用的值一致。
+            val curScale = runCatching {
+                val vis2 = call(ti, "getScaledBounds") as? Rect
+                val re2 = call(ti, "getBounds") as? Rect
+                if (vis2 != null && re2 != null && re2.width() > 0) {
+                    vis2.width().toFloat() / re2.width()
+                } else 0f
+            }.getOrDefault(0f)
+            val memoScale = if (curScale > 0f) curScale else 0.66f
+            Bounds.put(ctx, pkg, screenKey2, target, memoScale)
             Logx.always(
-                "比例调整($why): ${real ?: "无小窗"} -> 记忆 $target scale=1.0（比例 ${"%.3f".format(ratio)}，" +
+                "比例调整($why): ${real ?: "无小窗"} -> 记忆 $target scale=$memoScale（比例 ${"%.3f".format(ratio)}，" +
                     "上下对齐 + 左右居中），随后关闭并重开小窗"
             )
             // 记下「这个尺寸是我们刚指定的」，短时间内不要让记录链路用旧 bounds 覆盖它
