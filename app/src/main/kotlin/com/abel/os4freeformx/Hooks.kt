@@ -694,10 +694,12 @@ object Hooks {
         val names = cls.declaredMethods.map { it.name }.distinct().sorted()
         Logx.always("系统侧探针: 方法数=${cls.declaredMethods.size} 全部方法名=${names.joinToString(",")}")
         // ★ 对候选方法挂 **log-only** 钩子：安装发生在开机，但触发在运行期 ⇒ logcat 一定抓得到
+        // ★ 用**实测拿到的方法名**（上一轮按猜测的名字挂，结果「共挂 0 个」）
         val targets = listOf(
-            "restoreFreeformWindowBounds", "getMiuiFreeformBounds", "setMiuiFreeformBounds",
-            "clipFreeformBounds", "getMiuiFreeformScale", "setMiuiFreeformScale",
-            "onConfigurationChanged", "getFreeformBounds", "updateFreeformBounds"
+            "isSkipAutoLayout", "setSkipAutoLayout", "resolveTaskOrientation",
+            "getFreeFormScale", "setFreeformScale", "setCornerPosition",
+            "getEnterMiniFreeformRect", "setEnterMiniFreeformRect",
+            "getPreExitFreeformScale", "setMiuiFreeformPreExitScale"
         )
         var n = 0
         cls.declaredMethods.filter { it.name in targets }.forEach { mm ->
