@@ -2101,6 +2101,9 @@ object Hooks {
                         val dm = ctxCfg.resources.displayMetrics
                         val area = Rect(0, statusBarHeight(ctxCfg), dm.widthPixels, dm.heightPixels)
                         val t = Bounds.clampKeepRatio(memo, area)
+                        // ⛔ 2026-10-06 回退：曾试过 WCT `removeTask` + 全新打开（想复刻用户手动"关掉再打开"），
+                        //   但那会**把用户正在用的窗口直接移除**（真机：移除后小窗消失）—— 违背"不能搞出不可用的窗"
+                        //   的红线，故回退为安全的 `reopenAtMemory`（只关小窗状态，不销毁 task）。
                         Logx.always("配置变更(延迟套用): $pkgCfg 记忆=$memo -> $t（等 MIUI 安定 3s 后重开）")
                         reopenAtMemory(ctrl, t)
                     }
