@@ -992,29 +992,23 @@ object Hooks {
 
 
     /** 与 MIUI 比例按钮文字同色（`caption_extend_text_color`），取不到就退回灰。 */
+    /**
+     * 三点菜单里那排控件的文字/图标色。**比例文字与方向(旋转)按钮必须同色**。
+     *
+     * ★ 2026-10-06 真机像素取证：浅色模式下方向按钮图标 = `#111114`(亮度17)，
+     *   而比例标签 = `#90A0B0`(亮度157) ⇒ 视觉上"比例字比旁边浅"，用户反馈的正是这个。
+     *   根因有两层：
+     *     1) `applyCaptionButtonLook` 原来直接 `setTextColor(getColorStateList(caption_extend_text_color))`，
+     *        **绕过了本函数** ⇒ 比例文字拿到 MIUI 原始浅色值；
+     *     2) 上一版用"亮度>170 才换深色"的启发式，而 `#90A0B0` 亮度 157 **没到阈值** ⇒ 换不掉。
+     *   现在：统一走本函数，并**直接按主题明暗取值**（浅色主题的胶囊底是浅色 ⇒ 深字；深色主题 ⇒ 浅字）。
+     *   这样两个控件由构造保证同色，不再依赖对 MIUI 取色值的猜测。
+     */
     private fun captionTextColor(ctx: Context): Int = runCatching {
-        val res = ctx.resources
-        val id = res.getIdentifier("caption_extend_text_color", "color", "com.android.systemui")
-        val fromRes = if (id == 0) null else runCatching {
-            res.getColorStateList(id, ctx.theme)?.defaultColor
-        }.getOrNull()
-        // ★ 2026-10-05 用户反馈：**浅色模式下比例文字仍是浅色**（与旁边旋转按钮不一致）。
-        //   根因：`caption_extend_text_color` 在浅色主题下解析出的仍是"浅色系"值。
-        //   这里按 **主题明暗** 兜底修正：
-        //     · 浅色主题（LIGHT）→ 用深色文字（保证可读、与系统浅色文字一致）
-        //     · 深色主题（DARK） → 用浅色文字
         val night = (ctx.resources.configuration.uiMode and
             android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
             android.content.res.Configuration.UI_MODE_NIGHT_YES
-        val fallback = if (night) 0xFFFFFFFF.toInt() else 0xFF111114.toInt()
-        val c = fromRes ?: fallback
-        if (!night) {
-            // 浅色主题下若取到的是"浅色"（亮度偏高），替换为深色，避免看不见
-            val lum = (0.299 * android.graphics.Color.red(c) +
-                0.587 * android.graphics.Color.green(c) +
-                0.114 * android.graphics.Color.blue(c))
-            if (lum > 170) fallback else c
-        } else c
+        if (night) 0xFFFFFFFF.toInt() else 0xFF111114.toInt()
     }.getOrDefault(0xFF111114.toInt())
 
     private fun phoneShape(phone: android.view.View, ctx: Context, landscape: Boolean) {
@@ -1037,7 +1031,6 @@ object Hooks {
     private fun applyCaptionButtonLook(v: android.view.View, ctx: Context) {
         val res = ctx.resources
         val bgId = res.getIdentifier("caption_extend_selector", "drawable", "com.android.systemui")
-        val textId = res.getIdentifier("caption_extend_text_color", "color", "com.android.systemui")
         if (bgId != 0) {
             v.setBackgroundResource(bgId)
         } else {
@@ -1046,8 +1039,10 @@ object Hooks {
                 cornerRadius = 13f * ctx.resources.displayMetrics.density
             }
         }
-        if (v is android.widget.TextView && textId != 0) {
-            v.setTextColor(res.getColorStateList(textId, ctx.theme))
+        // ★ 必须走 captionTextColor（与方向按钮同源）——直接取 MIUI 的 caption_extend_text_color
+        //   会让比例文字比旁边浅一档（真机像素：比例 #90A0B0 vs 方向 #111114，用户反馈的"不一致"）。
+        if (v is android.widget.TextView) {
+            v.setTextColor(captionTextColor(ctx))
         }
     }
 
@@ -1787,20 +1782,25 @@ object Hooks {
                             } else if (memo == null) {
                                 Logx.always("核对: task=$id pkg=$pkg 该屏无记忆，实际=$realNow")
                             } else if (realNow != null) {
-                                // 发布版：**只核对左上角**（用户口径）。尺寸由 MIUI 决定，不参与判定。
-                                if (memo.left == realNow.left && memo.top == realNow.top) {
-                                    Logx.always("核对通过(左上角): task=$id pkg=$pkg 左上=$realNow")
+                                // ★★ 用户口径（2026-10-06）：**位置与尺寸都按记忆恢复**。
+                                //   真机日志实证（2026-10-06）：旋转/重开后比例被切回原始，根因就是
+                                //   这里原来"只比左上角、尺寸沿用 MIUI 当前值" —— 它把
+                                //   「记忆左上角 + MIUI 默认尺寸」登记成 pendingTarget，
+                                //   建窗钩子于是走 pending 分支、记忆里的比例被整块丢弃：
+                                //     左上角不一致: 记忆=Rect(416,140-1948,1672) 实际=Rect(1452,288-2622,2158)
+                                //     位置/尺寸对齐: 关闭→官方接口重开到 Rect(416,140-1586,2010)  ← 系统尺寸
+                                //   旋转时坐标空间变化 + MIUI 边界弹回，左上角必然与原记忆不同 ⇒ 必然触发。
+                                //   现在：位置或尺寸任一不符，就按**记忆整块**重开一次（超界仍由 MIUI 弹回）。
+                                val samePos = memo.left == realNow.left && memo.top == realNow.top
+                                val sameSize = memo.width() == realNow.width() &&
+                                    memo.height() == realNow.height()
+                                if (samePos && sameSize) {
+                                    Logx.always("核对通过(位置+尺寸): task=$id pkg=$pkg rect=$realNow")
                                 } else if (nth == 1) {
-                                    // 发布版：只对齐左上角，**尺寸沿用当前窗口的**（requestedSize 由 MIUI 决定），
-                                    // 避免"为了纠位置反而把尺寸改掉"。
-                                    Logx.e("左上角不一致: task=$id pkg=$pkg 记忆=$memo 实际=$realNow ⇒ 按记忆左上角重开")
-                                    reopenAtMemory(
-                                        ctrl,
-                                        Rect(
-                                            memo.left, memo.top,
-                                            memo.left + realNow.width(), memo.top + realNow.height()
-                                        )
+                                    Logx.e(
+                                        "位置/尺寸不一致: task=$id pkg=$pkg 记忆=$memo 实际=$realNow ⇒ 按记忆整块重开"
                                     )
+                                    reopenAtMemory(ctrl, Rect(memo))
                                 }
                             }
                         }
