@@ -804,7 +804,19 @@ object Hooks {
                             if (pkg != null) {
                                 lastFreeformPkg = pkg
                                 val hit = ffrHits.merge("$sig|$pkg", 1, Int::plus) ?: 1
-                                if (hit <= 6) Logx.always("小窗 bounds 计算[$hit]: $sig pkg=$pkg -> $res")
+                                if (hit <= 6) {
+                                    Logx.always("小窗 bounds 计算[$hit]: $sig pkg=$pkg -> $res")
+                                    // ★★ 2026-10-06：旋转形变的答案就在这里 ——
+                                    //   真机取证：旋转时 MIUI **会**调本钩子（我们返回了正方），
+                                    //   但窗口最终 bounds 仍是它自己算的 1170x1870 ⇒
+                                    //   **要用的是"谁在调用它、并把它算出来的矩形落到窗口上"**。
+                                    //   所以把调用栈打出来，直接定位那个地方去 hook。
+                                    val st = Throwable().stackTrace.drop(3).take(10)
+                                        .joinToString(" <- ") {
+                                            "${it.className.substringAfterLast('.')}.${it.methodName}"
+                                        }
+                                    Logx.always("小窗 bounds 调用栈[$hit]: $st")
+                                }
                             }
                             // isMiniFreeformMode 只对 13 参数版可判断；更短的定制重载一律按普通小窗处理
                             val mini = miniIdx >= 0 && (chain.getArg(miniIdx) as? Boolean == true)
@@ -2056,6 +2068,12 @@ object Hooks {
         if (prev == null) { lastConfigKey[id] = configKey; return }
         if (prev == configKey) { lastConfigKey[id] = configKey; return }
         lastConfigKey[id] = configKey
+        // ★★ 2026-10-06：配置变更（旋转/换屏）时**重置对账计数**。
+        //   对账路径只允许每个窗口纠正一次（nth == 1），第一次旋转纠正过之后
+        //   再旋转就不再纠了（真机：转回竖屏又变回 1170x1870 ✗）。
+        //   旋转后 MIUI 会重排窗口 ⇒ 必须让对账重新有机会把记忆套回去。
+        memChecked.remove(id)
+        Logx.always("配置变更: 已重置对账计数 task=$id（旋转后允许重新套记忆）")
         if (appliedForConfig[id] == configKey) return
         appliedForConfig[id] = configKey
         Logx.always("配置变更: $prev -> $configKey，排程套用记忆尺寸（task=$id）")
@@ -2112,41 +2130,17 @@ object Hooks {
             //   ⇒ 旋转/换屏就用**与三点菜单比例按钮、位置对齐完全相同**的那条路：`reopenAtMemory`
             //     （登记 pendingTarget ⇒ 建窗钩子优先用它 + 屏蔽记录 + 关闭 + MIUI 官方接口重开）。
             //     这条路真机已验证装饰/触摸区一致（无白边、无错位）。
+            // ★★★ 2026-10-06 真机调用栈实锤（用户要求"确认为什么旋转会形变，去 hook 这个地方"）：
+            //   旋转后那次"算出 1170x1870"的 getCustomFreeformRect 调用，栈是
+            //     MiuiMultiWindowUtils.getActivityOptions <- Hooks.relaunchViaMiuiApi <- reapplyBoundsFromMemory
+            //   ⇒ **形变是模块自己的"重开"造成的**（getActivityOptions 内部重算了一遍矩形，
+            //     我们返回的正方被它自己的算法覆盖）。
+            //   ⇒ 现在旋转**什么都不做**：只记日志，让 MIUI 自己 relayout。
+            //     若 MIUI 的 relayout 保留现存 bounds，比例就能天然保住（这正是用户说的"旋转不该关窗重开"）。
             val target = Bounds.clampKeepRatio(memo, area)
-            // ★ 登记 pendingTarget：建窗钩子会优先用它（与三点菜单比例按钮同一条机制）
-            val key = Bounds.key(pkg, screen)
-            pendingTarget[key] = PendingTarget(Rect(target), android.os.SystemClock.elapsedRealtime())
-            suppressRecord[key] = android.os.SystemClock.elapsedRealtime() + 12_000
-            val id0 = taskId(ctrl)
-            val closed = closeFreeformViaMiui(ctrl)
-            // ★★ 2026-10-06 用户建议的时序（关键）：**先关闭小窗，等旋转完成后再打开**。
-            //   之前的错在"检测到旋转 → 立刻关 + 立刻开（0/350/700ms）"：那时 MIUI 的旋转
-            //   还没安定，它随后的一次最终布局就把我们刚开的窗口覆盖回默认比例
-            //   （日志实证：重开后真实=1170x1870 = 系统默认）。
-            //   现在：关窗后**等 1.5s 让旋转完成**再开窗 —— 此时没有现存窗口可被覆盖，
-            //   开出来的是**全新窗口**，MIUI 会走建窗流程问我们的钩子 ⇒ 记忆的位置与比例都被采用。
-            Handler(Looper.getMainLooper()).postDelayed({
-                runCatching {
-                    if (!relaunchViaMiuiApi(ctrl, id0, target)) {
-                        if (!relaunchPlainFreeform(ctrl, id0, target)) Logx.e("配置套用: 重开失败（两条路都没成）")
-                    }
-                }
-                if (!isRetry) {
-                    Handler(Looper.getMainLooper()).postDelayed({
-                        runCatching {
-                            val now = field(ctrl, "mRunningTaskInfo")?.let { taskBounds(it) }
-                            if (now != null && now != target) {
-                                Logx.always("配置套用复核: 实际=$now 期望=$target ⇒ 再套一次")
-                                reapplyBoundsFromMemory(ctrl, dispId, true)
-                            } else {
-                                Logx.always("配置套用复核通过: 实际=$now")
-                            }
-                        }
-                    }, 1_500)
-                }
-            }, 1_500)
             Logx.always(
-                "配置套用: pkg=$pkg screen=$screen 记忆=$memo -> $target（先关窗，等旋转完成再开；closed=$closed）"
+                "配置变更(不重开): pkg=$pkg screen=$screen 记忆=$memo 期望=$target " +
+                    "（只记日志，让 MIUI 自己 relayout —— 重开会触发 getActivityOptions 把比例改回默认）"
             )
         }.onFailure { Logx.e("配置套用失败", it) }
     }
