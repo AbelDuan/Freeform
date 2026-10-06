@@ -28,6 +28,7 @@ object Hooks {
     fun installSystemServer(m: MainHook, cl: ClassLoader) {
         Logx.always("installSystemServer: remember=${Cfg.rememberBounds}")
         installLaunchBounds(m, cl)
+        runCatching { installSystemFreeformProbe(cl) }.onFailure { Logx.e("系统侧探针失败", it) }
 
         // 【已放弃】system_server 侧清零分屏应用 insets 的尝试：
         //   探针证明 WindowState 上没有任何返回 Insets 的方法，且 system_server 里
@@ -74,6 +75,7 @@ object Hooks {
         runCatching { installSizeChainProbe(cl) }.onFailure { Logx.e("尺寸链探针安装失败", it) }
         // ★ 主修复：在 MIUI 算 (bounds, scale) 的地方换成记忆值
         runCatching { installSizeLevelHook(m, cl) }.onFailure { Logx.e("尺寸档位挂钩安装失败", it) }
+        runCatching { installSizePathProbe(m, cl) }.onFailure { Logx.e("路径探针安装失败", it) }
     }
 
     /** 小白条（手势导航条）：跟随手势 / 淡入淡出 / 触摸显隐 / 空闲自动隐藏。 */
@@ -539,7 +541,9 @@ object Hooks {
                 return@forEach
             }
             Logx.always("尺寸链: $cn 方法数=${c.declaredMethods.size}")
-            c.declaredMethods.take(30).forEach { mm ->
+            c.declaredMethods
+                .filter { mm -> Regex("Bounds|Scale|Rotation|Anim|Size|Level").containsMatchIn(mm.name) }
+                .take(60).forEach { mm ->
                 Logx.always(
                     "   ${mm.name}${mm.parameterTypes.joinToString(",", "(", ")") { it.simpleName }} " +
                         "-> ${mm.returnType.simpleName}"
@@ -625,6 +629,81 @@ object Hooks {
             }
         }
         Logx.always("尺寸档位: 共挂 $n 个")
+    }
+
+
+    /**
+     * 诊断（2026-10-06 续）：对"尺寸档位/旋转"链路的其余候选做 **log-only** 探针，
+     * 目的 = 抓出旋转时**真正执行**的那一步（`getDestBoundsAndScale` 实测未被调用）。
+     * 只记日志，不改任何返回值。
+     */
+    private fun installSizePathProbe(m: MainHook, cl: ClassLoader) {
+        val targets = listOf(
+            "com.android.wm.shell.multitasking.common.MultiTaskingSizeLevel" to
+                listOf("getSuitableLevelByBounds", "calBoundsForAutoResize", "scaleBounds", "adjustPosition"),
+            "com.android.wm.shell.multitasking.common.MultiTaskingCommonUtils" to
+                listOf("scaleBounds"),
+            "com.android.wm.shell.multitasking.common.taskmanager.MiuiFreeformModeTaskInfo" to
+                listOf("beginRotation", "abortRotation"),
+            "com.android.wm.shell.multitasking.miuifreeform.MiuiFreeformModeUtils" to
+                listOf("scaleDownIfNeeded", "getFreeformBounds", "getDefaultFreeformBounds")
+        )
+        var n = 0
+        targets.forEach { (cn, names) ->
+            val c = runCatching { Class.forName(cn, false, cl) }.getOrNull() ?: run {
+                Logx.always("路径探针: 类不存在 $cn")
+                return@forEach
+            }
+            c.declaredMethods.filter { it.name in names }.forEach { mm ->
+                val sig = mm.name + mm.parameterTypes.joinToString(",", "(", ")") { it.simpleName }
+                val argc = mm.parameterTypes.size
+                if (m.hookExecutable(mm, XposedInterface.Hooker { chain ->
+                        val res = chain.proceed()
+                        runCatching {
+                            val a = (0 until argc).joinToString(",") { chain.getArg(it).toString() }
+                            Logx.always("路径探针[$sig]: args=($a) -> $res")
+                        }
+                        res
+                    })) {
+                    n++
+                    Logx.always("路径探针: hook 成功 ${cn.substringAfterLast('.')}#$sig")
+                }
+            }
+        }
+        Logx.always("路径探针: 共挂 $n 个")
+    }
+
+
+    /**
+     * 诊断（2026-10-06）：**system_server 侧**的小窗状态类方法清单。
+     *
+     * 真机取证链：SystemUI 侧挂了 10 个候选（MultiTaskingSizeLevel / MultiTaskingCommonUtils /
+     * MiuiFreeformModeTaskInfo / MiuiFreeformModeUtils）**旋转时一个都没触发** ⇒ 尺寸不在这里定。
+     * 而在 `miui-services.jar` 里找到了 `com.android.server.wm.MiuiFreeFormActivityStack` ——
+     * **WM 核心侧的小窗任务状态**，任务的真实 bounds 极可能由它决定。
+     * ⚠️ system 作用域的钩子只在开机注入，本探针的日志要**框架级重启**后才看得到。
+     */
+    private fun installSystemFreeformProbe(cl: ClassLoader) {
+        listOf(
+            "com.android.server.wm.MiuiFreeFormActivityStack",
+            "com.android.server.wm.MiuiFreeFormActivityStackStub",
+            "com.android.server.wm.MiuiFreeFormManagerNotifier"
+        ).forEach { cn ->
+            val c = runCatching { Class.forName(cn, false, cl) }.getOrNull()
+            if (c == null) {
+                Logx.always("系统侧探针: 类不存在 $cn")
+                return@forEach
+            }
+            Logx.always("系统侧探针: $cn 方法数=${c.declaredMethods.size}")
+            c.declaredMethods
+                .filter { mm -> Regex("Bounds|Scale|Rotation|Size|Config|Resize|Level").containsMatchIn(mm.name) }
+                .take(50).forEach { mm ->
+                    Logx.always(
+                        "   ${mm.name}${mm.parameterTypes.joinToString(",", "(", ")") { it.simpleName }} " +
+                            "-> ${mm.returnType.simpleName}"
+                    )
+                }
+        }
     }
 
     private fun installLaunchBounds(m: MainHook, cl: ClassLoader) {
