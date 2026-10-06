@@ -711,6 +711,27 @@ object Hooks {
                         val a = (0 until argc).joinToString(",") { chain.getArg(it).toString() }
                         Logx.always("系统探针[$sig]: args=($a) -> $res")
                     }
+                    // ★★ 修复杆（2026-10-06）：旋转时 MIUI 会重排小窗、把比例切回它的默认。
+                    //   `MiuiFreeFormActivityStack` 有 `isSkipAutoLayout/setSkipAutoLayout` ——
+                    //   **有记忆就让 MIUI 跳过它自己的自动布局**，我们的尺寸/比例才不会被重排掉。
+                    //   只在 `resolveTaskOrientation`（旋转专用入口）上做，避免影响其它流程。
+                    if (mm.name == "resolveTaskOrientation") {
+                        runCatching {
+                            val pkg = call(chain.thisObject, "getStackPackageName") as? String
+                            val ctx = AppCtx.get()
+                            if (pkg != null && ctx != null) {
+                                val memo = Bounds.get(ctx, pkg, Bounds.screenKey(ctx))
+                                if (memo != null) {
+                                    chain.thisObject.javaClass
+                                        .getMethod("setSkipAutoLayout", java.lang.Boolean.TYPE)
+                                        .invoke(chain.thisObject, true)
+                                    Logx.always("系统探针★: 有记忆 ⇒ setSkipAutoLayout(true) pkg=$pkg 记忆=$memo")
+                                } else {
+                                    Logx.always("系统探针: 无记忆，不动 skipAutoLayout pkg=$pkg")
+                                }
+                            }
+                        }.onFailure { Logx.e("skipAutoLayout 杆失败", it) }
+                    }
                     res
                 })) {
                 n++

@@ -5,5 +5,5 @@ description=HyperOS 4 分屏增强：手势导航条小白条（跟随手势 / �
 minApiVersion=100
 targetApiVersion=102
 staticScope=true
-version=0.4.22
-versionCode=39
+version=0.4.23
+versionCode=40
