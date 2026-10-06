@@ -173,6 +173,53 @@ object Bounds {
     }
 
     /**
+     * 等比缩放到可视区（**只缩放、不单独裁边** ⇒ 形状/比例不变）。
+     *
+     * ★ 2026-10-06 从上游 `d156b72` 取回：旋转/内外屏切换时可视区宽高会对调，
+     *   记忆里的矩形必须等比缩进新可视区，比例才不会被破坏。当时删掉它改用
+     *   「关闭→重开」后，旋转场景反而被 MIUI 的最终布局覆盖（用户复现：
+     *   1:1 旋转后回到原始比例，但关闭再重开又是 1:1）。
+     */
+    fun clampKeepRatio(r: Rect, area: Rect): Rect {
+        val w = r.width()
+        val h = r.height()
+        if (w <= 0 || h <= 0) return Rect(r)
+        val areaW = maxOf(area.width(), 1)
+        val areaH = maxOf(area.height(), 1)
+        val scale = minOf(1f, minOf(areaW.toFloat() / w, areaH.toFloat() / h))
+        val nw = maxOf((w * scale).toInt(), 1)
+        val nh = maxOf((h * scale).toInt(), 1)
+        val out = Rect(r.left, r.top, r.left + nw, r.top + nh)
+        // 缩完再夹位置，保证完全落在可视区
+        if (out.left < area.left) out.offsetTo(area.left, out.top)
+        if (out.top < area.top) out.offsetTo(out.left, area.top)
+        if (out.right > area.right) out.offsetTo(area.right - out.width(), out.top)
+        if (out.bottom > area.bottom) out.offsetTo(out.left, area.bottom - out.height())
+        return out
+    }
+
+    /**
+     * 取该应用**任意一个屏幕**下的记忆（key 形如 `pkg|WxH`）。
+     * 目标屏幕还没有记忆时兜底：把别的屏幕的尺寸等比缩到当前屏幕，
+     * 让「内外屏切换 / 旋转」第一次遇到新几何也能保住形状，而不是退化成系统默认。
+     * （同样从上游 `d156b72` 取回。）
+     */
+    fun getAny(ctx: Context, pkg: String): Rect? {
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (!loaded || now - lastLoad > 300) {
+            loaded = false
+            load(ctx)
+            lastLoad = now
+        }
+        synchronized(this) {
+            for ((k, v) in cache) {
+                if (k.startsWith("$pkg|")) return Rect(v)
+            }
+        }
+        return null
+    }
+
+    /**
      * 合并写入（用户要求：尺寸与位置都要各自记住）：
      *   · 只变了位置（尺寸相同）⇒ 保留新位置、沿用旧尺寸 ✓
      *   · 只变了尺寸（左上角相同）⇒ 沿用旧位置、采用新尺寸 ✓

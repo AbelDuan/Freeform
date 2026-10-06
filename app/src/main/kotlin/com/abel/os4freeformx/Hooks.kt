@@ -1602,6 +1602,26 @@ object Hooks {
         }, 350)
     }
 
+    /**
+     * 旋转 / 内外屏切换后把记忆尺寸套回去。
+     *
+     * ★★ 2026-10-06 用户口径：「小窗调成 1:1 → 旋转 → 回到原始比例；但关闭再重开又是 1:1」。
+     *   真机日志实证：旋转走的是本函数（`配置变更: 0:1 -> 0:2` → 这里），
+     *   而**原来这版**用的是「关闭 → 官方接口重开」：旋转刚发生时新装饰实例的 `mTransitions` 还没就绪
+     *   ⇒ `closeFreeformViaMiui` 返回 false ⇒ 延迟 0ms ⇒ 37ms 后"重开"实际只是把旧窗口带到前台
+     *   ⇒ MIUI 旋转后的默认布局原样保留，比例被切回原始。
+     *   （日志：配置套用 09:18:27.257 → 重新拉起 09:18:27.294 → 实际 1170x1870 = 系统默认。）
+     *
+     * ⛔ 2026-10-06 **不要改回 WCT（`setBounds` + `setMiuiFreeformInfoChange`）**：
+     *   那版（v0.4.10）真机被用户直接否掉 ——「有白边，而且操作部位是错位的，完全不可用」。
+     *   根因见 NOTES §40.3 / §40.8①：WCT 只改 bounds/字段，**装饰（三点/角柄/触摸区）不跟着重排**，
+     *   外框（bounds×字段）与内框（MIUI 自己的渲染缩放）成了两套坐标。用户明确不接受。
+     *
+     * ✅ 现在这条路（已验证一致）：
+     *   ① 记忆矩形先 `clampKeepRatio` **等比缩**进当前屏可视区（旋转后宽高对调，比例不变，且不会被边界弹）；
+     *   ② **关闭 → MIUI 官方接口重开**：bounds/scale/装饰/触摸区由 MIUI 一次建好，不存在白边与错位；
+     *   ③ 关窗没成功也给足安定时间（`closed=false` 时 700ms），再**复核**；不一致就再套一次（最多一次）。
+     */
     private fun reapplyBoundsFromMemory(ctrl: Any, dispId: Int, isRetry: Boolean = false) {
         runCatching {
             val info = field(ctrl, "mRunningTaskInfo") ?: return@runCatching
@@ -1616,22 +1636,26 @@ object Hooks {
             val ctx = AppCtx.get() ?: return@runCatching
             val pkg = taskPkg(info) ?: return@runCatching
             val screen = Bounds.screenKeyFor(ctx, dispId)
-            // 只认本屏记忆（key 里已经带着 display 几何）；不再跨屏借记忆、也不再按屏幕夹取
-            val target = Bounds.get(ctx, pkg, screen) ?: return@runCatching
-            // ★ 这里【不写记忆】：旋转/换屏是"恢复"动作，不是用户调整。
-            //   旧代码在这一步 `Bounds.put(target, 1.0f)` —— 既把 scale 写成 1.0、又把 clamp 结果
-            //   当成新记忆，正是"尺寸记忆被自己抹掉"的来源之一（真机存储里 dshfolk 的 @1.0 就是它写的）。
-            //   现在只做：关闭 → 官方接口重开；重开走 getCustomFreeformRect ⇒ 从记忆里原样套回 (bounds, scale)。
-            val id0 = taskId(ctrl)
-            val closed = closeFreeformViaMiui(ctrl)
-            Handler(Looper.getMainLooper()).postDelayed({
-                runCatching {
-                    if (!relaunchViaMiuiApi(ctrl, id0, target)) {
-                        Logx.e("配置套用: 官方接口重开失败（不再原地改 scale —— 那条路已实证改不动画面且会拆坏装饰）")
-                    }
-                }
-            }, if (closed) 350 else 0)
-            Logx.always("配置套用: pkg=$pkg screen=$screen 记忆=$target（关闭→官方接口重开，不改记忆）")
+            // 当前屏有记忆用当前屏；没有则拿其它屏记忆等比缩过来（首次换屏/折叠也保形状）
+            val memo = Bounds.get(ctx, pkg, screen) ?: Bounds.getAny(ctx, pkg) ?: return@runCatching
+            val dm = ctx.resources.displayMetrics
+            val area = Rect(0, statusBarHeight(ctx), dm.widthPixels, dm.heightPixels)
+            // ★★★ 2026-10-06 收敛结论（用户提问点破 + 三轮真机否掉两条自创路）：
+            //   用户手动关闭再打开能按记忆比例恢复，是因为走了 MIUI 自己的建窗流程、会问我们的钩子；
+            //   而模块自创的两条路都不行：
+            //     · `relaunchViaMiuiApi` 只带左上角（尺寸由 MIUI 定）⇒ 比例被切回原始；
+            //     · WCT（setBounds/scale）被用户直接否掉：白边 + 装饰错位，完全不可用；
+            //     · `reopenFreeform`（switchFullscreenToFreeform）要求 MIUI Transitions 自己的 Handler，
+            //       从钩子线程投递必抛 `IllegalStateException: must be called on Handler` 并反复重试。
+            //   ⇒ 旋转/换屏就用**与三点菜单比例按钮、位置对齐完全相同**的那条路：`reopenAtMemory`
+            //     （登记 pendingTarget ⇒ 建窗钩子优先用它 + 屏蔽记录 + 关闭 + MIUI 官方接口重开）。
+            //     这条路真机已验证装饰/触摸区一致（无白边、无错位）。
+            val target = Bounds.clampKeepRatio(memo, area)
+            // ★ 这里【不写记忆】：旋转/换屏是"恢复"动作，不是用户调整
+            //   （旧代码在这一步 `Bounds.put(target, 1.0f)`，既把 scale 写成 1.0、又把 clamp 结果
+            //    当成新记忆，正是"尺寸记忆被自己抹掉"的来源之一）。
+            Logx.always("配置套用: pkg=$pkg screen=$screen 记忆=$memo -> $target（走与比例按钮同一条重开路）")
+            reopenAtMemory(ctrl, target)
         }.onFailure { Logx.e("配置套用失败", it) }
     }
 
@@ -1662,7 +1686,7 @@ object Hooks {
             runCatching {
                 if (!relaunchViaMiuiApi(ctrl, id, target)) Logx.e("对齐: 官方接口重开失败")
             }
-        }, if (closed) 350 else 0)
+        }, if (closed) 350 else 700)   // close 没成功也要给足安定时间，否则重开等于把旧窗口带到前台
     }.onFailure { Logx.e("位置/尺寸对齐失败", it) }
 
     /** 真实 rect → 可视 rect（MIUI 的 scaleBounds 就是"以左上角为锚"乘 scale）。 */
