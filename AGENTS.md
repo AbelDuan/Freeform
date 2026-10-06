@@ -85,3 +85,47 @@ bash tools/fix-lsposed-module.sh               # ← 必须！见下
 
 签名密钥 `keystore/os4freeformx.jks`（不入库）。**换了密钥必须 `adb uninstall` 再装**，
 否则 `INSTALL_FAILED_UPDATE_INCOMPATIBLE`。
+
+## 七、2026-10-06 真机迭代踩到的坑（必须遵守）
+
+### 1. 绝不要 `kill lspd` —— 会打断整条注入链路
+LSPosed(v2.2.0) 的 daemon 一旦重启，system_server 里的 `LSPosedBridge` 变成孤儿：
+daemon 日志持续 `no response from bridge` → `system service is not ready, skip scope request`，
+**此后 fork 的所有进程都不再注入任何模块**（不只是本模块；HyperCeiler/NoActive 全灭）。
+已运行的进程不受影响 ⇒ 排查时会看到"22 个进程仍有模块"的**幸存者偏差**。
+恢复只有一条路：框架级重启（`setprop ctl.restart zygote`，非重启设备）。**免重启路径已穷尽**：
+重试 daemon、包变更唤醒 bridge、SELinux/avc 排查、`lspctl`（其 `emulated-soft-reboot.sh` 就是 `lspctl stop`）均无效。
+
+**正确流程**：`pm install -r` 后 LSPosed 自己会更新 `modules.apk_path`；
+若 `modules_state`(enabled) / `scope` 还在，**只需 `killall com.android.systemui`**。
+只有 `uninstall`（换签名）才会丢这两张表 —— 那时才需要改库 + 重启 daemon，而重启 daemon 必然要跟一次框架级重启。
+
+### 2. 用命令直接开小窗（验证用，别去多任务慢慢点）
+```sh
+am start --windowingMode 5 -n <pkg>/<launcherActivity>
+# 例：am start --windowingMode 5 -n com.tencent.mm/.ui.LauncherUI
+```
+MIUI 只对**支持小窗的应用**生效（设置类不行，会报 "该应用不支持小窗"）。
+`am start --help` 在本 ROM 不是合法选项，别拿它查用法。
+
+### 3. `/data/data`、`/data/user`、`/data/user_de` 在 App 命名空间里是 **tmpfs 桩**
+容器/`su` 继承的是调用者的 mount namespace，只能看到自己那条 bind ⇒ 模块 App 的
+`shared_prefs` 看起来"不存在"。**要看真实目录必须 `nsenter -t 1 -m -- ls ...`**（PID 1 的命名空间）。
+否则会把"看不见"误判成"没落盘"。
+
+### 4. 取证产物不要放 `build/`
+`build.sh` 开头就 `rm -rf "$OUT"`，截图/XML/日志放进去会被下一轮构建清空。
+
+### 5. `dsh-native shell` 的特权通道会**按空格重新切分**命令
+`sh -c '...'` 会被拆碎（`cp: Needs 1 argument`）。一律先写脚本文件，再 `sh <绝对路径>`。
+
+### 6. 模块记忆/配置存储（便于自测）
+- 路径：`/data/user/0/com.abel.os4freeformx/shared_prefs/os4freeformx_bounds.xml`（`pkg|短边x长边` → `l,t,r,b@scale`）
+- 读写通道（模块 App 的 ContentProvider，任何进程都能调）：
+```sh
+content call --uri content://com.abel.os4freeformx.store --method getAll
+content call --uri content://com.abel.os4freeformx.store --method put --extra k:s:"<pkg>|<screen>" --extra v:s:"l,t,r,b@scale"
+content call --uri content://com.abel.os4freeformx.store --method remove --arg "<pkg>|<screen>"
+content call --uri content://com.abel.os4freeformx.store --method selfcheck   # 写→读→删自检
+```
+⚠️ `selfcheck` 的"写回读"走内存 map，**不证明落盘**；要证明落盘就 `nsenter -t 1 -m -- cat` 那个 XML。
