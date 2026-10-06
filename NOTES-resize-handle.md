@@ -1491,3 +1491,24 @@ relayout 里的"对账"、以及重开自身的重试；每条都要"关窗→�
 
 **顺带**：`maybeReapplyOnConfigChange` 的 3s 延迟套用已加"已是目标几何就跳过"，实测 `跳过（不关窗）` ×4 ——
 冗余的那次重建已被消掉，剩下的 1 次来自"对账发现几何不对"（真实需要）。
+
+### 42.3 "注入 MIUI 重建逻辑"的取证：调用者检索（v0.4.43 追加）
+
+给 `tools/dexscan.py` 加了 **callers 模式**（扫 code_item 的 `invoke-*`，反查谁调用某方法；
+踩坑：35c 格式的 op 在**低字节**（`words[i] & 0xff`），method_idx 在 `words[i+2]`，两处都错过一次）。
+
+**结果（自检：`startTransition` 能正确列出 `MulWinSwitchTransition.openWindowFromFullscreen` 等调用者）**
+
+| 被查方法 | wmshell jar | miui-services.jar |
+|---|---|---|
+| `calculateBoundsAndScaleAfterScreenRotation` | **0 个调用者** | **0 个调用者** |
+| `calculateRotateAbsBounds` | 0 | 0 |
+| `getDefaultFreeformBounds` | 0 | 0 |
+
+⇒ 这三个"算旋转后几何"的静态工具，**在本机已有的两个 MIUI jar 里没有任何调用者** ⇒
+调用方在**我们没有的那一层**（最可能是 `framework.jar`，本地有副本 `/root/workspace/apks/framework.jar`，待扫）。
+
+**与设备取证一致**：旋转时 SystemUI 进程里
+①`MiuiFreeformModeUtils#calculateBoundsAndScaleAfterScreenRotation` 钩子已挂上但 0 命中；
+②`形变探针`（autoLayoutFreeFormStackIfNeed / restoreFreeformWindowBounds / clipFreeformBounds）0 命中。
+⇒ **旋转后的几何不是 SystemUI 进程算的**，它由 framework/system_server 侧决定后推下来。
