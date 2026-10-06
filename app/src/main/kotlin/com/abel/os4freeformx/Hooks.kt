@@ -702,6 +702,44 @@ object Hooks {
             "getPreExitFreeformScale", "setMiuiFreeformPreExitScale"
         )
         var n = 0
+        // ★★ 2026-10-06 用户要求："确认为什么旋转会形变，去 hook 这个地方"。
+        //   离线从 miui-services.jar 挖到的元凶候选：
+        //     autoLayoutFreeFormStackIfNeed（需要就自动重排小窗）、removeFreeformParamsForAutoLayout、
+        //     restoreFreeformWindowBounds、getMiuiFreeformBounds、clipFreeformBounds
+        //   它们不在 MiuiFreeFormActivityStack（45 个方法里没有）⇒ 在其它 MiuiFreeForm* 类里，
+        //   所以这里跨多个候选类按**名字**挂，并打出**调用栈**（谁在旋转时触发的，一目了然）。
+        val autoNames = listOf(
+            "autoLayoutFreeFormStackIfNeed", "removeFreeformParamsForAutoLayout",
+            "restoreFreeformWindowBounds", "getMiuiFreeformBounds", "clipFreeformBounds",
+            "getMiuiFreeformScale", "getFreeFormScale"
+        )
+        listOf(
+            "com.android.server.wm.MiuiFreeFormGestureController",
+            "com.android.server.wm.MiuiFreeFormActivityStackStub",
+            "com.android.server.wm.MiuiFreeFormCameraStrategy",
+            "com.android.server.wm.MiuiFreeFormManagerNotifier",
+            "com.android.server.wm.MiuiFreeFormKeyCombinationHelper"
+        ).forEach { cn2 ->
+            val c2 = runCatching { Class.forName(cn2, false, cl) }.getOrNull() ?: return@forEach
+            c2.declaredMethods.filter { it.name in autoNames }.forEach { mm ->
+                val sig = cn2.substringAfterLast('.') + "#" + mm.name +
+                    mm.parameterTypes.joinToString(",", "(", ")") { it.simpleName }
+                val argc2 = mm.parameterTypes.size
+                if (m.hookExecutable(mm, XposedInterface.Hooker { chain ->
+                        val res = chain.proceed()
+                        runCatching {
+                            val a = (0 until argc2).joinToString(",") { chain.getArg(it).toString() }
+                            val st = Throwable().stackTrace.drop(2).take(6)
+                                .joinToString(" <- ") { "${it.className.substringAfterLast('.')}.${it.methodName}" }
+                            Logx.always("形变探针[$sig]: args=($a) -> $res  caller: $st")
+                        }
+                        res
+                    })) {
+                    n++
+                    Logx.always("形变探针: hook 成功 $sig")
+                }
+            }
+        }
         cls.declaredMethods.filter { it.name in targets }.forEach { mm ->
             val sig = mm.name + mm.parameterTypes.joinToString(",", "(", ")") { it.simpleName }
             val argc = mm.parameterTypes.size
