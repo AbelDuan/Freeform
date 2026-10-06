@@ -2085,6 +2085,28 @@ object Hooks {
         //   旋转后 MIUI 会重排窗口 ⇒ 必须让对账重新有机会把记忆套回去。
         memChecked.remove(id)
         Logx.always("配置变更: 已重置对账计数 task=$id（旋转后允许重新套记忆）")
+        // ★★★ 2026-10-06 最终修法：旋转后**等 MIUI 彻底安定（3s）**，再由模块主动走一次
+        //   "对账重开"（reopenAtMemory）。理由（真机取证）：
+        //     · 旋转**期间**重开 ⇒ 触发 getActivityOptions 内部重算 ⇒ 形状被改回默认 ✗
+        //     · 旋转**安定后**重开 ⇒ 同一条路会采用我们的矩形（对账多次实测 `核对通过(位置+尺寸)` ✓）
+        //   所以：不在旋转瞬间动手，等 3s 再套。
+        val ctxCfg = AppCtx.get()
+        val pkgCfg = runCatching { taskPkg(ti) }.getOrNull()
+        if (ctxCfg != null && pkgCfg != null) {
+            Handler(Looper.getMainLooper()).postDelayed({
+                runCatching {
+                    val memo = Bounds.get(ctxCfg, pkgCfg, Bounds.screenKeyFor(ctxCfg, dispId))
+                        ?: Bounds.getAny(ctxCfg, pkgCfg)
+                    if (memo != null) {
+                        val dm = ctxCfg.resources.displayMetrics
+                        val area = Rect(0, statusBarHeight(ctxCfg), dm.widthPixels, dm.heightPixels)
+                        val t = Bounds.clampKeepRatio(memo, area)
+                        Logx.always("配置变更(延迟套用): $pkgCfg 记忆=$memo -> $t（等 MIUI 安定 3s 后重开）")
+                        reopenAtMemory(ctrl, t)
+                    }
+                }
+            }, 3_000)
+        }
         if (appliedForConfig[id] == configKey) return
         appliedForConfig[id] = configKey
         Logx.always("配置变更: $prev -> $configKey，排程套用记忆尺寸（task=$id）")
