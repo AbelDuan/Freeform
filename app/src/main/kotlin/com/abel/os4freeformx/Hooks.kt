@@ -28,7 +28,7 @@ object Hooks {
     fun installSystemServer(m: MainHook, cl: ClassLoader) {
         Logx.always("installSystemServer: remember=${Cfg.rememberBounds}")
         installLaunchBounds(m, cl)
-        runCatching { installSystemFreeformProbe(cl) }.onFailure { Logx.e("系统侧探针失败", it) }
+        runCatching { installSystemFreeformProbe(m, cl) }.onFailure { Logx.e("系统侧探针失败", it) }
 
         // 【已放弃】system_server 侧清零分屏应用 insets 的尝试：
         //   探针证明 WindowState 上没有任何返回 Insets 的方法，且 system_server 里
@@ -683,27 +683,39 @@ object Hooks {
      * **WM 核心侧的小窗任务状态**，任务的真实 bounds 极可能由它决定。
      * ⚠️ system 作用域的钩子只在开机注入，本探针的日志要**框架级重启**后才看得到。
      */
-    private fun installSystemFreeformProbe(cl: ClassLoader) {
-        listOf(
-            "com.android.server.wm.MiuiFreeFormActivityStack",
-            "com.android.server.wm.MiuiFreeFormActivityStackStub",
-            "com.android.server.wm.MiuiFreeFormManagerNotifier"
-        ).forEach { cn ->
-            val c = runCatching { Class.forName(cn, false, cl) }.getOrNull()
-            if (c == null) {
-                Logx.always("系统侧探针: 类不存在 $cn")
-                return@forEach
-            }
-            Logx.always("系统侧探针: $cn 方法数=${c.declaredMethods.size}")
-            c.declaredMethods
-                .filter { mm -> Regex("Bounds|Scale|Rotation|Size|Config|Resize|Level").containsMatchIn(mm.name) }
-                .take(50).forEach { mm ->
-                    Logx.always(
-                        "   ${mm.name}${mm.parameterTypes.joinToString(",", "(", ")") { it.simpleName }} " +
-                            "-> ${mm.returnType.simpleName}"
-                    )
-                }
+    private fun installSystemFreeformProbe(m: MainHook, cl: ClassLoader) {
+        val cls = runCatching {
+            Class.forName("com.android.server.wm.MiuiFreeFormActivityStack", false, cl)
+        }.getOrNull() ?: run {
+            Logx.e("系统侧探针: 找不到 MiuiFreeFormActivityStack")
+            return
         }
+        // ★ 全部方法名压成**一行**：Xposed 日志有 400 行上限，逐行会像上次那样被截掉。
+        val names = cls.declaredMethods.map { it.name }.distinct().sorted()
+        Logx.always("系统侧探针: 方法数=${cls.declaredMethods.size} 全部方法名=${names.joinToString(",")}")
+        // ★ 对候选方法挂 **log-only** 钩子：安装发生在开机，但触发在运行期 ⇒ logcat 一定抓得到
+        val targets = listOf(
+            "restoreFreeformWindowBounds", "getMiuiFreeformBounds", "setMiuiFreeformBounds",
+            "clipFreeformBounds", "getMiuiFreeformScale", "setMiuiFreeformScale",
+            "onConfigurationChanged", "getFreeformBounds", "updateFreeformBounds"
+        )
+        var n = 0
+        cls.declaredMethods.filter { it.name in targets }.forEach { mm ->
+            val sig = mm.name + mm.parameterTypes.joinToString(",", "(", ")") { it.simpleName }
+            val argc = mm.parameterTypes.size
+            if (m.hookExecutable(mm, XposedInterface.Hooker { chain ->
+                    val res = chain.proceed()
+                    runCatching {
+                        val a = (0 until argc).joinToString(",") { chain.getArg(it).toString() }
+                        Logx.always("系统探针[$sig]: args=($a) -> $res")
+                    }
+                    res
+                })) {
+                n++
+                Logx.always("系统探针: hook 成功 #$sig")
+            }
+        }
+        Logx.always("系统探针: 共挂 $n 个")
     }
 
     private fun installLaunchBounds(m: MainHook, cl: ClassLoader) {
