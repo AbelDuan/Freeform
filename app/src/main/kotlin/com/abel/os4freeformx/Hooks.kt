@@ -757,6 +757,12 @@ object Hooks {
                         runCatching {
                             val pkg = call(chain.thisObject, "getStackPackageName") as? String
                             val ctx = AppCtx.get()
+                            // ★ v0.4.38：这条守卫此前**静默失败**——两份分支各有一条日志，实测 5 份日志里
+                            //   `系统探针★` 命中 0 次 ⇒ skipAutoLayout 杆从未生效过（查不到原因）。
+                            //   现在把"为什么没生效"打出来（log-only，不改行为）。
+                            if (pkg == null || ctx == null) {
+                                Logx.always("系统探针: resolveTaskOrientation 守卫不成立 pkg=$pkg ctx=${ctx != null}（skipAutoLayout 杆未生效）")
+                            }
                             if (pkg != null && ctx != null) {
                                 val memo = Bounds.get(ctx, pkg, Bounds.screenKey(ctx))
                                 if (memo != null) {
@@ -1677,6 +1683,28 @@ object Hooks {
      * 并且 `setStillFreeFormAfterExiting(taskId,true)` —— 之后还能再开回小窗。
      * 必须投到 `Transitions.getMainExecutor()`（内部 `startTransition` 有线程断言）。
      */
+    /**
+     * 取"MIUI 自己做转场用的那个 executor"。关窗与重开都必须投到它上面，否则
+     * `Transitions.startTransition` 的 `HandlerExecutor.assertCurrentThread()` 直接抛
+     * `IllegalStateException: must be called on Handler`。
+     *
+     * ★★★ v0.4.38 反编译取证（`tools/miui-jars/Miui-WindowManager-Shell.jar`，用 tools/dexscan.py 查）：
+     *   · `MiuiDecorationController` 的字段表里**没有** `mTransitions`（只有 mMainExecutor/mBgExecutor/
+     *     mTaskOrganizer/mRunningTaskInfo/…）⇒ 原来 `field(decoration,"mTransitions")` **恒为 null**，
+     *     关窗（closeFreeformViaMiui）与重开两处都拿不到 executor，且因为返回值没人看，一直是静默失败。
+     *   · `mTransitions:Lcom/android/wm/shell/transition/Transitions;` 声明在
+     *     **`MulWinSwitchTransitionAnim`**（`MulWinSwitchTransition` 的父类）上；
+     *     而 `Transitions#getMainExecutor()` 确实存在（同一 jar 内可见）。
+     *   ⇒ 唯一可靠取法：`MultiTaskingCtl.getMulWinSwitchTransition()` → `field(·,"mTransitions")`
+     *     → `getMainExecutor()`（`field()` 本身会沿父类找，见其实现）。
+     */
+    private fun transExecutor(decoration: Any): Any? = runCatching {
+        val ctl = cls(Constants.CLS_MULTITASKING_CTL).getMethod("getInstance").invoke(null)
+        val trans = ctl.javaClass.getMethod("getMulWinSwitchTransition").invoke(ctl)
+        val transitions = trans?.let { field(it, "mTransitions") } ?: field(decoration, "mTransitions")
+        transitions?.javaClass?.getMethod("getMainExecutor")?.invoke(transitions)
+    }.getOrNull()
+
     private fun closeFreeformViaMiui(decoration: Any): Boolean {
         val runner = Runnable {
             runCatching {
@@ -1690,10 +1718,7 @@ object Hooks {
                 Logx.e("比例调整: 已按 MIUI 自己的方式关闭当前小窗")
             }.onFailure { Logx.e("关闭小窗失败", it) }
         }
-        val exec = runCatching {
-            val tr = field(decoration, "mTransitions") ?: return@runCatching null
-            tr.javaClass.getMethod("getMainExecutor").invoke(tr)
-        }.getOrNull() ?: return false
+        val exec = transExecutor(decoration) ?: return false
         runCatching { exec.javaClass.getMethod("execute", Runnable::class.java).invoke(exec, runner) }
             .onFailure { Logx.e("投递关闭失败", it) }
         return true
@@ -1723,67 +1748,6 @@ object Hooks {
 
 
     /**
-     * ★ 在 `Transitions` 的字段里找**它自己要求线程的那个 Handler**。
-     * 真机实证：`Transitions.startTransition` 断言的是它内部 Handler（日志里的 `{4a37e5a}`），
-     * 而盲扫装饰对象先找到的是别的 Handler（`{7f9cd77}`）⇒ 必然抛 IllegalStateException。
-     * 所以优先扫名字含 Handler/Executor 的字段，并允许往 HandlerExecutor 里再钻一层。
-     */
-    private fun findTransitionsHandler(t: Any?): android.os.Handler? {
-        if (t == null) return null
-        val fs = allFields(t.javaClass).sortedByDescending { f ->
-            val n = f.name.lowercase()
-            when {
-                n.contains("handler") -> 3
-                n.contains("executor") -> 2
-                else -> 0
-            }
-        }
-        fs.take(80).forEach { f ->
-            runCatching {
-                if (java.lang.reflect.Modifier.isStatic(f.modifiers)) return@runCatching
-                f.isAccessible = true
-                val v = f.get(t) ?: return@runCatching
-                if (v is android.os.Handler) return v
-                val n = f.name.lowercase()
-                if (n.contains("handler") || n.contains("executor")) findHandler(v, 1)?.let { return it }
-            }
-        }
-        return null
-    }
-
-
-    /** 沿继承链收集字段（`declaredFields` 只给本类字段 —— MIUI 的 Handler 常在父类里，这就是上次找错的原因）。 */
-    private fun allFields(c: Class<*>?): List<java.lang.reflect.Field> {
-        val out = mutableListOf<java.lang.reflect.Field>()
-        var k = c
-        var n = 0
-        while (k != null && k != Any::class.java && n < 8) {
-            runCatching { out += k.declaredFields }
-            k = k.superclass
-            n++
-        }
-        return out
-    }
-
-    /** 在对象字段图里找一个 `android.os.Handler`（MIUI 的入口要求投到它自己的 Handler 上）。 */
-    private fun findHandler(o: Any?, depth: Int = 0): android.os.Handler? {
-        if (o == null || depth > 2) return null
-        if (o is android.os.Handler) return o
-        val c = o.javaClass
-        if (c.name.startsWith("java.") || c.name.startsWith("android.os.Handler")) return null
-        allFields(c).take(80).forEach { f ->
-            runCatching {
-                if (java.lang.reflect.Modifier.isStatic(f.modifiers)) return@runCatching
-                f.isAccessible = true
-                val v = f.get(o) ?: return@runCatching
-                if (v is android.os.Handler) return v
-                if (depth < 2) findHandler(v, depth + 1)?.let { return it }
-            }
-        }
-        return null
-    }
-
-    /**
      * ★★★ 2026-10-06 用户点破 + 真机取证：**侧边栏开小窗会按记忆比例**（`核对通过(位置+尺寸)`），
      *   而模块用过的 `getActivityOptions`（只带位置）、纯 `startActivity`（MIUI 不认我们的矩形）
      *   都不行。侧边栏走的是 **MIUI 自己的小窗入口 `switchFullscreenToFreeform`** ——
@@ -1791,46 +1755,6 @@ object Hooks {
      *   上次直调它抛 `IllegalStateException: must be called on Handler {…}`（线程不对）；
      *   这里**自动从装饰对象里找出 MIUI 要求的那个 Handler** 再投递。
      */
-    private fun reopenViaMiuiOwnEntry(decoration: Any, id: Int): Boolean = runCatching {
-        val org = field(decoration, "mTaskOrganizer") ?: return false
-        val info = field(decoration, "mRunningTaskInfo") ?: return false
-        // ★ 断言来自 `MulWinSwitchTransition.startTransition` ⇒ 必须用它**那个实例**的 Handler。
-        //   取它的入口就是模块已有的 `MultiTaskingCtl#getMulWinSwitchTransition()`。
-        val trans = runCatching {
-            val ctl = cls(Constants.CLS_MULTITASKING_CTL).getMethod("getInstance").invoke(null)
-            ctl.javaClass.getMethod("getMulWinSwitchTransition").invoke(ctl)
-        }.getOrNull()
-        Logx.always("重开(MIUI入口): MulWinSwitchTransition=$trans")
-        val h = findTransitionsHandler(trans)
-            ?: findTransitionsHandler(field(decoration, "mTransitions"))
-            ?: findHandler(decoration)
-        Logx.always("重开(MIUI入口): 找到 handler=$h")
-        if (h == null) return false
-        h.post {
-            runCatching {
-                val ctl = cls(Constants.CLS_MULTITASKING_CTL).getMethod("getInstance").invoke(null)
-                val starter = ctl.javaClass.getMethod("getMulWinSwitchStarter").invoke(ctl)
-                    ?: return@runCatching
-                starter.javaClass.getMethod(
-                    "switchFullscreenToFreeform",
-                    cls(Constants.CLS_SHELL_TASK_ORG),
-                    android.app.ActivityManager.RunningTaskInfo::class.java
-                ).invoke(starter, org, info)
-                Logx.always("重开(MIUI入口): switchFullscreenToFreeform 已投递成功")
-            }.onFailure {
-                // 打出真实原因（上次只打了 InvocationTargetException，看不到线程断言/参数问题）
-                val c = it.cause ?: it
-                Logx.e(
-                    "重开(MIUI入口) 调用失败: ${c.javaClass.simpleName}: ${c.message} @ " +
-                        c.stackTrace.take(4).joinToString(" <- ") { f ->
-                            "${f.className.substringAfterLast('.')}.${f.methodName}"
-                        },
-                    null
-                )
-            }
-        }
-        true
-    }.onFailure { Logx.e("重开(MIUI入口) 准备失败", it) }.getOrDefault(false)
 
     private fun relaunchPlainNoOptions(decoration: Any, id: Int): Boolean = runCatching {
         val ctx = AppCtx.get() ?: return false
@@ -2182,42 +2106,75 @@ object Hooks {
     }
 
     /**
-     * 把"没走建窗钩子"的小窗补到记忆位置。
+     * 把"没走建窗钩子"的小窗补到记忆位置（旋转后重排、开窗没套用记忆时都由它收口）。
      *
-     * ⚠️ 2026-10-01 真机教训：**不能只发 setBounds**。只推 bounds 不动装饰 ⇒
-     * 触摸区/三点栏/角柄仍按旧位置摆 ⇒ 用户实测「小窗处于不可操作状态」。
-     * 走本仓库**已经验证一致**的那条路：关闭小窗 → 用 MIUI 官方接口按目标位置重开
-     * （与三点菜单切比例同一条路径），重开后 bounds/scale/装饰/触摸区由 MIUI 一次建好。
+     * ⚠️ 2026-10-01 真机教训：**不能只发 setBounds**。只推 bounds 不动装饰 ⇒ 触摸区/三点栏/角柄
+     * 仍按旧位置摆 ⇒ 用户实测「小窗处于不可操作状态」；WCT 那条路也已被用户否掉（白边 + 操作错位）。
+     * ⇒ 走本仓库**已经验证一致**的那条路：**关闭小窗 → 用 MIUI 官方接口重开**，
+     *   bounds/scale/装饰/触摸区由 MIUI 一次建好。
+     *
+     * ★★★ v0.4.40 真机验收修正（第 3 次尝试；前两次的失败都有日志、不是猜的）：
+     *   · 尝试①（v0.4.37）用 `findTransitionsHandler` 反射**猜** Handler ⇒ 每次
+     *     `IllegalStateException: must be called on Handler`；且函数 `return true` 把异常吞掉，
+     *     reopenAtMemory 的两条回退**从未执行过**。
+     *   · 尝试②（v0.4.38/39）改投 `Transitions.getMainExecutor()`（字段位置由 dex 反编译取证：
+     *     `mTransitions` 声明在 `MulWinSwitchTransitionAnim` 上，不在 `MiuiDecorationController` 上）
+     *     ⇒ 转场不再抛异常、日志 `switchFullscreenToFreeform 成功`，**但窗口没回来**：
+     *     实测该序列之后 `dumpsys` 里已无 freeform 任务 —— 该入口的设计前提是"应用在全屏"，
+     *     而我们**已经先把小窗关掉了**。
+     *   · 现在改成与三点菜单比例按钮**完全同一条已验证序列**（applyRatio 那条，真机长期在用）：
+     *     关闭 → `relaunchViaMiuiApi`（MIUI `getActivityOptions`，建窗时会问我们的
+     *     `getCustomFreeformRect` ⇒ 采用刚登记的 pendingTarget 矩形）→ **按结果核验**
+     *     （任务是否真的回到 freeform，而不是"调用没抛异常"）→ 最多重试 3 次
+     *     → 仍失败退"纯 startActivity"，至少不让用户的小窗凭空消失。
      */
     private fun reopenAtMemory(ctrl: Any, target: Rect) = runCatching {
         val id = taskId(ctrl)
         val ctx = AppCtx.get()
         val info = field(ctrl, "mRunningTaskInfo")
         val pkg = info?.let { taskPkg(it) }
-        if (ctx != null && pkg != null) {
-            val key = Bounds.key(pkg, Bounds.screenKey(ctx))
-            // ★ 关键：把"这次要用的 rect"登记成 pendingTarget —— 重开时建窗钩子会优先用它
-            //   （与三点菜单切比例同一条机制），否则重开又拿到旧的记忆值，白重开一次。
+        val key = if (ctx != null && pkg != null) Bounds.key(pkg, Bounds.screenKey(ctx)) else null
+        if (key != null) {
+            // ★ 把"这次要用的 rect"登记成 pendingTarget —— 重开时建窗钩子优先用它
+            //   （与三点菜单切比例同一机制），否则重开又拿到旧记忆值，白关一次窗。
             pendingTarget[key] = PendingTarget(Rect(target), android.os.SystemClock.elapsedRealtime())
             // 关闭→重开期间屏蔽记录（否则 MIUI 摆成全屏那一下会被写进记忆）
-            suppressRecord[key] = android.os.SystemClock.elapsedRealtime() + 8000
+            suppressRecord[key] = android.os.SystemClock.elapsedRealtime() + 12_000
         }
         Logx.always("位置/尺寸对齐: 关闭→重开到 $target（task=$id）")
         val closed = closeFreeformViaMiui(ctrl)
-        Handler(Looper.getMainLooper()).postDelayed({
-            runCatching {
-                // ★ 顺序（2026-10-06 按真机取证定）：
-                //   ① 纯 startActivity（与用户点桌面图标同路 ⇒ MIUI 自己的建窗流程 ⇒ 记忆被采用 ✓）
-                //   ② 不行再退 MIUI 官方接口（稳定建回小窗，但尺寸由 MIUI 定）
-                // ★ 顺序：① MIUI 自己的入口（= 侧边栏那条，会听我们的记忆 ✓）
-                //         ② 纯 startActivity  ③ MIUI getActivityOptions（只带位置，兜底）
-                if (!reopenViaMiuiOwnEntry(ctrl, id)) {
-                    if (!relaunchPlainNoOptions(ctrl, id)) {
-                        if (!relaunchViaMiuiApi(ctrl, id, target)) Logx.e("对齐: 重开失败（三条路都没成）")
+        fun relaunchOnce(attempt: Int) {
+            if (!relaunchViaMiuiApi(ctrl, id, target)) {
+                Logx.e("对齐: 官方接口抛错（第 $attempt 次）⇒ 退纯 startActivity")
+                if (!relaunchPlainNoOptions(ctrl, id)) Logx.e("对齐: 纯 startActivity 也失败（窗口可能已消失）")
+                return
+            }
+            Handler(Looper.getMainLooper()).postDelayed({
+                runCatching {
+                    val now = field(ctrl, "mRunningTaskInfo")
+                    val ff = now != null && taskWindowingMode(now) == MODE_FREEFORM
+                    when {
+                        ff -> Logx.always(
+                            "对齐: 官方接口已重开小窗（第 $attempt 次核验通过）实际=${taskBounds(now)}"
+                        )
+                        attempt < 3 -> {
+                            Logx.e("对齐: 第 $attempt 次未重开小窗，重试")
+                            relaunchOnce(attempt + 1)
+                        }
+                        else -> {
+                            Logx.e("对齐: 三次都没重开，退纯 startActivity（避免窗口消失）")
+                            relaunchPlainNoOptions(ctrl, id)
+                        }
                     }
                 }
-            }
-        }, if (closed) 350 else 700)   // close 没成功也要给足安定时间，否则重开等于把旧窗口带到前台
+            }, 1_500)
+        }
+        Handler(Looper.getMainLooper()).postDelayed({ relaunchOnce(1) }, if (closed) 350 else 700)
+        if (key != null) {
+            Handler(Looper.getMainLooper()).postDelayed({
+                runCatching { suppressRecord.remove(key) }
+            }, 6_000)
+        }
     }.onFailure { Logx.e("位置/尺寸对齐失败", it) }
 
     /** 真实 rect → 可视 rect（MIUI 的 scaleBounds 就是"以左上角为锚"乘 scale）。 */
@@ -2346,16 +2303,30 @@ object Hooks {
                                 //     位置/尺寸对齐: 关闭→官方接口重开到 Rect(416,140-1586,2010)  ← 系统尺寸
                                 //   旋转时坐标空间变化 + MIUI 边界弹回，左上角必然与原记忆不同 ⇒ 必然触发。
                                 //   现在：位置或尺寸任一不符，就按**记忆整块**重开一次（超界仍由 MIUI 弹回）。
-                                val samePos = memo.left == realNow.left && memo.top == realNow.top
-                                val sameSize = memo.width() == realNow.width() &&
-                                    memo.height() == realNow.height()
+                                // ★★★ v0.4.41 真机验收修正：对账必须拿**按当前屏幕等比缩过的目标**去比，
+                                //   不能拿未换算的原始记忆 —— 实测（12:30:51）：旋转路径刚按横屏可视区
+                                //   把 Rect(0,140-1532,1672)（1:1，正好落在横屏内）建好，本对账立刻拿
+                                //   竖屏记忆 Rect(0,397-1672,2069) 判"不一致"，又关窗重开一次，最后把窗口
+                                //   顶到 bottom=2069（超出横屏 1672）—— 比例是**自己人**顶掉的。
+                                //   与 maybeReapplyOnConfigChange 用同一个目标算法（area=状态栏以下可视区）。
+                                val ac = ctx
+                                val target = if (ac != null) {
+                                    val dm = ac.resources.displayMetrics
+                                    Bounds.clampKeepRatio(
+                                        memo,
+                                        Rect(0, statusBarHeight(ac), dm.widthPixels, dm.heightPixels)
+                                    )
+                                } else Rect(memo)
+                                val samePos = target.left == realNow.left && target.top == realNow.top
+                                val sameSize = target.width() == realNow.width() &&
+                                    target.height() == realNow.height()
                                 if (samePos && sameSize) {
-                                    Logx.always("核对通过(位置+尺寸): task=$id pkg=$pkg rect=$realNow")
+                                    Logx.always("核对通过(位置+尺寸): task=$id pkg=$pkg rect=$realNow 目标=$target")
                                 } else if (nth == 1) {
                                     Logx.e(
-                                        "位置/尺寸不一致: task=$id pkg=$pkg 记忆=$memo 实际=$realNow ⇒ 按记忆整块重开"
+                                        "位置/尺寸不一致: task=$id pkg=$pkg 目标=$target（记忆=$memo）实际=$realNow ⇒ 按目标整块重开"
                                     )
-                                    reopenAtMemory(ctrl, Rect(memo))
+                                    reopenAtMemory(ctrl, target)
                                 }
                             }
                         }

@@ -1389,3 +1389,42 @@ aapt2 起不来；且 Debian 的 aapt2 是 2.19，对 `res/values/styles.xml` �
 - 设置项「默认小窗宽度/高度」及其常量/字段/读取（全库无消费，纯存值）；
 - 设置项「启用手势总开关」（四指等手势早已在 2026-09-21 删除）；
 - 保留「左右下角斜向中间滑 → 前台应用转小窗」开关。
+
+## 42. 旋转丢比例 / 关窗重开丢记忆：真机 RCA 与四轮修复（2026-10-06）
+
+**验收（同一脚本 tools/rc-rot.sh，修复前后对照）**
+
+| 阶段 | v0.4.37（红） | v0.4.41（绿） |
+|---|---|---|
+| 竖屏 bounds | `270,388-1403,2060`（MIUI 默认 1133×1672） | `0,397-1672,2069`（= 记忆） |
+| 旋转后 bounds | `549,197-1719,2067`（1170×1870，比例 0.626） | `0,140-1532,1672`（**1532×1532 = 1:1**） |
+| 模块日志 | `位置/尺寸不一致` → `重开(MIUI入口) 调用失败` | `核对通过(位置+尺寸) 目标=` 与 实际一致 |
+| 崩溃 | — | 无 FATAL/ANR |
+
+**四个真 bug（逐个真机取证，不是猜的）**
+
+1. **投错线程**：`reopenViaMiuiOwnEntry` 用 `findTransitionsHandler` 反射猜 Handler（实测猜成 `{a03a31}`，MIUI 要求 `{6da5d33}`）⇒
+   `IllegalStateException: must be called on Handler`；同文件"关闭"用的是 `mTransitions.getMainExecutor()`，一直成功。
+2. **失败被吞**：该函数 `h.post{}` 后就 `return true`，异常发生在那条消息里 ⇒ `reopenAtMemory` 的两条回退
+   （`纯 startActivity` / `getActivityOptions`）**从未执行过**（5 份日志命中 0）。
+3. **executor 取错字段**（dex 取证，`tools/dexscan.py` 扫 `Miui-WindowManager-Shell.jar`）：
+   `MiuiDecorationController` **没有** `mTransitions` 字段（只有 mMainExecutor/mBgExecutor/mTaskOrganizer/…）；
+   `mTransitions:Transitions` 声明在 **`MulWinSwitchTransitionAnim`**（`MulWinSwitchTransition` 的父类）上。
+   ⇒ 唯一可靠取法：`MultiTaskingCtl.getMulWinSwitchTransition()` → `field(·,"mTransitions")` → `Transitions#getMainExecutor()`。
+   顺带发现：**"关闭小窗"此前也一直静默失败**（返回值没人看），修好后 `已按 MIUI 自己的方式关闭当前小窗` 才第一次真正出现。
+4. **契约不符**：`switchFullscreenToFreeform` 的设计前提是"应用在全屏"，而我们是**先关窗再调用** ⇒
+   调用成功、窗口却不回来（实测 dumpsys 里已无 freeform 任务）。
+   ⇒ 改成与三点菜单比例按钮**同一条已验证序列**：关闭 → `relaunchViaMiuiApi`（会问我们的 `getCustomFreeformRect`）
+   → **按结果核验**（任务是否真回到 freeform）→ 最多 3 次 → 退纯 startActivity。
+5. **对账自己顶掉自己**：旋转路径按横屏可视区算出 `clampKeepRatio` 目标 `0,140-1532,1672` 并套用成功，
+   对账却拿**未换算的竖屏记忆** `0,397-1672,2069` 判"不一致"，又重开一次把窗口顶出屏幕（bottom 2069 > 1672）。
+   ⇒ 对账与 `maybeReapplyOnConfigChange` 统一用同一个 clamped 目标。
+
+**仍然遗留（未验证/未做）**
+
+- 旋转后仍有 2~4 秒的关窗重开翻腾（3s 延迟套用 + 对账 + 重试并发），用户可见闪一下 —— 待收敛成单条路径。
+- system 侧 `resolveTaskOrientation` 上的 `setSkipAutoLayout(true)` 杆**仍未被证实**（已加 log-only 守卫日志，
+  但 system 作用域钩子只在开机注入 ⇒ 需框架级重启才能验；未获授权前不动）。
+- `am start --windowingMode 5` 这类入口**不经过** `getFreeformRect`（实测 0 次命中）⇒ 该入口开窗拿不到记忆，
+  只能靠对账自愈；用户实际入口（侧边栏/最近任务）已确认会走钩子。
+- `closeFreeformViaMiui` 修好后，**三点菜单比例按钮**的行为随之改变（以前没真关窗）—— 本轮未回归该按钮，待补测。
