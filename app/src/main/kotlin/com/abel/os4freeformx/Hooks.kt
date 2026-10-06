@@ -70,6 +70,10 @@ object Hooks {
 
         // 诊断探针：抓"双分屏 → 三分屏"真实手势调用的入口（方法名 + 参数）
         runCatching { SplitTrace.install(m, cl) }.onFailure { Logx.e("SplitTrace 安装失败", it) }
+        // 诊断探针：枚举 MIUI 小窗"尺寸/动画"链路的类与方法（旋转后比例从哪来 —— 只为定位，不改行为）
+        runCatching { installSizeChainProbe(cl) }.onFailure { Logx.e("尺寸链探针安装失败", it) }
+        // ★ 主修复：在 MIUI 算 (bounds, scale) 的地方换成记忆值
+        runCatching { installSizeLevelHook(m, cl) }.onFailure { Logx.e("尺寸档位挂钩安装失败", it) }
     }
 
     /** 小白条（手势导航条）：跟随手势 / 淡入淡出 / 触摸显隐 / 空闲自动隐藏。 */
@@ -508,6 +512,121 @@ object Hooks {
 
     // ---------------- 2.2 打开小窗时套用记住的 bounds ----------------
 
+
+    /**
+     * 诊断（2026-10-06）：枚举 MIUI 小窗「尺寸 / 动画」链路的类与方法。
+     *
+     * 背景：旋转走 relayout，模块挂的 15 个**建窗**重载（`getFreeformRect`/`getCustomFreeformRect`）
+     * 根本不被调用；而旋转时是 `MiuiFreeformModeAnimation` 在做那对
+     * `setBounds` + `setMiuiFreeformInfoChange`（NOTES §40.3 记录的正是它）—— 它每次都按 MIUI
+     * 自己的尺寸重算一遍，所以任何"事后推 bounds/scale"都会被它覆盖。
+     * 目标：找到"算这一对值"的确切方法，在那里**把答案换成我们的记忆矩形**（§40.4 首选）。
+     * 本函数只枚举、不挂钩，不改任何行为。
+     */
+    private fun installSizeChainProbe(cl: ClassLoader) {
+        listOf(
+            "com.android.wm.shell.multitasking.miuifreeform.MiuiFreeformModeAnimation",
+            "com.android.wm.shell.multitasking.common.MultiTaskingSizeLevel",
+            "com.android.wm.shell.multitasking.common.MultiTaskingSizeLevel\$LevelInfo",
+            "com.android.wm.shell.multitasking.common.taskmanager.MiuiFreeformModeTaskInfo",
+            "com.android.wm.shell.multitasking.common.MultiTaskingCommonUtils",
+            "com.android.wm.shell.multitasking.miuifreeform.MiuiFreeformModeUtils",
+            "com.android.wm.shell.multitasking.common.MultiTaskingPackageUtils"
+        ).forEach { cn ->
+            val c = runCatching { Class.forName(cn, false, cl) }.getOrNull()
+            if (c == null) {
+                Logx.always("尺寸链: 类不存在 $cn")
+                return@forEach
+            }
+            Logx.always("尺寸链: $cn 方法数=${c.declaredMethods.size}")
+            c.declaredMethods.take(30).forEach { mm ->
+                Logx.always(
+                    "   ${mm.name}${mm.parameterTypes.joinToString(",", "(", ")") { it.simpleName }} " +
+                        "-> ${mm.returnType.simpleName}"
+                )
+            }
+        }
+    }
+
+
+    /**
+     * ★★★ 2026-10-06 主修复：**在 MIUI 自己算「目标 bounds + scale」的地方把答案换成记忆值**。
+     *
+     * 真机取证（尺寸链探针）：旋转后比例被切回原始，是因为 MIUI 在
+     * `MultiTaskingSizeLevel#getDestBoundsAndScale(Rect)` 里重新算了一对
+     * `(bounds, scale)`（返回 `LevelInfo`），而模块此前挂的 15 个重载都是**建窗**用的
+     * （`getFreeformRect`/`getCustomFreeformRect`），relayout 根本不走它们 ⇒ 事后推 WCT 或重开都白搭。
+     *
+     * 做法（NOTES §40.4「首选」：在它算的时候给正确答案）：
+     *   · **bounds 用记忆矩形**（先 `clampKeepRatio` 等比缩进当前可视区 ⇒ 比例不变、不越界）；
+     *   · **scale 沿用 MIUI 自己算出来的那个**（不碰它的渲染缩放）；
+     *   ⇒ 两者**成对**交给 MIUI，外框（bounds×scale）与内框（渲染）同源 —— 不会有白边；
+     *     且不关窗、不重开 —— 不会有操作部位错位。
+     */
+    private fun installSizeLevelHook(m: MainHook, cl: ClassLoader) {
+        val cls = runCatching {
+            Class.forName("com.android.wm.shell.multitasking.common.MultiTaskingSizeLevel", false, cl)
+        }.getOrNull() ?: run {
+            Logx.e("尺寸档位: 找不到 MultiTaskingSizeLevel")
+            return
+        }
+        val infoCls = runCatching {
+            Class.forName("com.android.wm.shell.multitasking.common.MultiTaskingSizeLevel\$LevelInfo", false, cl)
+        }.getOrNull()
+        if (infoCls == null) {
+            Logx.e("尺寸档位: 找不到 LevelInfo")
+            return
+        }
+        // LevelInfo(Rect, float) 构造器
+        val ctor = infoCls.declaredConstructors.firstOrNull { c ->
+            c.parameterTypes.size == 2 &&
+                c.parameterTypes[0] == Rect::class.java &&
+                c.parameterTypes[1] == java.lang.Float.TYPE
+        } ?: infoCls.declaredConstructors.firstOrNull()
+        if (ctor == null) {
+            Logx.e("尺寸档位: LevelInfo 无可用构造器")
+            return
+        }
+        runCatching { ctor.isAccessible = true }
+        var n = 0
+        cls.declaredMethods.filter { it.name == "getDestBoundsAndScale" }.forEach { method ->
+            if (m.hookExecutable(method, XposedInterface.Hooker { chain ->
+                    val res = chain.proceed()
+                    try {
+                        val scale = res?.let { call(it, "getScale") as? Float } ?: 0f
+                        val arg0 = chain.getArg(0) as? Rect
+                        val cur = res?.let { call(it, "getBounds") as? Rect }
+                        Logx.always("尺寸档位: getDestBoundsAndScale($arg0) -> bounds=$cur scale=$scale")
+                        val ctx = AppCtx.get()
+                        val pkg = lastFreeformPkg               // 最近一次见到的小窗应用（见 installLaunchBounds）
+                        if (ctx != null && pkg != null && scale > 0f) {
+                            val screen = Bounds.screenKey(ctx)
+                            val memo = Bounds.get(ctx, pkg, screen) ?: Bounds.getAny(ctx, pkg)
+                            if (memo != null) {
+                                val dm = ctx.resources.displayMetrics
+                                val area = Rect(0, statusBarHeight(ctx), dm.widthPixels, dm.heightPixels)
+                                val t = Bounds.clampKeepRatio(memo, area)
+                                if (cur == null || cur.width() != t.width() || cur.height() != t.height() ||
+                                    cur.left != t.left || cur.top != t.top
+                                ) {
+                                    val replaced = ctor.newInstance(t, scale)
+                                    Logx.always("尺寸档位★: 用记忆替换 -> bounds=$t scale=$scale（$pkg）")
+                                    return@Hooker replaced
+                                }
+                            }
+                        }
+                    } catch (t: Throwable) {
+                        Logx.e("尺寸档位替换失败", t)
+                    }
+                    res
+                })) {
+                n++
+                Logx.always("尺寸档位: hook 成功 getDestBoundsAndScale")
+            }
+        }
+        Logx.always("尺寸档位: 共挂 $n 个")
+    }
+
     private fun installLaunchBounds(m: MainHook, cl: ClassLoader) {
         val cls = runCatching { Class.forName(Constants.CLS_MULTIWINDOW_UTILS, false, cl) }.getOrNull() ?: run {
             Logx.e("找不到 ${Constants.CLS_MULTIWINDOW_UTILS}")
@@ -531,6 +650,7 @@ object Hooks {
                             // 前几次调用都打出来（不能只 once）：用户反馈"位置记不住"时，
                             // 必须能看出**他用的那条打开路径到底有没有走进这个钩子**。
                             if (pkg != null) {
+                                lastFreeformPkg = pkg
                                 val hit = ffrHits.merge("$sig|$pkg", 1, Int::plus) ?: 1
                                 if (hit <= 6) Logx.always("小窗 bounds 计算[$hit]: $sig pkg=$pkg -> $res")
                             }
@@ -1301,6 +1421,13 @@ object Hooks {
 
     /** 诊断：每个（重载签名|包名）被调了几次 —— 只打前 6 次，用来确认"哪条打开路径走进来了"。 */
     private val ffrHits = ConcurrentHashMap<String, Int>()
+
+    /**
+     * 最近一次见到的**小窗应用包名**。
+     * `MultiTaskingSizeLevel#getDestBoundsAndScale(Rect)` 的参数只有 Rect、不带包名，
+     * 所以在这里记住"当前小窗是谁"，供尺寸档位替换时取记忆用。
+     */
+    @Volatile private var lastFreeformPkg: String? = null
     /** 诊断：每个 task 做过几次"记忆 vs 实际左上角"核对（前 3 次）。 */
     private val memChecked = ConcurrentHashMap<Int, Int>()
 
