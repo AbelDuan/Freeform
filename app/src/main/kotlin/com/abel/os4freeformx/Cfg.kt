@@ -131,7 +131,9 @@ object Cfg {
      * 该进程永远读到旧值（2026-09-19 实测：DE 已写入 immersive=false，systemui 仍读到 true）。
      * 也不能同步调用 provider——小窗打开路径上阻塞几百毫秒会拖慢启动，所以放线程池。
      */
-    fun refreshAsync(intervalMs: Long = 1500) {
+    // v0.4.49：节流 1.5s → 10s。原来的高频刷新让 provider 被持续调用、App 进程无法回收；
+    //   开关类配置在「下一次关键动作」（开窗/手势/菜单）前仍会按需读到最新值。
+    fun refreshAsync(intervalMs: Long = 10_000) {
         val now = android.os.SystemClock.uptimeMillis()
         if (now - lastReload < intervalMs) return
         lastReload = now

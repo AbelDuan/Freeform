@@ -2342,6 +2342,7 @@ object Hooks {
             // ★ 把"这次要用的 rect"登记成 pendingTarget —— 重开时建窗钩子优先用它
             //   （与三点菜单切比例同一机制），否则重开又拿到旧记忆值，白关一次窗。
             pendingTarget[key] = PendingTarget(Rect(target), android.os.SystemClock.elapsedRealtime())
+            Bounds.pendingTargetKey = key      // v0.4.49：有待用目标 ⇒ 记忆读取用 300ms 短 TTL
             // 关闭→重开期间屏蔽记录（否则 MIUI 摆成全屏那一下会被写进记忆）
             suppressRecord[key] = android.os.SystemClock.elapsedRealtime() + 12_000
         }
@@ -2377,7 +2378,10 @@ object Hooks {
         Handler(Looper.getMainLooper()).postDelayed({ relaunchOnce(1) }, if (closed) 350 else 700)
         if (key != null) {
             Handler(Looper.getMainLooper()).postDelayed({
-                runCatching { suppressRecord.remove(key) }
+                runCatching {
+                    suppressRecord.remove(key)
+                    if (Bounds.pendingTargetKey == key) Bounds.pendingTargetKey = null
+                }
             }, 6_000)
         }
     }.onFailure { Logx.e("位置/尺寸对齐失败", it) }

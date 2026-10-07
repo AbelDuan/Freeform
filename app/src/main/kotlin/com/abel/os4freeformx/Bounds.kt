@@ -146,10 +146,25 @@ object Bounds {
      * TTL 从 30s 降到 1.5s：菜单里刚按比例存下的尺寸要马上生效（重开小窗在 ~1.8s 后），
      * 30s 会让 system_server 拿旧值把方向/比例盖回去（真机现象：选横屏又被恢复成竖屏）。
      */
+    /**
+     * 记忆读取的缓存 TTL。
+     *
+     * v0.4.49（用户要求「模块 App 不要常驻后台」）：原来恒为 300ms —— 每次过期都会
+     * contentResolver.call 打一次模块 App 的 ContentProvider，于是 App 进程被模块自己持续拉起、
+     * 永远等不到系统回收（日志里 bounds 载入 N 条 反复出现就是它）。
+     * 但 300ms 当初是为修「SystemUI 刚写的记忆、system_server 立刻要读到」——那个场景只发生在
+     * 有待用目标（pendingTarget）时（比例切换/对齐重开）。
+     * 现在：有待用目标才 300ms，其余 3s。
+     */
+    private fun ttl(): Long = if (pendingTargetKey != null) 300L else 3_000L
+
+    /** 由 Hooks 在登记/清除 pendingTarget 时同步（只需要「有没有」这个事实）。 */
+    @Volatile var pendingTargetKey: String? = null
+
     @Synchronized
     fun get(ctx: Context, pkg: String, screen: String): Rect? {
         val now = android.os.SystemClock.elapsedRealtime()
-        if (!loaded || now - lastLoad > 300) {
+        if (!loaded || now - lastLoad > ttl()) {
             loaded = false
             load(ctx)
             lastLoad = now
@@ -165,7 +180,7 @@ object Bounds {
 
     fun getScale(ctx: Context, pkg: String, screen: String): Float {
         val now = android.os.SystemClock.elapsedRealtime()
-        if (!loaded || now - lastLoad > 300) {
+        if (!loaded || now - lastLoad > ttl()) {
             loaded = false
             load(ctx)
             lastLoad = now
@@ -207,7 +222,7 @@ object Bounds {
      */
     fun getAny(ctx: Context, pkg: String): Rect? {
         val now = android.os.SystemClock.elapsedRealtime()
-        if (!loaded || now - lastLoad > 300) {
+        if (!loaded || now - lastLoad > ttl()) {
             loaded = false
             load(ctx)
             lastLoad = now
