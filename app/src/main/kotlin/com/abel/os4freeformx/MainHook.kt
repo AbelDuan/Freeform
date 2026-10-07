@@ -14,6 +14,21 @@ class MainHook : XposedModule() {
     override fun onModuleLoaded(param: XposedModuleInterface.ModuleLoadedParam) {
         runCatching {
             Logx.attach(this)
+            // ★ v0.4.50 可行性自检（用户要求：剪掉"开小窗就拉起 App"这最后一根线）：
+            //   验证 LibXposed 102 的 getRemotePreferences 在本机**能否写入并落盘**、
+            //   以及返回对象上有没有 reload()（决定跨进程实时性是否可解）。
+            runCatching {
+                val p = getRemotePreferences("os4ffx_probe")
+                val stamp = "hello-" + android.os.SystemClock.elapsedRealtime()
+                p.edit().putString("t", stamp).commit()
+                val back = p.getString("t", null)
+                val hasReload = runCatching { p.javaClass.getMethod("reload").invoke(p); true }
+                    .getOrDefault(false)
+                Logx.always(
+                    "远程偏好自检: 类=${p.javaClass.name} 写入回读=${if (back == stamp) "OK" else "FAIL($back)"} " +
+                        "reload可用=$hasReload"
+                )
+            }.onFailure { Logx.e("远程偏好自检失败", it) }
             Cfg.attachRemote(this)
             Logx.always("模块已加载 v${Constants.VERSION}（API ${apiVersion}，进程=${param.processName}，systemServer=${param.isSystemServer}）")
         }.onFailure { android.util.Log.e(Constants.TAG, "onModuleLoaded", it) }
