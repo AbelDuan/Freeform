@@ -1025,12 +1025,18 @@ object Hooks {
                                         //   随后才被对账纠正 ⇒ 用户看到中间那一帧竖屏。
                                         //   ⇒ 与对账/配置变更统一：先 clampKeepRatio 到**当前可视区**再喂，
                                         //     建窗第一帧就是正确的横屏几何。
-                                        val fitted = Bounds.clampKeepRatio(memo, visibleArea(ctx))
+                                        // ★★ v0.4.48 二分：**撤掉 v0.4.45 的 clamp**，恢复 v0.4.44 的行为（原样喂 memo），
+                                        //   但把"拟换算值"一起打出来做对照 —— 一次真机就能区分：
+                                        //     · 原样喂能套用 ⇒ 元凶是 clamp 那处写法；
+                                        //     · 原样喂也不套用 ⇒ 元凶在更早的入口（开窗没走钩子）。
+                                        val wouldFit = runCatching {
+                                            Bounds.clampKeepRatio(memo, visibleArea(ctx))
+                                        }.getOrElse { memo }
                                         val systemDefault = Rect(res)
-                                        if (rectIdx >= 0) (chain.getArg(rectIdx) as? Rect)?.set(fitted)
-                                        res.set(fitted)
+                                        if (rectIdx >= 0) (chain.getArg(rectIdx) as? Rect)?.set(memo)
+                                        res.set(memo)
                                         Logx.always(
-                                            "恢复(位置+比例) $pkg@$screen -> $fitted（记忆 $memo，系统默认 $systemDefault）"
+                                            "恢复(位置+比例) $pkg@$screen -> $memo（拟换算 $wouldFit，系统默认 $systemDefault）"
                                         )
                                     }
                                 }
