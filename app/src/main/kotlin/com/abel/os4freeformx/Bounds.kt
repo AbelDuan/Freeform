@@ -42,7 +42,8 @@ object Bounds {
         return "${minOf(w, h)}x${maxOf(w, h)}"
     }
 
-    private fun displaySize(ctx: Context?, displayId: Int = 0): Pair<Int, Int> {
+    /** 当前显示的真实尺寸（DisplayManager#getRealSize，**旋转后即时生效**，不依赖缓存的 resources）。 */
+    fun displaySize(ctx: Context?, displayId: Int = 0): Pair<Int, Int> {
         if (ctx != null) {
             runCatching {
                 val dmgr = ctx.getSystemService(Context.DISPLAY_SERVICE)

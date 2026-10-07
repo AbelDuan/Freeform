@@ -660,6 +660,23 @@ object Hooks {
                 val sig = mm.name + mm.parameterTypes.joinToString(",", "(", ")") { it.simpleName }
                 val argc = mm.parameterTypes.size
                 if (m.hookExecutable(mm, XposedInterface.Hooker { chain ->
+                        if (sig.startsWith("scaleDownIfNeeded")) runCatching {
+                            val info0 = chain.getArg(0)
+                            val pkg0 = info0?.let { taskPkg(it) }
+                            val ctx0 = AppCtx.get()
+                            if (ctx0 != null && pkg0 != null) {
+                                val memo0 = Bounds.get(ctx0, pkg0, Bounds.screenKey(ctx0))
+                                if (memo0 != null) {
+                                    val dm0 = ctx0.resources.displayMetrics
+                                    val area0 = Rect(0, statusBarHeight(ctx0), dm0.widthPixels, dm0.heightPixels)
+                                    val t0 = Bounds.clampKeepRatio(memo0, area0)
+                                    for (k in 0 until argc) {
+                                        val av = chain.getArg(k)
+                                        if (av is Rect) { av.set(t0); Logx.always("②几何注入: $sig arg$k <- $t0（$pkg0）") }
+                                    }
+                                }
+                            }
+                        }.onFailure { Logx.e("②几何注入失败", it) }
                         val res = chain.proceed()
                         runCatching {
                             val a = (0 until argc).joinToString(",") { chain.getArg(it).toString() }
@@ -862,6 +879,39 @@ object Hooks {
      * （而不是像 v0.4.10 那样自造一份 bounds），从而免重启、免关窗地把记忆矩形注入进去。
      * 只记录、不改行为。
      */
+    /**
+     * 当前**可视区**（状态栏以下），**旋转后立刻可用**。
+     *
+     * ★★★ v0.4.46 根因（用户复现："切横屏时竖屏小窗消失→横屏小窗→又消失变回竖屏小窗"）：
+     *   原来一律用 `ctx.resources.displayMetrics` 算 area —— 而 AppCtx 缓存的那个 Context 在旋转后
+     *   **可能仍是竖屏尺寸**（v0.4.45 实测：横屏下 area 仍为 1672x2364）。后果有两层：
+     *     ① 喂给 MIUI 的"记忆矩形"没被正确换算 ⇒ 横屏里建出竖屏形状的窗；
+     *     ② "已经对上了就跳过"的判据也用它 ⇒ `clampKeepRatio(记忆, 竖屏area)` 等于记忆本身
+     *        ⇒ 判为"已是目标几何"而**跳过纠正**，窗口就停在竖屏形状。
+     *   ⇒ 统一改用 DisplayManager 的 getRealSize（[Bounds.displaySize]，旋转即时生效）。
+     */
+    private fun visibleArea(ctx: Context?, dispId: Int = -1): Rect {
+        val c = ctx ?: AppCtx.get()
+        val id = if (dispId >= 0) dispId
+        else runCatching { c?.display?.displayId }.getOrNull() ?: 0
+        val logging = android.os.SystemClock.elapsedRealtime() - lastConfigChangeAt <= 12_000
+        val live = runCatching {
+            val (w, h) = Bounds.displaySize(c, id)
+            if (w > 0 && h > 0) Rect(0, c?.let { statusBarHeight(it) } ?: 0, w, h) else null
+        }.getOrElse { t ->
+            Logx.e("visibleArea 异常(disp=$id)：${t.javaClass.simpleName}: ${t.message} ⇒ 回退 displayMetrics")
+            null
+        }
+        if (live != null) {
+            if (logging) Logx.always("visibleArea: disp=$id -> $live（DisplayManager 实时）")
+            return live
+        }
+        val dm = c?.resources?.displayMetrics
+        val fb = Rect(0, 0, dm?.widthPixels ?: 0, dm?.heightPixels ?: 0)
+        if (logging) Logx.always("visibleArea: disp=$id -> $fb（回退 displayMetrics）")
+        return fb
+    }
+
     private fun installWctProbe(m: MainHook, cl: ClassLoader) {
         val cls = runCatching { Class.forName("android.window.WindowContainerTransaction", false, cl) }
             .getOrNull()
@@ -968,11 +1018,19 @@ object Hooks {
                                         //    现在改为：**位置 + 比例一起套用**（整块用记忆矩形）：
                                         //      · 位置/尺寸都来自记忆（由"切换比例"或用户拖拽写入）
                                         //      · 超界仍由 MIUI 自己的边界机制弹回（不自己做夹取）
+                                        // ★★★ v0.4.45 用户复现：「切横屏会先变竖屏、马上又变回横屏」、
+                                        //   「横屏下切比例，先变竖屏切比例、再重开成横屏」——根因就在这几行：
+                                        //   这里把**未经屏幕换算的原始记忆矩形**整块喂给 MIUI。记忆是竖屏几何
+                                        //   （如 1672x1672 @397），在横屏里就被建出一个"竖屏形状"的窗，
+                                        //   随后才被对账纠正 ⇒ 用户看到中间那一帧竖屏。
+                                        //   ⇒ 与对账/配置变更统一：先 clampKeepRatio 到**当前可视区**再喂，
+                                        //     建窗第一帧就是正确的横屏几何。
+                                        val fitted = Bounds.clampKeepRatio(memo, visibleArea(ctx))
                                         val systemDefault = Rect(res)
-                                        if (rectIdx >= 0) (chain.getArg(rectIdx) as? Rect)?.set(memo)
-                                        res.set(memo)
+                                        if (rectIdx >= 0) (chain.getArg(rectIdx) as? Rect)?.set(fitted)
+                                        res.set(fitted)
                                         Logx.always(
-                                            "恢复(位置+比例) $pkg@$screen -> $memo（系统默认 $systemDefault）"
+                                            "恢复(位置+比例) $pkg@$screen -> $fitted（记忆 $memo，系统默认 $systemDefault）"
                                         )
                                     }
                                 }
@@ -1727,6 +1785,9 @@ object Hooks {
      */
     private val aligningUntil = ConcurrentHashMap<Int, Long>()
 
+    /** ①旋转/换屏抑制期：期间禁止任何"对齐重开" */
+    @Volatile private var rotationReopenGateUntil = 0L
+
     /** 最近一次"检测到旋转/换屏"的时刻（WCT 探针只在它之后 8s 内记录，避免刷屏）。 */
     @Volatile private var lastConfigChangeAt = 0L
 
@@ -2143,9 +2204,7 @@ object Hooks {
                     val memo = Bounds.get(ctxCfg, pkgCfg, Bounds.screenKeyFor(ctxCfg, dispId))
                         ?: Bounds.getAny(ctxCfg, pkgCfg)
                     if (memo != null) {
-                        val dm = ctxCfg.resources.displayMetrics
-                        val area = Rect(0, statusBarHeight(ctxCfg), dm.widthPixels, dm.heightPixels)
-                        val t = Bounds.clampKeepRatio(memo, area)
+                        val t = Bounds.clampKeepRatio(memo, visibleArea(ctxCfg, dispId))
                         // ⛔ 2026-10-06 回退：曾试过 WCT `removeTask` + 全新打开（想复刻用户手动"关掉再打开"），
                         //   但那会**把用户正在用的窗口直接移除**（真机：移除后小窗消失）—— 违背"不能搞出不可用的窗"
                         //   的红线，故回退为安全的 `reopenAtMemory`（只关小窗状态，不销毁 task）。
@@ -2164,7 +2223,8 @@ object Hooks {
         }
         if (appliedForConfig[id] == configKey) return
         appliedForConfig[id] = configKey
-        Logx.always("配置变更: $prev -> $configKey，排程套用记忆尺寸（task=$id）")
+        rotationReopenGateUntil = android.os.SystemClock.elapsedRealtime() + 10_000
+                            Logx.always("配置变更: $prev -> $configKey，排程套用记忆尺寸（task=$id）")
         Handler(Looper.getMainLooper()).postDelayed({
             runCatching { reapplyBoundsFromMemory(ctrl, dispId) }
         }, 350)
@@ -2259,6 +2319,10 @@ object Hooks {
     private fun reopenAtMemory(ctrl: Any, target: Rect) = runCatching {
         val id = taskId(ctrl)
         val now = android.os.SystemClock.elapsedRealtime()
+        if (now < rotationReopenGateUntil) {
+            Logx.always("对齐: 旋转抑制期内不重开（task=$id）")
+            return@runCatching
+        }
         if ((aligningUntil[id] ?: 0L) > now) {
             Logx.once("align-busy-$id", "对齐跳过：task=$id 正在关窗重开对齐中，不叠第二次（剩余 ${(aligningUntil[id] ?: 0L) - now}ms）")
             return@runCatching
@@ -2444,13 +2508,8 @@ object Hooks {
                                 //   竖屏记忆 Rect(0,397-1672,2069) 判"不一致"，又关窗重开一次，最后把窗口
                                 //   顶到 bottom=2069（超出横屏 1672）—— 比例是**自己人**顶掉的。
                                 //   与 maybeReapplyOnConfigChange 用同一个目标算法（area=状态栏以下可视区）。
-                                val ac = ctx
-                                val target = if (ac != null) {
-                                    val dm = ac.resources.displayMetrics
-                                    Bounds.clampKeepRatio(
-                                        memo,
-                                        Rect(0, statusBarHeight(ac), dm.widthPixels, dm.heightPixels)
-                                    )
+                                val target = if (ctx != null) {
+                                    Bounds.clampKeepRatio(memo, visibleArea(ctx, dispId))
                                 } else Rect(memo)
                                 val samePos = target.left == realNow.left && target.top == realNow.top
                                 val sameSize = target.width() == realNow.width() &&
