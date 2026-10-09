@@ -1,3 +1,9 @@
+> **✅ 当前正确最终版：`v0.4.44`（本仓库 `nbi-native` 分支 + 标签 `v0.4.44-final`）**
+>
+> ⛔ **`v0.4.45`–`v0.4.50` 已判定勿用**：真机复现「开窗先出现黑色矩形（无圆角）→ 关闭后窗口消失、需手动重开」，
+> 属红线回归。留档在分支 `wip/v0.4.45-50-regressions`，**不要基于它们继续开发**。
+> 详见 [`NOTES-resize-handle.md`](NOTES-resize-handle.md) §42.5。
+
 # OS4FreeFromX
 
 HyperOS 4（Android 17 / API 37）**小窗（freeform）与分屏体验增强** LSPosed 模块。
