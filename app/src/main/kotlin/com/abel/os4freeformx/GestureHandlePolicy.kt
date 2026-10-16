@@ -16,6 +16,25 @@ class GestureHandlePolicy {
     private var touchHeld = false
     private var swipeHeld = false
 
+    /**
+     * ★★★ v0.4.46 用户反馈③：「酷安的导航栏小白条，我没操作、或在操作别的地方时，
+     *   它都不会自动隐藏」。
+     *
+     *   根因：`hidden()` 判据是 `now - shownAt >= IMMERSIVE_DURATION_MS`，
+     *   而 `shownAt` 只在 `reveal()` 里更新、**初值为 0**。
+     *   ⇒ 尚未 reveal 过时 `now - 0` 是天文数字，`remaining()` 算出 **0**，
+     *     `scheduleHide()`（`if (remaining > 0L)`）于是**不排任何定时器**；
+     *     而 `draw()` 只在淡入淡出动画进行中才 `postInvalidateOnAnimation()`。
+     *   ⇒ 画面一旦静止（酷安正是长停留场景），**再没有任何东西触发重绘**，
+     *     最后一帧（可见）就永久留在屏幕上 → 永不隐藏。
+     *
+     *   修法：用 `noteSeen()` 在首次参与判定时把 `shownAt` 补上，
+     *   使 `remaining()` 一定能给出正数倒计时，从而 `scheduleHide()` 必然排上定时器。
+     */
+    fun noteSeen(now: Long) {
+        if (shownAt == 0L) shownAt = now
+    }
+
     fun reveal(now: Long) { shownAt = now }
 
     fun touchDown(now: Long) {
@@ -71,6 +90,8 @@ class GestureHandlePolicy {
     /** 距下次隐藏还剩多少毫秒（用于排程隐藏）。 */
     fun remaining(now: Long): Long {
         if (!Cfg.gestureHandleIdle) return 0L
+        // ★ v0.4.46：shownAt 未初始化时先补上，否则 `now - 0` 会算出 0 毫秒 ⇒ 永不排程隐藏。
+        noteSeen(now)
         val immersive = maxOf(0L, IMMERSIVE_DURATION_MS - (now - shownAt))
         val touch = if (touchHeld) 0L else maxOf(0L, touchRevealUntil - now)
         val swipe = if (swipeHeld) 0L else maxOf(0L, swipeRevealUntil - now)

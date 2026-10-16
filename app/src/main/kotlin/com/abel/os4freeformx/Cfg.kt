@@ -25,6 +25,10 @@ object Cfg {
     @Volatile var gestureHandleIdle = Constants.DEF_GESTURE_HANDLE_IDLE
     @Volatile var gestureHandleArea = Constants.DEF_GESTURE_HANDLE_AREA
     @Volatile var assignRaw = Constants.DEF_NBI_ASSIGN
+    // 小窗增强（移植自 HyperCeiler）
+    @Volatile var forceFreeform = Constants.DEF_FORCE_FREEFORM
+    @Volatile var multiFreeform = Constants.DEF_MULTI_FREEFORM
+    @Volatile var edgeFreeformFront = Constants.DEF_EDGE_FREEFORM_FRONT
     @Volatile private var assign: Map<String, Int> = emptyMap()
 
     /** 该应用的归属（0=不处理 1=隐藏 2=取色）。热路径只读 volatile。 */
@@ -100,6 +104,9 @@ object Cfg {
             gestureHandleTouch = p.getBoolean(Constants.K_GESTURE_HANDLE_TOUCH, Constants.DEF_GESTURE_HANDLE_TOUCH)
             gestureHandleIdle = p.getBoolean(Constants.K_GESTURE_HANDLE_IDLE, Constants.DEF_GESTURE_HANDLE_IDLE)
             gestureHandleArea = p.getFloat(Constants.K_GESTURE_HANDLE_AREA, Constants.DEF_GESTURE_HANDLE_AREA)
+            forceFreeform = p.getBoolean(Constants.K_FORCE_FREEFORM, Constants.DEF_FORCE_FREEFORM)
+            multiFreeform = p.getBoolean(Constants.K_MULTI_FREEFORM, Constants.DEF_MULTI_FREEFORM)
+            edgeFreeformFront = p.getBoolean(Constants.K_EDGE_FREEFORM_FRONT, Constants.DEF_EDGE_FREEFORM_FRONT)
             parseAssign(p.getString(Constants.K_NBI_ASSIGN, Constants.DEF_NBI_ASSIGN) ?: Constants.DEF_NBI_ASSIGN)
             Logx.verbose = log
         }.onFailure { Logx.e("reload 失败", it) }
@@ -180,6 +187,9 @@ object Cfg {
             gestureHandleTouch = b.getBoolean(Constants.K_GESTURE_HANDLE_TOUCH, Constants.DEF_GESTURE_HANDLE_TOUCH)
             gestureHandleIdle = b.getBoolean(Constants.K_GESTURE_HANDLE_IDLE, Constants.DEF_GESTURE_HANDLE_IDLE)
             gestureHandleArea = b.getFloat(Constants.K_GESTURE_HANDLE_AREA, Constants.DEF_GESTURE_HANDLE_AREA)
+            forceFreeform = b.getBoolean(Constants.K_FORCE_FREEFORM, Constants.DEF_FORCE_FREEFORM)
+            multiFreeform = b.getBoolean(Constants.K_MULTI_FREEFORM, Constants.DEF_MULTI_FREEFORM)
+            edgeFreeformFront = b.getBoolean(Constants.K_EDGE_FREEFORM_FRONT, Constants.DEF_EDGE_FREEFORM_FRONT)
             parseAssign(b.getString(Constants.K_NBI_ASSIGN, Constants.DEF_NBI_ASSIGN) ?: Constants.DEF_NBI_ASSIGN)
             Logx.verbose = log
         }.onFailure { Logx.e("读配置失败", it) }

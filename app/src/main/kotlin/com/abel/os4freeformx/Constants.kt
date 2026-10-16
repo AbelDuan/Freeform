@@ -39,6 +39,19 @@ object Constants {
     const val NBI_HIDE = 1
     const val NBI_SAMPLE = 2
 
+    // ── 小窗增强（移植自 HyperCeiler，AGPL-3.0；出处见文件末尾）──
+    /** 强制允许应用以小窗打开（不再受 MIUI 支持名单限制） */
+    const val K_FORCE_FREEFORM = "force_freeform"
+    /** 不限制小窗数量（多小窗） */
+    const val K_MULTI_FREEFORM = "multi_freeform"
+    /** 贴边小窗强制前台 */
+    const val K_EDGE_FREEFORM_FRONT = "edge_freeform_front"
+    /** 调试开关：system_server 侧几何探针（198 个钩子，日志量大，默认关） */
+    const val DBG_GEO_PROBE = false
+
+    /** 多小窗上限：256 = HyperCeiler 用值，等价于"实际不限制" */
+    const val FREEFORM_MAX_COUNT = 256
+
     const val DEF_ENABLE_LOG = false
     const val DEF_IMMERSIVE = true
     const val DEF_REMEMBER_BOUNDS = true
@@ -52,6 +65,10 @@ object Constants {
     const val DEF_GESTURE_HANDLE_IDLE = true
     const val DEF_GESTURE_HANDLE_AREA = 24f
         const val DEF_NBI_ASSIGN = ""
+    // 小窗增强默认值（用户 2026-10-15 要求移植，默认开）
+    const val DEF_FORCE_FREEFORM = true
+    const val DEF_MULTI_FREEFORM = true
+    const val DEF_EDGE_FREEFORM_FRONT = true
 
     // ---- 目标类（HyperOS 4 / Android 17 实测确认）----
     /** wm shell 小窗装饰（systemui 进程，来自 /system_ext/framework/Miui-WindowManager-Shell.jar） */

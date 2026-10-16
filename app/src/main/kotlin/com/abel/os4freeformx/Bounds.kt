@@ -159,7 +159,73 @@ object Bounds {
         return alt?.let { cache[key(pkg, it)] }?.let { Rect(it) }
     }
 
-    /** 记忆里一起存的 freeformScale（真机：用户调的大小体现在 scale 上，只有 bounds 记不住尺寸）。 */
+    /**
+     * 方向槽：key → true(横屏)/false(竖屏)。
+     *
+     * ★★★ v0.4.53 用户反馈：「小窗被切换为横屏之后，会被系统立马拉回竖屏」。
+     *
+     * 根因：v0.4.48「去掉尺寸记忆」之后，恢复端只用记忆点、**尺寸完全交给 MIUI**
+     * ⇒ 横屏形状在重开时丢失，又回到 MIUI 默认的竖屏。
+     * 而原来的"比例槽"存的是 `freeformScale`（可视÷真实，恒 <1），**根本不含方向信息**，
+     * 所以当初即使写了也读不回方向。
+     *
+     * 这里**单独**记一个方向位（不塞进 scale，避免与既有缩放语义打架），
+     * 并随同一条记录一起落盘（编码进 `@` 字段的高位，见 [write]/[load]）。
+     */
+    private val orientCache = HashMap<String, Boolean>()
+
+    /** 记方向（横屏=true）。与 [putPoint] 配合使用：点决定位置，方向决定宽高谁大。 */
+    fun putOrientation(ctx: Context, pkg: String, screen: String, landscape: Boolean) {
+        val k = key(pkg, screen)
+        synchronized(this) { orientCache[k] = landscape }
+        // 立刻落盘：把方向编码进 scale 字段（+10 表示横屏），保证跨进程可读
+        val base = getScale(ctx, pkg, screen)
+        write(ctx, k, cache[k], if (landscape) base + 10f else base)
+        Logx.always("记住方向 $k = ${if (landscape) "横屏" else "竖屏"}")
+    }
+
+    /** 读方向：true=横屏，false=竖屏，null=没有记录（交回 MIUI 默认）。 */
+    fun getOrientation(ctx: Context, pkg: String, screen: String): Boolean? {
+        val k = key(pkg, screen)
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (!loaded || now - lastLoad > 300) {
+            loaded = false
+            load(ctx)
+            lastLoad = now
+        }
+        synchronized(this) { orientCache[k]?.let { return it } }
+        // 从落盘值解码（+10 偏移 = 横屏）
+        val raw = rawScale(ctx, pkg, screen)
+        if (raw <= 0f) return null
+        return raw > 10f
+    }
+
+    /** 落盘的**原始** `@` 值（不做偏移解码），供方向判定用。 */
+    private fun rawScale(ctx: Context, pkg: String, screen: String): Float {
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (!loaded || now - lastLoad > 300) {
+            loaded = false
+            load(ctx)
+            lastLoad = now
+        }
+        return scaleCache[key(pkg, screen)] ?: 0f
+    }
+
+    /**
+     * 比例槽（原 freeformScale）。
+     *
+     * ★★★ v0.4.48 用户要求：「去除对尺寸的记忆，只记忆横竖屏和小窗的左上角那个点的位置」。
+     *   新模型 = **左上角点 + 比例**：
+     *     · 位置 ⇒ 只用左上角这一个点（横竖屏共用，见 [screenKeyFor] 的方向无关 key）
+     *     · 尺寸 ⇒ **不再记忆**，交回 MIUI 自己算
+     *     · 比例 ⇒ 仍然记忆（三点菜单的比例按钮要用）；它只决定"新尺寸"，
+     *              而新尺寸的**落位基准**仍是这个左上角点
+     *   ⇒ 本缓存语义由"尺寸的一部分"变成"比例槽：0 = 无比例记忆"。
+     *
+     * ★ v0.4.53 起：`@` 字段的高位还兼带**方向位**（+10 = 横屏），
+     *   因为"不记尺寸"之后方向没有别的载体。读取请用 [getScale]（它会剥掉偏移），
+     *   方向请用 [getOrientation]。
+     */
     private val scaleCache = HashMap<String, Float>()
 
     fun getScale(ctx: Context, pkg: String, screen: String): Float {
@@ -169,7 +235,9 @@ object Bounds {
             load(ctx)
             lastLoad = now
         }
-        return scaleCache[key(pkg, screen)] ?: 0f
+        val v = scaleCache[key(pkg, screen)] ?: 0f
+        // 剥掉方向偏移：>10 的存的是"横屏"编码
+        return if (v > 10f) v - 10f else v
     }
 
     /**
@@ -264,9 +332,15 @@ object Bounds {
         var eff = 0f
         var changed = false
         synchronized(this) {
-            eff = if (scale > 0f) scale else scaleCache[k] ?: 0f
+            // ★ v0.4.53：**保留方向偏移** —— scaleCache 里存的是 `基础scale + (横屏?10:0)`，
+            //   这里做"沿用已有 scale"时必须把偏移带走，否则一次普通位置记录就会把方向抹掉。
+            val prevRaw = scaleCache[k] ?: 0f
+            val prevDirOffset = if (prevRaw > 10f) 10f else 0f
+            val prevBase = prevRaw - prevDirOffset
+            val newBase = if (scale > 0f) scale else prevBase
+            eff = if (newBase > 0f) newBase + prevDirOffset else 0f
             val old = cache[k]
-            if (old == null || old != r || eff != (scaleCache[k] ?: 0f)) {
+            if (old == null || old != r || eff != prevRaw) {
                 cache[k] = Rect(r)
                 if (eff > 0f) scaleCache[k] = eff
                 changed = true
@@ -287,13 +361,73 @@ object Bounds {
 
     fun all(): Map<String, Rect> = synchronized(this) { HashMap(cache) }
 
+    // ---------------- ★ v0.4.48 新模型：只记左上角点 ----------------
+
+    /**
+     * 取记忆的**左上角点**（只关心位置，尺寸一律忽略）。
+     *
+     * 这是 v0.4.48 之后恢复端的**唯一位置来源**：
+     * 尺寸不再来自记忆，而是由 MIUI 自己算（或比例菜单指定的比例算出），
+     * 记忆只负责回答"这个应用上次放在屏幕的哪个点"。
+     */
+    fun getPoint(ctx: Context, pkg: String, screen: String): android.graphics.Point? =
+        get(ctx, pkg, screen)?.let { android.graphics.Point(it.left, it.top) }
+
+    /**
+     * 只记左上角点（尺寸不写）。
+     *
+     * 落盘时仍写 `l,t,r,b@比例` 四元组 —— 因为 Provider / 设置页 / 旧数据都用这个格式，
+     * 改成两元组会打断兼容；但**语义上只有 left/top 是有效数据**：
+     * right/bottom 仅作占位（等于 left/top，即空矩形），读取端一律只取 left/top。
+     *
+     * @param scale 比例槽；<=0 表示"不改比例"，沿用已有值。
+     */
+    fun putPoint(ctx: Context, pkg: String, screen: String, x: Int, y: Int, scale: Float = 0f) {
+        // 用零尺寸矩形表达"只有点"：parseRect 要求 width/height>0 才认，
+        // 所以这里宽高给 1px，读取端只取 left/top ⇒ 尺寸信息天然被丢弃。
+        put(ctx, pkg, screen, Rect(x, y, x + 1, y + 1), scale)
+    }
+
+    /**
+     * ★★★ v0.4.59：列出**所有被记为横屏**的包名（跨屏幕去重）。
+     *
+     * 用途：HyperOS 4 自带「强制横屏名单」机制
+     * （`MiuiMultiWindowAdapter.getForceLandscapeApplication()`，见
+     *  `MiuiFreeFormActivityStack` 行 229-231），把本模块记忆为横屏的应用并入该名单，
+     *  MIUI 自己就会把它们当横屏小窗处理 —— 不需要我们改它的几何。
+     */
+    fun allLandscapePackages(ctx: Context): List<String> {
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (!loaded || now - lastLoad > 300) {
+            loaded = false
+            load(ctx)
+            lastLoad = now
+        }
+        val out = LinkedHashSet<String>()
+        synchronized(this) {
+            // key 形如 `pkg|屏幕`；只看方向位为"横屏"（编码 > 10，见 putOrientation）
+            orientCache.entries.forEach { (k, v) -> if (v) out.add(k.substringBefore('|')) }
+            scaleCache.entries.forEach { (k, raw) ->
+                if (raw > 10f) out.add(k.substringBefore('|'))
+            }
+        }
+        return out.toList()
+    }
+
+    /**
+     * 解析一条存储值 `l,t,r,b[@比例]`。
+     *
+     * ★★★ v0.4.48：新模型只关心 **left/top**（尺寸不再参与），
+     * 所以这里**不再要求 width/height > 0** —— 旧数据的四元组（大尺寸）与新数据的
+     * 1×1 点矩形都能被读进来，读取端一律只取 left/top，天然完成"只记点"的迁移。
+     */
     fun parseRect(s: String?): Rect? {
         if (s.isNullOrEmpty()) return null
         val p = s.substringBefore('@').split(',')
         if (p.size != 4) return null
         return runCatching {
             Rect(p[0].trim().toInt(), p[1].trim().toInt(), p[2].trim().toInt(), p[3].trim().toInt())
-        }.getOrNull()?.takeIf { it.width() > 0 && it.height() > 0 }
+        }.getOrNull()
     }
 
 }

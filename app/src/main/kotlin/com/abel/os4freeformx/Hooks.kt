@@ -30,6 +30,50 @@ object Hooks {
         installLaunchBounds(m, cl)
         runCatching { installSystemFreeformProbe(m, cl) }.onFailure { Logx.e("系统侧探针失败", it) }
 
+        // ★★★ 2026-10-15 移植自 HyperCeiler 的三项小窗增强（AGPL-3.0，见 FreeformExtra.kt）。
+        //   全部落在 system_server：
+        //     · 不限制小窗数量（MiuiFreeFormStackDisplayStrategy#getMaxMiuiFreeFormStackCount）
+        //     · 贴边小窗强制前台（MiuiFreeFormGestureController#needForegroundPin）
+        //     · 强制允许应用以小窗打开（ActivityStarter#executeRequest）
+        //   安装期只装 hook，不碰 Context / prefs（与上面同一条纪律）。
+        runCatching { FreeformExtra.installMultiFreeform(m, cl) }
+            .onFailure { Logx.e("多小窗安装失败", it) }
+        runCatching { FreeformExtra.installEdgeFront(m, cl) }
+            .onFailure { Logx.e("贴边前台安装失败", it) }
+        runCatching { FreeformExtra.installForceFreeform(m, cl) }
+            .onFailure { Logx.e("强制小窗安装失败", it) }
+
+        // ★★★ v0.4.56：小窗几何权威探针（system_server 侧）。
+        //   目的：查明横屏后被 MIUI 覆盖回竖屏的**真正方法**。只打日志、不改行为。
+        //   需要重启 zygote 才生效（system 作用域只在开机注入）。
+        // ★ v0.4.61：几何探针（198 个钩子）**默认关闭** —— 它已经把该拿的信息给到了
+        //   （ROM 真实方法名、freeform 栈字段、数量上限签名、几何存储位置），
+        //   继续常开只会用大量日志淹没真正的信号。需要时把下面的开关打开即可。
+        if (Constants.DBG_GEO_PROBE) {
+            runCatching { SysGeoProbe.install(m, cl) }
+                .onFailure { Logx.e("几何探针安装失败", it) }
+        }
+
+        // ★★★ v0.4.59：**方向修复的正解** —— 用 HyperOS 4 **自带**的「强制横屏名单」机制。
+        //   smali 反汇编（MiuiFreeFormActivityStack.smali:229-231）证明 ROM 自己会读
+        //   `MiuiMultiWindowAdapter.getForceLandscapeApplication()` 并据此置横屏。
+        //   把模块记忆为横屏的应用并入该名单即可 —— 不改 MIUI 几何，故不会被它重算覆盖。
+        runCatching { FreeformExtra.installForceLandscape(m, cl) }
+            .onFailure { Logx.e("强制横屏安装失败", it) }
+
+        // ★★★ v0.4.79：**小窗内锁定方向**（system_server 侧）——
+        //   解决「小红书切横屏后，点开内容二级菜单又变回竖屏」。
+        //   应用内跳转会请求竖屏，MIUI 会据此把 mIsLandcapeFreeform 改回 false
+        //   （MiuiFreeFormManagerService.setRequestedOrientation）。这里拦下来纠正。
+        runCatching { FreeformExtra.installLockFreeformOrientation(m, cl) }
+            .onFailure { Logx.e("锁定方向安装失败", it) }
+
+        // ★★★ v0.4.65：几何**持久化**（system_server 侧）—— 把模块摆放好的小窗几何
+        //   通过 ROM 自己的链路（Task.infiniteResizeFinish）写进 MIUI 存储。
+        //   这是"横屏被弹回/旋转后窗口丢失"两个现象的共同根因所在。
+        runCatching { FreeformExtra.installGeoPersist(m, cl) }
+            .onFailure { Logx.e("几何持久化安装失败", it) }
+
         // 【已放弃】system_server 侧清零分屏应用 insets 的尝试：
         //   探针证明 WindowState 上没有任何返回 Insets 的方法，且 system_server 里
         //   InsetsState.calculateInsets 只有整屏调用 → 应用的 insets 是在**应用进程**里算的，
@@ -70,6 +114,14 @@ object Hooks {
         //   ⇒ 该系统交互在本 ROM 上未启用，继续做等于自建整套系统 UI（风险与前次手势同级）。
         //   仍然可用的能力：通知**下拉即可开小窗**（系统自带，无需本模块介入）。
         Logx.always("本模块不介入通知小窗（系统自带的下拉开小窗不受影响）")
+
+        // ★★★ v0.4.60：把「强制横屏」也装到 **SystemUI 侧**（用户要求：能只 killall 就别重启）。
+        //   说明：真正决定 MIUI 方向的是 system_server 里的 MiuiFreeFormActivityStack，
+        //   所以 SystemUI 侧这一份**不保证影响 MIUI 的判断**；但 android.util.MiuiMultiWindowAdapter
+        //   来自 framework.jar，两端都可能被调用 ⇒ 装上它至少能覆盖 SystemUI 侧的调用点，
+        //   且类不存在时只打一行日志、无任何副作用。
+        runCatching { FreeformExtra.installForceLandscape(m, cl) }
+            .onFailure { Logx.e("强制横屏(SystemUI)安装失败", it) }
 
         // 诊断探针：抓"双分屏 → 三分屏"真实手势调用的入口（方法名 + 参数）
         runCatching { SplitTrace.install(m, cl) }.onFailure { Logx.e("SplitTrace 安装失败", it) }
@@ -929,6 +981,24 @@ object Hooks {
                                             "${it.className.substringAfterLast('.')}.${it.methodName}"
                                         }
                                     Logx.always("小窗 bounds 调用栈[$hit]: $st")
+                                    // ★★★ v0.4.45：判定"这是**用户主动开窗**吗"。
+                                    //   真机取证（22:48:27.921）侧边栏开小窗的栈：
+                                    //     getCustomFreeformRect <- MiuiMultiWindowUtils.getActivityOptions
+                                    //       <- MultiTaskingLinkageTransition.startSidebarLaunchFreeform
+                                    //       <- MultiTaskingLinkageController.launchLinkageAnimationFromIcon
+                                    //   这类**用户主动开窗**，记忆已在下面被正确套用（实测开窗 bounds
+                                    //   完全等于记忆），模块**绝不能再触发"对账关窗重开"** ——
+                                    //   那正是用户看到的「黑屏 → 被关掉 → 再打开」。
+                                    //   只有模块自己重开（栈里有 Hooks.relaunch*）不算用户主动。
+                                    if (st.contains("Sidebar", ignoreCase = true) ||
+                                        st.contains("launchLinkageAnimationFromIcon") ||
+                                        st.contains("LinkageController", ignoreCase = true) ||
+                                        st.contains("HyperGesture", ignoreCase = true)
+                                    ) {
+                                        userOpenUntil[pkg] =
+                                            android.os.SystemClock.elapsedRealtime() + 8_000
+                                        Logx.always("用户主动开窗(侧边栏): pkg=$pkg ⇒ 8s 内禁止对账关窗")
+                                    }
                                 }
                             }
                             // isMiniFreeformMode 只对 13 参数版可判断；更短的定制重载一律按普通小窗处理
@@ -952,27 +1022,62 @@ object Hooks {
                                         Logx.once("ffr-none-$pkg", "当前屏无 $pkg 记忆，交回系统默认（不再借其它屏记忆）")
                                     } else if (pending != null) {
                                         // 比例菜单指定的目标：**整块**套用（位置+尺寸一起，见下）
-                                        if (rectIdx >= 0) (chain.getArg(rectIdx) as? Rect)?.set(memo)
-                                        res.set(memo)
-                                        Logx.always("套用比例目标 $pkg@$screen -> $memo（整块）")
-                                    } else {
-                                        // ★★ 用户口径（2026-10-01）：「保持原位置打开窗口，如果超出边界，就被边界弹回去」。
-                                        //    做法 = 记忆位置 + MIUI 自己的尺寸：
-                                        //      · 左上角用记忆值 ⇒ 打开时就在你上次放的位置
-                                        //      · 尺寸用 MIUI 刚算出来的 ⇒ 它自己的
-                                        //        adjustFreeFormBoundsInMovableBounds / scaleDownIfNeeded
-                                        //        边界判定仍然成立，超出就由 MIUI 弹回，**模块不自己做夹取**
-                                        //    （整块替换曾经绕过这套机制 ⇒ 真机出现"半截在屏幕外"✗）
-                                        // ★★★ 2026-10-05 用户反馈：**旋转后比例被切回原始**。
-                                        //    根因就是这几行"只挪左上角、尺寸用系统默认"⇒ 比例必然回到 MIUI 原始比例。
-                                        //    现在改为：**位置 + 比例一起套用**（整块用记忆矩形）：
-                                        //      · 位置/尺寸都来自记忆（由"切换比例"或用户拖拽写入）
-                                        //      · 超界仍由 MIUI 自己的边界机制弹回（不自己做夹取）
-                                        val systemDefault = Rect(res)
-                                        if (rectIdx >= 0) (chain.getArg(rectIdx) as? Rect)?.set(memo)
-                                        res.set(memo)
+                                        // ★ v0.4.46：同样要缩回屏内 —— pendingTarget 由"按屏幕可视区
+                                        //   clamp 后的目标"或 reopenAtMemory 登记，仍可能比屏幕宽/高（内屏
+                                        //   记忆在外屏上用），越界就半边在屏外。
+                                        val pfit = fitIntoDisplay(ctx, memo)
+                                        if (rectIdx >= 0) (chain.getArg(rectIdx) as? Rect)?.set(pfit)
+                                        res.set(pfit)
                                         Logx.always(
-                                            "恢复(位置+比例) $pkg@$screen -> $memo（系统默认 $systemDefault）"
+                                            "套用比例目标 $pkg@$screen -> $pfit（整块）" +
+                                                (if (pfit != memo) "（已从 $memo 缩回屏内）" else "")
+                                        )
+                                    } else {
+                                        // ★★★ v0.4.48 用户要求：「去除对尺寸的记忆，只记忆横竖屏和
+                                        //   小窗的左上角那个点的位置」。
+                                        //   ⇒ 恢复方式 = **MIUI 刚算出的尺寸 + 记忆里的左上角点**：
+                                        //     · 尺寸：完全用 MIUI 这次算出来的（`res`），模块不碰 ⇒ 比例/尺寸
+                                        //       永远跟随系统，不会再出现"记忆里的旧尺寸把比例顶回去"
+                                        //     · 位置：把 MIUI 的矩形**平移**到记忆点（只改 left/top，
+                                        //       宽高原样保留）
+                                        //   这样同时根除了前几轮的两个老问题：
+                                        //     ①「旋转后比例被切回原始」—— 因为尺寸不再由记忆提供
+                                        //     ②「半边在屏幕外」—— 因为尺寸来自 MIUI，它自己是合屏的；
+                                        //        位置再做一次"夹回屏内"即可（只夹位置，不缩尺寸）
+                                        val systemDefault = Rect(res)
+                                        // ★★★ v0.4.53 用户反馈：「小窗被切换为横屏之后，会被系统立马拉回竖屏」。
+                                        //
+                                        //   根因：v0.4.48「去掉尺寸记忆」之后，恢复端**只用记忆点**，
+                                        //   尺寸完全交给 MIUI ⇒ 横屏形状丢失，重开又回竖屏。
+                                        //   而"比例"其实一直存在比例槽里（`putPoint(..., memoScale)`），
+                                        //   但**恢复端从未读它**（全库 `Bounds.getScale` 零调用）。
+                                        //   真机取证（02:10:15）：横屏算对了 `Rect(0,162-1672,1208)`，
+                                        //   重开后却是 `473,445-1643,2314`（1170x1869 竖屏）。
+                                        //
+                                        //   修法：**只把"方向"从比例槽里读回来**，不恢复尺寸数值 ——
+                                        //   这样既满足"不记尺寸"，又让横屏保持横屏：
+                                        //     · 比例 >= 1 ⇒ 用户要的是横屏形状 ⇒ 把 MIUI 的宽高对调
+                                        //     · 比例 <  1 ⇒ 竖屏 ⇒ 保持 MIUI 原样
+                                        //   尺寸大小仍由 MIUI 决定（我们只交换宽高，不指定具体数值）。
+                                        val memoDir = Bounds.getOrientation(ctx, pkg, screen)
+                                        val sysL = systemDefault.width() > systemDefault.height()
+                                        var w = systemDefault.width()
+                                        var h = systemDefault.height()
+                                        if (memoDir != null && memoDir != sysL) {
+                                            // MIUI 给的形状与记忆方向不符 ⇒ 对调宽高（保住它的"长边"量级）
+                                            val tmp = w; w = h; h = tmp
+                                        }
+                                        val target = Rect(memo.left, memo.top, memo.left + w, memo.top + h)
+                                        // 只夹**位置**：保证窗口完整落在屏内（尺寸不动，故不会变形）
+                                        val placed = placeInside(ctx, target)
+                                        if (rectIdx >= 0) (chain.getArg(rectIdx) as? Rect)?.set(placed)
+                                        res.set(placed)
+                                        Logx.always(
+                                            "恢复(记忆点+方向) $pkg@$screen -> $placed" +
+                                                "（记忆点=${memo.left},${memo.top} 记忆方向=" +
+                                                "${if (memoDir == null) "无" else if (memoDir) "横" else "竖"} " +
+                                                "MIUI尺寸=${systemDefault.width()}x${systemDefault.height()}" +
+                                                (if (placed != target) " 已夹回屏内" else "") + "）"
                                         )
                                     }
                                 }
@@ -1011,20 +1116,37 @@ object Hooks {
     // ---------------- 2.4 沉浸式底栏 ----------------
 
     private fun installImmersive(m: MainHook, cl: ClassLoader) {
-        // 顶部三点栏 / 底部手势条：不绘制（视图仍 VISIBLE、仍接收触摸）
-        m.hookMethod(cl, Constants.CLS_DECOR_DOT_VIEW, "onDraw",
-            arrayOf<Class<*>>(android.graphics.Canvas::class.java),
-            XposedInterface.Hooker { chain ->
-                // 空闲隐藏 / 操作时显示（触摸后 1.5s 内显现，之后自动隐藏）
-                if (hiddenViews.contains(chain.thisObject) && !decorRecentlyTouched()) null
-                else chain.proceed()
-            })
+        // ★★★ v0.4.46 用户反馈：「部分 APP（微信/酷安）没有顶栏，也就是没有"三点"状态菜单的
+        //   背景栏，导致三点按钮跟应用的顶栏产生冲突」→ 选择**恢复原生三点栏（放弃该项沉浸）**。
+        //
+        //   原实现把整个 `MiuiDecorationDotView#onDraw` 抹掉（不绘制）+ `updateInsets` 不预留空间，
+        //   于是三点按钮直接浮在应用自己的顶栏文字上，视觉上"打架"。
+        //   现在：**顶部三点栏完全交回 MIUI 原生绘制与 insets**，不再拦截、不再进 hiddenViews。
+        //   底部手势条仍保留沉浸（那是用户认可的、且不与应用内容冲突）。
+        //
+        //   注：这里不再挂 CLS_DECOR_DOT_VIEW#onDraw。markBar 侧也同步不再把顶部栏收进 hiddenViews。
+        // ★★★ v0.4.51 用户要求：「手势小白条还是经常会间歇性出现。你可以直接隐藏掉手势小白条吗？
+        //   但是不允许隐藏上面 3 个小点」。
+        //
+        //   用户指的"小白条" = **小窗自己的底部栏**（`MiuiDecorationBottomView`）——
+        //   就是小窗底边那条，原来按"空闲 1.5s 隐藏 / 触摸又显现"处理，
+        //   所以只要碰到窗口就冒出来 ⇒ 表现为"间歇性出现"。
+        //
+        //   现在改为**无条件不绘制**（彻底隐藏）：
+        //     · 视图与触摸逻辑全部保留（只是不画）⇒ 不影响小窗边缘手势
+        //     · 不再依赖 `hiddenViews` / `decorRecentlyTouched()` ⇒ 不存在"又冒出来"
+        //     · **顶部三点栏完全不动**（下面 CLS_DECOR_DOT_VIEW 没有任何钩子）
+        //
+        //   ⚠️ 这里**不碰** `NavigationHandle`（系统手势小白条）—— 那是 GestureHandle.kt
+        //      的职责，且用户这次明确要的是小窗底部栏，两者是不同的视图。
         m.hookMethod(cl, Constants.CLS_DECOR_BOTTOM_VIEW, "onDraw",
             arrayOf<Class<*>>(android.graphics.Canvas::class.java),
             XposedInterface.Hooker { chain ->
-                // 空闲隐藏 / 操作时显示（触摸后 1.5s 内显现，之后自动隐藏）
-                if (hiddenViews.contains(chain.thisObject) && !decorRecentlyTouched()) null
-                else chain.proceed()
+                Cfg.reloadThrottled()
+                if (Cfg.immersive) {
+                    Logx.once("hide-bottom-bar", "小窗底部栏: 已彻底隐藏（无条件不绘制）")
+                    null
+                } else chain.proceed()
             })
 
         // "偶尔又冒出来、摸一下再消失" = surface 级重显：框架把 SCVH 的 surface 重新 show，
@@ -1164,12 +1286,8 @@ object Hooks {
         }
 
         // 每次 relayout 决定「这个窗口的栏要不要隐藏」（只针对普通自由小窗，分屏/桌面不受影响）
-        m.hookMethod(cl, Constants.CLS_DECOR_DOT, "updateRootView", null,
-            XposedInterface.Hooker { chain ->
-                val r = chain.proceed()
-                markBar(chain.thisObject) { Cfg.immersive }
-                r
-            })
+        // ★ v0.4.46：**顶部三点栏不再纳入沉浸** —— 用户反馈它与应用顶栏冲突，
+        //   选择恢复 MIUI 原生顶栏（有背景、有 insets 占位）。所以这里不再调 markBar。
         m.hookMethod(cl, Constants.CLS_DECOR_BOTTOM, "updateRootView", null,
             XposedInterface.Hooker { chain ->
                 val r = chain.proceed()
@@ -1187,15 +1305,14 @@ object Hooks {
                 } else chain.proceed()
             })
 
-        // 上/下 insets：不再为栏位预留空间（内容区铺满整个窗口）
+        // 上/下 insets：**顶部恢复原生占位**（v0.4.46：顶部三点栏回归 MIUI 原生，
+        //   它的背景与内容需要自己的 insets，否则仍会和应用顶栏叠在一起），
+        //   底部仍按沉浸不预留空间（内容铺到底）。
         m.hookMethod(cl, Constants.CLS_DECOR_DOT, "updateInsets", null,
             XposedInterface.Hooker { chain ->
                 Cfg.reloadThrottled()
-                // 同样不再限定自由小窗：分屏每个应用也用这套装饰，否则栏不画了但**高度仍占位**
-                if (Cfg.immersive) {
-                    Logx.once("skipTopInsets", "沉浸: 不再为顶部三点栏预留 insets（task=${taskId(chain.thisObject)}）")
-                    null
-                } else chain.proceed()
+                // 顶部三点栏：交回 MIUI 原生（不再跳过 insets）
+                chain.proceed()
             })
         m.hookMethod(cl, Constants.CLS_DECOR_BOTTOM, "updateInsets", null,
             XposedInterface.Hooker { chain ->
@@ -1239,6 +1356,9 @@ object Hooks {
 
     private fun installRatioMenu(m: MainHook, cl: ClassLoader) {
         uiLoader = cl
+        // ★ v0.4.72：把注入的 ClassLoader 也交给 FreeformExtra —— 它要拿 DSH/shell 的类
+        //   （MultiTaskingControllerImpl 等），用默认 ClassLoader 会 ClassNotFoundException。
+        FreeformExtra.uiLoader = cl
         // 菜单高度只算了一排按钮：在 addWindow 这一层给菜单表面加一行高度，位置往上挪半行保持居中。
         // 注意**不能**改 `getWCButtonHeight()`：`MiuiCaptionContainerView#init` 拿同一个值当
         // 按钮自己的高度，一改按钮就被拉大、把我们那行顶到菜单外（真机踩过两次）。
@@ -1521,13 +1641,59 @@ object Hooks {
         holder.addView(phone)
         holder.setOnClickListener {
             val aspect = currentAspect(owner).takeIf { it > 0f } ?: 1f
-            // 转 90°：目标形状 = 当前形状的倒数。applyRatio 的 picked 是"横屏形态的比例"，
-            // 所以竖屏窗要传它的倒数（见 Ratio.kt 的 ratioFor 约定）。
-            val portraitNow = aspect < 1f
-            val target = 1f / aspect
-            val picked = if (portraitNow) 1f / target else target
-            Logx.always("横竖屏: 当前 aspect=%.3f -> 目标 %.3f（task=%d）".format(aspect, target, taskId(owner)))
-            applyRatio(owner, picked, false, "横竖屏")
+            // ★★★ v0.4.52 用户反馈：「横屏按钮会失效，点击后小窗先是横屏，然后再变回竖屏」。
+            //
+            //   根因（真机数值精确复现）：这个按钮**把目标比例预先取了一次倒数**，
+            //   而 applyRatio 内部又会按"当前窗口形状"再调一次 `ratioFor()` 取倒数
+            //   ⇒ 两次取倒数互相抵消，横屏目标被算回竖屏。
+            //     真机日志：`比例调整(比例16:9): 本次目标 Rect(243,162-1294,2031)`
+            //       => 尺寸 1051x1869 —— 仍然是竖的（而 16:9 本该是横的）。
+            //      复现：picked=16:9(1.778), landscape=false => ratio=0.563 => w=h*0.563=1051 ✗
+            //   而且重开那一刻窗口还是竖的，所以 applyRatio 里推出 landscape=false 必然发生。
+            //
+            //   修法：**不要在这里预取倒数**。直接把"目标宽高比（宽/高）"当作 picked 传进去，
+            //   并让 applyRatio 用 **landscape=true** 走"picked 即目标比例"这一支 ——
+            //   即"我要的就是这个宽高比"，不让它再按当前形状反推方向。
+            //   ⇒ 竖屏窗(1170x1869) 点一下 → target=1/0.626=1.597（宽>高，横屏）✓
+            val target = 1f / aspect                      // 目标宽高比（宽/高）
+            Logx.always(
+                "横竖屏: 当前 aspect=%.3f -> 目标 aspect=%.3f（%s，task=%d）".format(
+                    aspect, target, if (target > 1f) "转为横屏" else "转为竖屏", taskId(owner)
+                )
+            )
+            // ★★★ v0.4.68 彻底重写：**不再用"关闭→重开换矩形"假装横屏**。
+            //
+            //   用户质疑（一针见血）：
+            //     「你这个横屏又没真正实现，为什么旋转会消失？系统小窗旋转也不消失」
+            //   —— 完全正确。「关闭→重开」的假横屏有三个致命问题：
+            //     ① 应用内部不旋转（只是窗口框换长宽比）⇒ 没真正横屏；
+            //     ② 每次重开都触发配置变更 ⇒ 对账逻辑又当成旋转 ⇒ 连环关窗（真机 03:57 抓到 3 连）
+            //        ⇒ 用户看到「小窗消失再重开」；
+            //     ③ 与 MIUI 自己的几何并行 ⇒ 互相覆盖 ⇒ 横屏被弹回。
+            //
+            //   改为调 **MIUI 自己的**旋转接口（SystemUI 侧，无需重启手机）：
+            //     MiuiFreeformModeControlImpl.setRequestedOrientation(taskId, orientation)
+            //       → setIsLandscapeFreeform(landscape)                      ← 真方向
+            //       → startFreeformOrientationChangeShellTransition(taskInfo) ← 原生旋转转场
+            //   这才是 MIUI 横竖屏按钮真正走的路，应用也会跟着真正旋转。
+            val wantLandscape = target > 1f
+            if (FreeformExtra.rotateFreeformNatively(owner, wantLandscape)) {
+                // 记下方向（供下次打开时沿用），但**不做任何关闭/重开**
+                runCatching {
+                    val ctx = AppCtx.get()
+                    val info = field(owner, "mRunningTaskInfo")
+                    val pkg = info?.let { taskPkg(it) }
+                    if (ctx != null && pkg != null) {
+                        Bounds.putOrientation(ctx, pkg, Bounds.screenKeyFor(ctx, (field(info, "displayId") as? Int) ?: -1), wantLandscape)
+                        Logx.always("记住方向 $pkg = ${if (wantLandscape) "横屏" else "竖屏"}（原生旋转）")
+                    }
+                }
+                closeMenu(owner)
+                return@setOnClickListener
+            }
+            // 兜底：万一该 ROM 版本没有原生接口，才退回旧的比例路径（并明确打日志）
+            Logx.e("横竖屏: 原生旋转接口不可用 ⇒ 退回旧的比例路径（可能出现闪动）")
+            applyRatio(owner, target, true, "横竖屏")
             closeMenu(owner)
         }
         return holder
@@ -1557,6 +1723,14 @@ object Hooks {
                 }, if (closed) 350 else 0)
             }, 150)
         }.onFailure { Logx.e("回原始失败", it) }
+    }
+
+    /** 比例落位用：取该任务所在屏幕的 key（display 维度，方向无关）。 */
+    private fun screenKeyForRatio(ctx: Context, ti: Any?): String {
+        val dispId = runCatching {
+            ti?.let { call(it, "getTaskInfo") }?.let { field(it, "displayId") } as? Int
+        }.getOrNull() ?: -1
+        return Bounds.screenKeyFor(ctx, dispId)
     }
 
     /**
@@ -1613,9 +1787,20 @@ object Hooks {
                         "目标比例=${"%.3f".format(ratioFor(picked, landscape))}"
                 )
             }
-            val left = ((dm.widthPixels - w) / 2).coerceAtLeast(0)
-            val top = (real?.top ?: top0).coerceIn(top0, (maxH - h).coerceAtLeast(top0))
+            // ★★★ v0.4.48 用户要求：「比例保存，如果需要位置的话，也以左上角这个点的位置作为基准」。
+            //   原来这里是"左右居中 + 上下沿用当前 top"（left 硬算居中），与记忆点无关。
+            //   现在改成：**优先用记忆里的左上角点**当基准；没有记忆时才退回"居中 + 当前 top"。
+            val memoPoint = Bounds.get(ctx, pkg, screenKeyForRatio(ctx, ti))
+            val left = if (memoPoint != null) {
+                memoPoint.left.coerceIn(0, (dm.widthPixels - w).coerceAtLeast(0))
+            } else ((dm.widthPixels - w) / 2).coerceAtLeast(0)
+            val topSeed = memoPoint?.top ?: (real?.top ?: top0)
+            val top = topSeed.coerceIn(top0, (maxH - h).coerceAtLeast(top0))
             val target = Rect(left, top, left + w, top + h)
+            Logx.always(
+                "比例落位: 基准=${if (memoPoint != null) "记忆点(${memoPoint.left},${memoPoint.top})" else "居中+当前top"} " +
+                    "-> $target（尺寸 ${w}x$h）"
+            )
             val dispId2 = (ti?.let { call(it, "getTaskInfo") }?.let { field(it, "displayId") } as? Int) ?: -1
             val screenKey2 = Bounds.screenKeyFor(ctx, dispId2)
             // ★★★ 2026-10-06 真机对照实验（关键）：
@@ -1632,16 +1817,29 @@ object Hooks {
                 } else 0f
             }.getOrDefault(0f)
             val memoScale = if (curScale > 0f) curScale else 0.66f
-            Bounds.put(ctx, pkg, screenKey2, target, memoScale)
+            // ★★★ v0.4.48：尺寸不再进记忆 ⇒ 只落**左上角点**（+ 比例）。
+            //   `target` 的尺寸只在本次重开时用作 pendingTarget（见下），不写入长期记忆；
+            //   下次开窗时位置取这个点、尺寸由当时的比例/MIUI 决定。
+            Bounds.putPoint(ctx, pkg, screenKey2, target.left, target.top, memoScale)
+            // ★★★ v0.4.53：**同时记下方向** —— 这是"切成横屏后被系统拉回竖屏"的修复。
+            //   去掉尺寸记忆后，方向没有别的载体（`memoScale` 是缩放比，不含方向），
+            //   所以必须显式记一位，恢复端才知道要把宽高对调。
+            Bounds.putOrientation(ctx, pkg, screenKey2, w > h)
             Logx.always(
-                "比例调整($why): ${real ?: "无小窗"} -> 记忆 $target scale=$memoScale（比例 ${"%.3f".format(ratio)}，" +
-                    "上下对齐 + 左右居中），随后关闭并重开小窗"
+                "比例调整($why): ${real ?: "无小窗"} -> 记忆点 ${target.left},${target.top} scale=$memoScale" +
+                    " 方向=${if (w > h) "横" else "竖"}（比例 ${"%.3f".format(ratio)}，本次目标 $target），随后关闭并重开小窗"
             )
             // 记下「这个尺寸是我们刚指定的」，短时间内不要让记录链路用旧 bounds 覆盖它
             val memoKey = Bounds.key(pkg, Bounds.screenKey(ctx))
             pendingTarget[memoKey] = PendingTarget(target, android.os.SystemClock.elapsedRealtime())
             // 关闭→重开期间屏蔽记录；重开稳定后再按真实结果写一次（下面 3.5s 后解除并记录）
             suppressRecord[memoKey] = android.os.SystemClock.elapsedRealtime() + 10_000
+            // ★★★ v0.4.53：**把这次操作也登记成"用户意图"**，让对账在随后一段时间内让位。
+            //   真机取证（02:24:09）：用户点了横屏按钮、窗口已横过来，8s 后 `userOpenUntil` 过期，
+            //   对账立刻以"左上角点不一致"为由关窗重开，并用竖屏尺寸把它顶回竖屏。
+            //   比例/横竖屏是**用户的显式操作**，理应和对账冲突时优先。
+            userOpenUntil[pkg] = android.os.SystemClock.elapsedRealtime() + 20_000
+            Logx.always("比例调整: 已登记用户意图，20s 内对账不干预（pkg=$pkg）")
             // ★ 2026-10-05 用户反馈"点比例后等很久才出新小窗"：这里的 1800ms 等待是元凶
             //   （注释自己都写着"不用再原地等 1.8s"）。记忆读侧缓存已是 300ms，
             //   改为 **立即** 走"关闭→重开"，只保留 close 之后必要的 350ms 稳定窗。
@@ -1652,6 +1850,7 @@ object Hooks {
                     // 用户指定的流程：**先写好记忆（上面已写）→ 关掉当前小窗 → 重新打开**。
                     // 关掉之后再开，系统才会走"创建小窗窗口"的流程（`getCustomFreeformRect`），
                     // 从而套用新尺寸；直接对已存在的小窗调启动接口只会把它带到前台（真机验证）。
+                    markSelfRelaunch(id)
                     val closed = closeFreeformViaMiui(decoration)
                     // 只用**官方接口**重开（用户认可的方案）：转场方案（switchFullscreenToFreeform）
                     // 会按设计把桌面翻上来，导致"前台应用掉到后台"，已去掉该回退。
@@ -1668,11 +1867,22 @@ object Hooks {
                                 val ff = info != null && taskWindowingMode(info) == MODE_FREEFORM
                                 if (ff) {
                                     Logx.e("比例调整: 官方接口已重开小窗（第 $attempt 次核验通过）")
+                                    // ★ v0.4.61：重开成功 ⇒ 把真实几何写进 MIUI 自己的存储，
+                                    //   否则它 getFreeformLastPosition 拿不到值，方向/旋转都会回退。
+                                    runCatching { FreeformExtra.saveFreeformGeometry(decoration, "比例/横竖屏重开") }
                                 } else if (attempt < 2) {
-                                    Logx.e("比例调整: 官方接口未重开小窗，重试（第 $attempt 次）")
+                                    // ★★★ v0.4.65 真机取证（03:54:26）：`getActivityOptions` 重开后
+                                    //   任务**仍停在 mode=1（全屏）**，根本没变成小窗 —— 只用这一个
+                                    //   接口在 HyperOS 4 上不可靠。
+                                    //   ⇒ 立刻改用 ROM **自己的**「全屏→小窗」入口
+                                    //     `MulWinSwitchAnimStarter#switchFullscreenToFreeform`
+                                    //     （Miui-WindowManager-Shell.jar，SystemUI 侧，无需重启）。
+                                    Logx.e("比例调整: 官方接口未重开小窗，改用 ROM 全屏→小窗入口（第 $attempt 次）")
+                                    openAsFreeform(decoration, id)
                                     relaunchOnce(attempt + 1)
                                 } else {
-                                    Logx.e("比例调整: 官方接口两次都未重开小窗（不回退转场，避免露桌面）")
+                                    Logx.e("比例调整: 两次都未重开小窗，最后再用 ROM 全屏→小窗入口一次")
+                                    openAsFreeform(decoration, id)
                                 }
                             }
                         }, 1_500)
@@ -1726,6 +1936,56 @@ object Hooks {
      * ⇒ 这里做**串行化**：同一任务在冷却期内只允许做一次关窗重开，其余路径让位（只记一行 skip）。
      */
     private val aligningUntil = ConcurrentHashMap<Int, Long>()
+
+    /**
+     * ★★★ v0.4.45 **用户主动开窗**的豁免窗口：包名 → 截止时刻（elapsedRealtime）。
+     *
+     * 用户从**侧边栏 / 桌面图标**打开小窗时，MIUI 走自己的建窗流程（`startSidebarLaunchFreeform`），
+     * 已经把记忆的位置+尺寸+比例正确套用（真机取证 22:48:28.680
+     * `窗口布局: task=4167 mode=5 bounds=Rect(1092,140-1910,1513)` == 记忆值）。
+     * 此时模块的「开窗后对账」**必须让位**：它一旦判"不一致"就会 `closeFreeformViaMiui` +
+     * 重开，用户看到的就是「黑屏 → 被关掉 → 再打开」。
+     * 用户口径（2026-10-15）：「直接打开小窗，通过记忆的位置和尺寸、还有比例去打开」——
+     * 即一次到位，不许模块事后折腾。
+     */
+    private val userOpenUntil = ConcurrentHashMap<String, Long>()
+
+    /**
+     * ★★★ v0.4.65 真机取证（03:51:27）：
+     *
+     *   03:51:27.090  配置变更(延迟套用): com.tencent.mm 记忆点=0,440 -> Rect(0,440-1360,2364)（等 MIUI 安定 3s 后重开）
+     *   03:51:27.162  userClosed: task=4418 非小窗(mode=1) 且不可见 ⇒ 视为已被关掉
+     *   03:51:27.162  对齐: task=4418 在核验期间被用户关掉 ⇒ 不再重开（尊重用户意图）
+     *
+     * 问题：`closeFreeformViaMiui()` 是**模块自己**把小窗关掉的，关掉后任务必然短暂处于
+     * `mode=1`（全屏）且不可见 —— 这是**模块自己制造的过渡态**，却被 `userClosed()` 当成
+     * "用户把窗关了" ⇒ 重开链当场放弃 ⇒ 用户看到"横屏一下又弹回去"。
+     *
+     * 修法：模块自己发起重开时登记一个**短窗口期**，期内不把过渡态判为用户关闭；
+     * 窗口期过后（或用户确实动了手）仍按原逻辑尊重用户意图。
+     */
+    private val selfRelaunchUntil = ConcurrentHashMap<Int, Long>()
+
+    private fun markSelfRelaunch(id: Int) {
+        // 窗口期覆盖"关闭→重开→核验→稳定"的完整过程（核验 1.5s×最多 3 次 + 余量）。
+        selfRelaunchUntil[id] = android.os.SystemClock.elapsedRealtime() + 12_000
+    }
+
+    private fun inSelfRelaunch(id: Int): Boolean =
+        (selfRelaunchUntil[id] ?: 0L) > android.os.SystemClock.elapsedRealtime()
+
+    /**
+     * ★★★ v0.4.50：**开窗安定期** —— 任务刚进 freeform 的时刻（taskId → elapsedRealtime）。
+     *
+     * 用户反馈：「很多小程序第一次打开的时候都会黑屏，然后关闭」。
+     * 根因是对账在窗口**还没安定**（bounds 仍是 MIUI 默认值）时就判定"点不一致"并关窗重开。
+     * 这里记录"首次见到该任务处于 freeform"的时刻，[SETTLE_MS] 之内只观察不纠正，
+     * 让 MIUI 有机会把我们给的矩形真正落上去。
+     */
+    private val openedAt = ConcurrentHashMap<Int, Long>()
+
+    /** 开窗安定期：MIUI 从建窗到应用我们的矩形，真机实测需要 1~2s，取 2500ms 留余量。 */
+    private const val SETTLE_MS = 2500L
 
     /** 最近一次"检测到旋转/换屏"的时刻（WCT 探针只在它之后 8s 内记录，避免刷屏）。 */
     @Volatile private var lastConfigChangeAt = 0L
@@ -1880,7 +2140,13 @@ object Hooks {
         val ctx = AppCtx.get() ?: return false
         val info = field(decoration, "mRunningTaskInfo") as? android.app.ActivityManager.RunningTaskInfo
             ?: return false
-        val pkg = info.topActivity?.packageName ?: return false
+        // ★ v0.4.55：同 [relaunchViaMiuiApi] —— 侧边栏小窗的 topActivity 可能为空，
+        //   这里也必须用健壮的 [taskPkg]，否则兜底重开同样静默失效。
+        val pkg = taskPkg(info)
+        if (pkg.isNullOrEmpty()) {
+            Logx.e("重开: 取不到包名（纯 startActivity 兜底也放弃）task=$id")
+            return false
+        }
         val intent = ctx.packageManager.getLaunchIntentForPackage(pkg)
             ?: info.topActivity?.let {
                 android.content.Intent(android.content.Intent.ACTION_MAIN)
@@ -1918,7 +2184,19 @@ object Hooks {
         val ctx = AppCtx.get() ?: return false
         val info = field(decoration, "mRunningTaskInfo") as? android.app.ActivityManager.RunningTaskInfo
             ?: return false
-        val pkg = info.topActivity?.packageName ?: return false
+        // ★★★ v0.4.55 真机根因（横竖屏点了没反应 / 窗口卡在全屏）：
+        //   原来这里写的是 `info.topActivity?.packageName ?: return false` —— **静默返回 false**。
+        //   而本模块早就知道这个坑（NOTES 里写着）：
+        //     「侧栏（侧边栏）拖出的小窗里 topActivity/baseActivity 可能为空」
+        //   ⇒ 侧边栏开的小窗点「横竖屏」时，重开**直接放弃且不打印任何日志**，
+        //     窗口就停在全屏态（真机 02:26:37.884 给出横屏矩形 → .900 变成 mode=1 全屏 → 之后全无日志）。
+        //   改用本库既有的健壮取值 [taskPkg]（ComponentName 字段/getter → ActivityInfo →
+        //   baseIntent.component → TaskDescription.label，四层兜底），并**把失败原因打出来**。
+        val pkg = taskPkg(info)
+        if (pkg.isNullOrEmpty()) {
+            Logx.e("重开: 取不到包名（topActivity/baseActivity/baseIntent 全为空），放弃重开 task=$id")
+            return false
+        }
         val mmu = cls(Constants.CLS_MULTIWINDOW_UTILS)
         val optsCls = cls("android.app.ActivityOptions")
         val opts = mmu.getMethod(
@@ -2124,6 +2402,17 @@ object Hooks {
         if (prev == configKey) { lastConfigKey[id] = configKey; return }
         lastConfigKey[id] = configKey
         lastConfigChangeAt = android.os.SystemClock.elapsedRealtime()
+        // ★★★ v0.4.67 真机取证（03:57 连环重开）：**打破自激循环**。
+        //   日志显示模块自己「关闭→重开」会再次触发本回调 ⇒ 又排一次「延迟套用」⇒ 又关闭重开：
+        //     03:57:28 关闭→重开 → 03:57:37 配置变更(0:1->0:2) → 03:57:40 又关闭→重开
+        //     → 03:57:44 配置变更(0:2->0:1) → 03:57:47 第三次关闭→重开 → 03:57:54 三次失败退纯 startActivity
+        //   表现就是用户说的「旋转后过一会儿小窗消失再重开」。
+        //   ⇒ 模块自发起重开期间（[inSelfRelaunch]）收到的配置变更**不再排程套用**，
+        //     从根上断掉"重开→配置变更→再重开"的死循环。
+        if (inSelfRelaunch(id)) {
+            Logx.always("配置变更: task=$id 处于模块自发起重开中 ⇒ 不再排程套用（避免自激循环）")
+            return
+        }
         // ★★ 2026-10-06：配置变更（旋转/换屏）时**重置对账计数**。
         //   对账路径只允许每个窗口纠正一次（nth == 1），第一次旋转纠正过之后
         //   再旋转就不再纠了（真机：转回竖屏又变回 1170x1870 ✗）。
@@ -2143,20 +2432,43 @@ object Hooks {
                     val memo = Bounds.get(ctxCfg, pkgCfg, Bounds.screenKeyFor(ctxCfg, dispId))
                         ?: Bounds.getAny(ctxCfg, pkgCfg)
                     if (memo != null) {
-                        val dm = ctxCfg.resources.displayMetrics
-                        val area = Rect(0, statusBarHeight(ctxCfg), dm.widthPixels, dm.heightPixels)
-                        val t = Bounds.clampKeepRatio(memo, area)
+                        // ★★★ v0.4.48：尺寸不再来自记忆 ⇒ 目标 = **记忆点 + 当前 MIUI 尺寸**。
+                        //   旋转后 MIUI 会给一个新的合屏尺寸，模块只负责把窗口挪回记忆点。
+                        val cur = runCatching { field(ctrl, "mRunningTaskInfo")?.let { taskBounds(it) } }.getOrNull()
+                        val base = cur ?: runCatching {
+                            val dm = ctxCfg.resources.displayMetrics
+                            Rect(0, statusBarHeight(ctxCfg), dm.widthPixels, dm.heightPixels)
+                        }.getOrDefault(Rect(0, 0, 1, 1))
+                        val t = placeInside(
+                            ctxCfg,
+                            Rect(memo.left, memo.top, memo.left + base.width(), memo.top + base.height())
+                        )
                         // ⛔ 2026-10-06 回退：曾试过 WCT `removeTask` + 全新打开（想复刻用户手动"关掉再打开"），
                         //   但那会**把用户正在用的窗口直接移除**（真机：移除后小窗消失）—— 违背"不能搞出不可用的窗"
                         //   的红线，故回退为安全的 `reopenAtMemory`（只关小窗状态，不销毁 task）。
-                        val cur = runCatching { field(ctrl, "mRunningTaskInfo")?.let { taskBounds(it) } }.getOrNull()
-                        if (cur != null && cur.left == t.left && cur.top == t.top &&
-                            cur.width() == t.width() && cur.height() == t.height()
-                        ) {
-                            Logx.always("配置变更(延迟套用): 已是目标几何 $cur ⇒ 跳过（不关窗、不闪）")
+                        if (cur != null && cur.left == t.left && cur.top == t.top) {
+                            Logx.always("配置变更(延迟套用): 左上角已在记忆点 ${cur.left},${cur.top} ⇒ 跳过（不关窗、不闪）")
                         } else {
-                            Logx.always("配置变更(延迟套用): $pkgCfg 记忆=$memo -> $t（等 MIUI 安定 3s 后重开）")
-                            reopenAtMemory(ctrl, t)
+                            // ★★★ v0.4.76：**不再"关闭→重开"**（用户反馈：旋转会丢小窗）。
+                            //
+                            //   真机取证（04:23:58）：旋转后这里调 reopenAtMemory ⇒ 关窗重开
+                            //     → 04:23:59.052 `mode=5 → mode=1 bounds=Rect(0,0-2364,1672)`
+                            //     ⇒ 窗口被摆成全屏，用户看到的就是"小窗消失/丢失"。
+                            //
+                            //   而且现在**横屏已由 MIUI 原生接口正确处理**（v0.4.75 起），
+                            //   旋转时 MIUI 自己就会把窗口重排好，模块根本不需要关窗。
+                            //   ⇒ 这里只做**非破坏性平移**：把窗口挪回记忆点，尺寸交给 MIUI。
+                            //     挪不动就什么都不做（让 MIUI 自行 relayout），绝不销毁窗口。
+                            //   本 ROM 的小窗控制接口里**没有**"只移动不重建"的公开方法
+                            //   （MiuiFreeformModeControlImpl 只有 fromFullToFreeform / exitFreeformTask 等）。
+                            //   而记忆点会在**小窗下次创建时**通过 `getCustomFreeformRect` 自动套用
+                            //   ⇒ 这里**什么都不做**才是正确且安全的：让 MIUI 自己 relayout，
+                            //     既不会丢窗，也不会闪。
+                            Logx.always(
+                                "配置变更(延迟套用): $pkgCfg 记忆点=${memo.left},${memo.top} " +
+                                    "当前=${cur?.let { "${it.left},${it.top}" } ?: "?"} " +
+                                    "⇒ 交给 MIUI 自行 relayout（不关窗、不重开、不闪）"
+                            )
                         }
                     }
                 }
@@ -2271,13 +2583,64 @@ object Hooks {
         if (key != null) {
             // ★ 把"这次要用的 rect"登记成 pendingTarget —— 重开时建窗钩子优先用它
             //   （与三点菜单切比例同一机制），否则重开又拿到旧记忆值，白关一次窗。
-            pendingTarget[key] = PendingTarget(Rect(target), android.os.SystemClock.elapsedRealtime())
+            //
+            // ★★★ v0.4.53 修复「横屏又变回竖屏」的**第二处**根因：
+            //   `target` 是调用方按"当前 MIUI 尺寸"拼出来的（对账/配置变更那两条路都是），
+            //   而横屏状态下 MIUI 给的仍可能是竖屏尺寸 ⇒ 这里把**竖屏尺寸**登记成 pendingTarget，
+            //   重开时建窗钩子优先用它 ⇒ 刚转好的横屏被自己的重开顶回竖屏。
+            //   真机取证（02:24:09）：`左上角点不一致 ... ⇒ 按记忆点重开（尺寸保持 1170x1870）`
+            //   紧接着 `套用比例目标 -> Rect(0,162-1170,2032)`（1170x1870 竖屏）。
+            //
+            //   修法：登记前**按记忆里的方向校正宽高**，让"重开"不改变用户已选的方向。
+            val memoDir = if (ctx != null && pkg != null) {
+                Bounds.getOrientation(ctx, pkg, Bounds.screenKey(ctx))
+            } else null
+            var t = Rect(target)
+            if (memoDir != null && memoDir != (t.width() > t.height())) {
+                t = Rect(t.left, t.top, t.left + t.height(), t.top + t.width())
+                t = placeInside(ctx, t)
+                Logx.always("对齐: 重开目标已按记忆方向(横=${memoDir})校正 -> $t")
+            }
+            pendingTarget[key] = PendingTarget(t, android.os.SystemClock.elapsedRealtime())
             // 关闭→重开期间屏蔽记录（否则 MIUI 摆成全屏那一下会被写进记忆）
             suppressRecord[key] = android.os.SystemClock.elapsedRealtime() + 12_000
+            // 后面真正重开时也用校正后的矩形
+            @Suppress("NAME_SHADOWING") val target = t
+            Logx.always("位置/尺寸对齐: 关闭→重开到 $target（task=$id）")
+            // ★ v0.4.65 修正：这条「配置变更(延迟套用)」路径原来**没有**登记自发起重开，
+            //   所以关窗后 MIUI 摆成全屏那一刻被 userClosed 当成"用户关掉了"（真机 03:54:28/38 两次）。
+            markSelfRelaunch(id)
+            val closed = closeFreeformViaMiui(ctrl)
+            relaunchChain(ctrl, id, target, closed)
+            if (key != null) {
+                Handler(Looper.getMainLooper()).postDelayed({
+                    runCatching { suppressRecord.remove(key) }
+                }, 6_000)
+            }
+            return@runCatching
         }
         Logx.always("位置/尺寸对齐: 关闭→重开到 $target（task=$id）")
+        markSelfRelaunch(id)
         val closed = closeFreeformViaMiui(ctrl)
+        relaunchChain(ctrl, id, target, closed)
+        if (key != null) {
+            Handler(Looper.getMainLooper()).postDelayed({
+                runCatching { suppressRecord.remove(key) }
+            }, 6_000)
+        }
+    }.onFailure { Logx.e("位置/尺寸对齐失败", it) }
+
+    /** 关闭后按 [target] 重开的公共链路（带用户关窗尊重 + 核验重试）。 */
+    private fun relaunchChain(ctrl: Any, id: Int, target: Rect, closed: Boolean) {
         fun relaunchOnce(attempt: Int) {
+            // ★★★ v0.4.45 用户口径：「我在开窗过程中关掉小窗，它不许再强行打开」。
+            //   重试链原来只问"是不是 freeform"，**不问"这个窗还在不在"** —— 用户在
+            //   close 之后（或重试间隙）手动关掉窗口，重试仍会把应用重新拉起来 ⇒ 强行弹窗。
+            //   这里加前置判定：任务一旦消失 / 不再是小窗 / 已被用户关掉，立即停止重开。
+            if (userClosed(ctrl, id)) {
+                Logx.always("对齐: task=$id 已被用户关掉（非 freeform 或任务已消失）⇒ 停止重开，尊重用户意图")
+                return
+            }
             if (!relaunchViaMiuiApi(ctrl, id, target)) {
                 Logx.e("对齐: 官方接口抛错（第 $attempt 次）⇒ 退纯 startActivity")
                 if (!relaunchPlainNoOptions(ctrl, id)) Logx.e("对齐: 纯 startActivity 也失败（窗口可能已消失）")
@@ -2285,12 +2648,20 @@ object Hooks {
             }
             Handler(Looper.getMainLooper()).postDelayed({
                 runCatching {
+                    // 用户在这 2s 核验窗内关掉了小窗 ⇒ 不再重试，绝不强行拉起来
+                    if (userClosed(ctrl, id)) {
+                        Logx.always("对齐: task=$id 在核验期间被用户关掉 ⇒ 不再重开（尊重用户意图）")
+                        return@runCatching
+                    }
                     val now = field(ctrl, "mRunningTaskInfo")
                     val ff = now != null && taskWindowingMode(now) == MODE_FREEFORM
                     when {
-                        ff -> Logx.always(
-                            "对齐: 官方接口已重开小窗（第 $attempt 次核验通过）实际=${taskBounds(now)}"
-                        )
+                        ff -> {
+                            Logx.always(
+                                "对齐: 官方接口已重开小窗（第 $attempt 次核验通过）实际=${taskBounds(now)}"
+                            )
+                            runCatching { FreeformExtra.saveFreeformGeometry(ctrl, "对账重开") }
+                        }
                         attempt < 3 -> {
                             Logx.e("对齐: 第 $attempt 次未重开小窗，重试")
                             relaunchOnce(attempt + 1)
@@ -2301,16 +2672,131 @@ object Hooks {
                         }
                     }
                 }
-                // 核验延时 2.0s：MIUI 进小窗动画约 1.5~2s，1.5s 会把"正在出现"误判成"没出现"再多打一次
             }, 2_000)
         }
         Handler(Looper.getMainLooper()).postDelayed({ relaunchOnce(1) }, if (closed) 350 else 700)
-        if (key != null) {
-            Handler(Looper.getMainLooper()).postDelayed({
-                runCatching { suppressRecord.remove(key) }
-            }, 6_000)
+    }
+
+    /**
+     * 判定"用户已经把这个小窗关掉了"——用于**尊重用户意图**，不再强行重开。
+     *
+     * ★★★ v0.4.45：用户口径「我在打开小窗的过程中把它关掉，它不许再强行打开」。
+     * 判据（任一成立即可）：
+     *   · 任务已经查不到（被移除 / 退出了）；
+     *   · 任务已不在 freeform **且** 明确不可见。
+     * 注意：只做**否定判定**（明确"不是小窗"才停），拿不到信息时**不阻断**重开 ——
+     * 否则会把"取不到字段"误判成"用户关掉了"，导致该重开的窗口不重开。
+     * 取 organizer 一律走 **decoration 的 `mTaskOrganizer`**（本库既有且实测可用的路径，
+     * 见 openAsFreeform / reopenFreeform）；`MultiTaskingControllerImpl` 上**没有**
+     * `mTaskOrganizer` 字段，别去它那儿找。
+     */
+    private fun userClosed(ctrl: Any, id: Int): Boolean = runCatching {
+        val org = field(ctrl, "mTaskOrganizer")
+        val info = if (org != null) {
+            runCatching { org.javaClass.getMethod("getRunningTaskInfo", Integer.TYPE).invoke(org, id) }
+                .getOrNull()
+        } else null
+        if (info == null) {
+            // 任务对象彻底消失 ⇒ 用户关掉了（或系统移除了）
+            Logx.once("uc-gone-$id", "userClosed: task=$id 任务已消失 ⇒ 视为用户已关掉")
+            return@runCatching true
         }
-    }.onFailure { Logx.e("位置/尺寸对齐失败", it) }
+        val mode = taskWindowingMode(info)
+        val visible = field(info, "isVisible") as? Boolean
+        if (mode != MODE_FREEFORM && visible == false) {
+            // ★ v0.4.65：这个"非小窗且不可见"的态，**可能是模块自己关窗准备重开**造成的，
+            //   而不是用户关的。模块自发起重开的 8s 窗口期内予以豁免，避免把自己的过渡态
+            //   误判成"用户关闭"从而放弃重开（真机取证 03:51:27 就是这个误判）。
+            if (inSelfRelaunch(id)) {
+                Logx.once(
+                    "uc-self-$id",
+                    "userClosed: task=$id 处于模块自发起重开的过渡态(mode=$mode 不可见) ⇒ 不算用户关闭"
+                )
+                return@runCatching false
+            }
+            Logx.once("uc-notff-$id", "userClosed: task=$id 非小窗(mode=$mode) 且不可见 ⇒ 视为已被关掉")
+            return@runCatching true
+        }
+        false
+    }.getOrDefault(false)
+
+    /**
+     * ★★★ 位置与越界的**最终语义**（v0.4.50，修复 v0.4.49 的回归）：
+     *
+     * 两个用户反馈互相拉扯，必须同时满足：
+     *   · 反馈B（v0.4.48）：「重开后往上移了」—— 点是用户放的，**不许搬家**
+     *   · 反馈1（v0.4.49）：「首次打开黑屏然后关闭」—— 窗口**必须完整落在屏内**
+     *     （v0.4.49 我为了不改点，干脆不夹右下 ⇒ 窗口顶到 `482,713-1652,2583`、
+     *       `807,524-1977,2394` 这种越界状态，屏外部分渲染为黑 + 随后被系统收拾掉）
+     *
+     * ⇒ 正解：**点优先，改尺寸**。
+     *   · 点的 left/top **永远原样保留**（只在该点本身完全出屏时才拉回）
+     *   · 若 `点 + 尺寸` 伸出屏幕 ⇒ **等比缩小尺寸**（保住宽高比），让它从该点起完整放得下
+     *   · 缩到放不下（点太靠边）时，才退化为"把点往回收一点"，但**优先缩尺寸**
+     *
+     * 这样既"在关闭的位置打开"（左上角不动），又不会出现屏外黑块。
+     */
+    private fun placeInside(ctx: Context?, r: Rect): Rect {
+        if (r.width() <= 0 || r.height() <= 0) return Rect(r)
+        val c = ctx ?: AppCtx.get() ?: return Rect(r)
+        return runCatching {
+            val dm = c.resources.displayMetrics
+            val top0 = statusBarHeight(c)
+            val maxW = (dm.widthPixels - 0).coerceAtLeast(1)
+            val maxH = (dm.heightPixels - top0).coerceAtLeast(1)
+
+            var x = r.left
+            var y = r.top
+            var w = r.width()
+            var h = r.height()
+
+            // 1) 点先夹进"屏幕允许的锚点范围"：保证从该点起至少有一块可见区域
+            x = x.coerceIn(0, (maxW - 1).coerceAtLeast(0))
+            y = y.coerceIn(top0, (dm.heightPixels - 1).coerceAtLeast(top0))
+
+            // 2) 尺寸按"从该点起可用空间"等比缩小（只缩不放，绝不改变宽高比）
+            val availW = (maxW - x).coerceAtLeast(1)
+            val availH = (dm.heightPixels - y).coerceAtLeast(1)
+            if (w > availW || h > availH) {
+                val k = minOf(availW.toFloat() / w, availH.toFloat() / h)
+                w = (w * k).toInt().coerceAtLeast(1)
+                h = (h * k).toInt().coerceAtLeast(1)
+            }
+            Rect(x, y, x + w, y + h)
+        }.getOrDefault(Rect(r))
+    }
+
+    /**
+     * ★★★ v0.4.46：把要套用的矩形**等比缩回当前屏幕内**（只缩放、不裁边 ⇒ 比例不变）。
+     *
+     * ⚠️ v0.4.48 起：**只用于比例菜单的 pendingTarget**（那条路仍会整块指定矩形）；
+     * 「记忆点恢复」那条路改用 [placeInside]（只夹位置、不缩尺寸）。
+     *
+     * 背景：记忆里可能存着越界矩形 —— 真机实测（2026-10-15）：
+     *   `com.coolapk.market|1672x2364 = 1084,261,2254,2131`（right 2254 > 屏幕宽 1672，越界 582）
+     *   `com.xingin.xhs|1672x2364   = 857,268,2027,2137`（越界 355）
+     *   `com.ss.android.ugc.aweme   = 1549,186,2719,2055`（越界 1047）
+     * 恢复时若原样套用，就是用户看到的「半边小窗在屏幕外」。
+     * 原实现假设「超界会由 MIUI 自己的边界机制弹回」—— **已被真机证伪**
+     * （`getCustomFreeformRect` 返回越界矩形后，`dumpsys window` 实测窗口仍越界）。
+     *
+     * 做法：复用 [Bounds.clampKeepRatio]（等比缩放 + 位置夹取），可视区取
+     * 「状态栏以下 ~ 屏幕底部」。已经放得下的矩形**原样返回**，不做任何改动
+     * （避免把用户故意贴边/大尺寸的窗口无故缩小）。
+     */
+    private fun fitIntoDisplay(ctx: Context?, r: Rect): Rect {
+        if (r.width() <= 0 || r.height() <= 0) return Rect(r)
+        val c = ctx ?: AppCtx.get() ?: return Rect(r)
+        return runCatching {
+            val dm = c.resources.displayMetrics
+            val area = Rect(0, statusBarHeight(c), dm.widthPixels, dm.heightPixels)
+            // 完全落在屏内 ⇒ 不动（保持用户原样）
+            if (r.left >= area.left && r.top >= area.top &&
+                r.right <= area.right && r.bottom <= area.bottom
+            ) return Rect(r)
+            Bounds.clampKeepRatio(r, area)
+        }.getOrDefault(Rect(r))
+    }
 
     /** 真实 rect → 可视 rect（MIUI 的 scaleBounds 就是"以左上角为锚"乘 scale）。 */
     private fun scaled(r: Rect, s: Float): Rect =
@@ -2387,6 +2873,10 @@ object Hooks {
                 val ctrl = chain.thisObject
                 gestureEndedAt[ctrl] = android.os.SystemClock.elapsedRealtime()
                 record(ctrl, "resizeEnd")
+                // ★ v0.4.61：用户手动调完尺寸/位置 —— 这正是 MIUI 期望"保存几何"的时机
+                //   （它自己在 changeMask & 0x2000 时调 Task.infiniteResizeFinish）。
+                //   模块接管了部分几何流程，所以这里主动补一次，保证 MIUI 存储里始终有正确值。
+                runCatching { FreeformExtra.saveFreeformGeometry(ctrl, "resizeEnd") }
                 // 缩放的新 bounds 是回调之后异步应用的（真机实测：回调时刻读到的仍是旧尺寸 1170x1870），
                 // 所以 700ms 后再补采一次，拿到的才是用户拖出来的尺寸。
                 Handler(Looper.getMainLooper()).postDelayed({
@@ -2409,6 +2899,14 @@ object Hooks {
                     // 窗口关掉/退出小窗后清掉对账计数：否则同一个 task 复用（关→开还是同一个 taskId）
                     // 时 3 次用满就永久不再对账，自动纠偏会**静默失效**（本轮调试就是这样被坑的）。
                     if (!freeform || !visible) memChecked.remove(taskId(ctrl))
+                    // ★ v0.4.50：记录"首次见到该任务进 freeform"的时刻（= 开窗时刻），
+                    //   供对账判断是否还在安定期；任务退出 freeform 时清掉，下次再开重新计时。
+                    val tidHere = taskId(ctrl)
+                    if (freeform && visible) {
+                        openedAt.putIfAbsent(tidHere, android.os.SystemClock.elapsedRealtime())
+                    } else {
+                        openedAt.remove(tidHere)
+                    }
 
                     // ★ 开窗后对账（用户要求：**左上角必须一致 + 尺寸按记忆新建**）：
                     //   记忆里存的是「可视矩形 ÷ 记录时 scale」。这里统一到**可视空间**比较：
@@ -2417,7 +2915,30 @@ object Hooks {
                     if (freeform && visible) {
                         val id = taskId(ctrl)
                         val nth = memChecked.merge(id, 1, Int::plus) ?: 1
-                        if (nth <= 3) runCatching {
+                        // ★★★ v0.4.50 用户反馈（关键回归）：「很多小程序第一次打开的时候都会黑屏，
+                        //   然后关闭」。
+                        //   真机取证（01:21:24，coolapk）：
+                        //     24.354 窗口布局 mode=5 bounds=Rect(392,441-1280,2019)   ← 刚打开（MIUI 默认位）
+                        //     24.360 左上角点不一致: 记忆点=502,261 实际=392,441 ⇒ 按记忆点重开
+                        //     24.393 比例调整: 已按 MIUI 自己的方式关闭当前小窗     ← 刚开的窗被关掉
+                        //   ⇒ 用户看到的就是「黑屏 → 窗口消失 → 再出现」。
+                        //
+                        //   根因：**对账在窗口"刚创建、还没安定"时就动手**。
+                        //   窗口从创建到 MIUI 把我们给的矩形真正落上去，有 1~2s 的过渡期
+                        //   （applyWct → relayout → 动画），期间 bounds 还是 MIUI 的默认值。
+                        //   在这个窗口里比"点是否一致"必然不一致 ⇒ 必然关窗重开 ⇒ 必然黑屏。
+                        //
+                        //   修法：给**新任务**一个"安定期"（见 [openedAt]），期内只观察、不纠正；
+                        //   过了安定期若仍不一致，才做一次纠正（那时确实是真不一致）。
+                        val sinceOpen = android.os.SystemClock.elapsedRealtime() - (openedAt[id] ?: 0L)
+                        val settling = sinceOpen < SETTLE_MS
+                        if (settling) {
+                            Logx.once(
+                                "settling-$id",
+                                "对账跳过: task=$id 开窗安定期中（${sinceOpen}ms < ${SETTLE_MS}ms），不关窗"
+                            )
+                        }
+                        if (nth <= 3 && !settling) runCatching {
                             val ctx = AppCtx.get()
                             val pkg = taskPkg(info)
                             val dispId = (field(info, "displayId") as? Int) ?: -1
@@ -2429,42 +2950,56 @@ object Hooks {
                             } else if (memo == null) {
                                 Logx.always("核对: task=$id pkg=$pkg 该屏无记忆，实际=$realNow")
                             } else if (realNow != null) {
-                                // ★★ 用户口径（2026-10-06）：**位置与尺寸都按记忆恢复**。
-                                //   真机日志实证（2026-10-06）：旋转/重开后比例被切回原始，根因就是
-                                //   这里原来"只比左上角、尺寸沿用 MIUI 当前值" —— 它把
-                                //   「记忆左上角 + MIUI 默认尺寸」登记成 pendingTarget，
-                                //   建窗钩子于是走 pending 分支、记忆里的比例被整块丢弃：
-                                //     左上角不一致: 记忆=Rect(416,140-1948,1672) 实际=Rect(1452,288-2622,2158)
-                                //     位置/尺寸对齐: 关闭→官方接口重开到 Rect(416,140-1586,2010)  ← 系统尺寸
-                                //   旋转时坐标空间变化 + MIUI 边界弹回，左上角必然与原记忆不同 ⇒ 必然触发。
-                                //   现在：位置或尺寸任一不符，就按**记忆整块**重开一次（超界仍由 MIUI 弹回）。
-                                // ★★★ v0.4.41 真机验收修正：对账必须拿**按当前屏幕等比缩过的目标**去比，
-                                //   不能拿未换算的原始记忆 —— 实测（12:30:51）：旋转路径刚按横屏可视区
-                                //   把 Rect(0,140-1532,1672)（1:1，正好落在横屏内）建好，本对账立刻拿
-                                //   竖屏记忆 Rect(0,397-1672,2069) 判"不一致"，又关窗重开一次，最后把窗口
-                                //   顶到 bottom=2069（超出横屏 1672）—— 比例是**自己人**顶掉的。
-                                //   与 maybeReapplyOnConfigChange 用同一个目标算法（area=状态栏以下可视区）。
-                                val ac = ctx
-                                val target = if (ac != null) {
-                                    val dm = ac.resources.displayMetrics
-                                    Bounds.clampKeepRatio(
-                                        memo,
-                                        Rect(0, statusBarHeight(ac), dm.widthPixels, dm.heightPixels)
-                                    )
-                                } else Rect(memo)
-                                val samePos = target.left == realNow.left && target.top == realNow.top
-                                val sameSize = target.width() == realNow.width() &&
-                                    target.height() == realNow.height()
-                                if (samePos && sameSize) {
-                                    Logx.always("核对通过(位置+尺寸): task=$id pkg=$pkg rect=$realNow 目标=$target")
+                                // ★★★ v0.4.48（用户要求：去除尺寸记忆，只记左上角点）：
+                                //   对账**只比左上角点**，不再比尺寸 ——
+                                //   尺寸已不属于记忆的内容，比它等于拿"别人的东西"判自己不合格。
+                                //   历史教训正是如此：v0.4.41~v0.4.46 反复因为"尺寸不同"就关窗重开，
+                                //   造成「黑屏→被关掉→再打开」。现在尺寸不同属于正常（MIUI 自己定），
+                                //   只有**位置**对不上才需要纠正。
+                                val samePos = memo.left == realNow.left && memo.top == realNow.top
+                                if (samePos) {
+                                    Logx.always("核对通过(左上角点): task=$id pkg=$pkg 点=${realNow.left},${realNow.top}（尺寸 ${realNow.width()}x${realNow.height()} 不参与对账）")
                                 } else if (nth == 1) {
                                     val busy = (aligningUntil[id] ?: 0L) >
                                         android.os.SystemClock.elapsedRealtime()
-                                    if (busy) {
+                                    // ★★★ v0.4.45：**用户主动开窗**（侧边栏/图标）刚开出来的小窗，
+                                    //   一律不对账、不关窗 —— 记忆已在建窗时正确套用（真机取证），
+                                    //   这里再动一次就是用户看到的「黑屏→被关掉→再打开」。
+                                    val userOpen = (userOpenUntil[pkg] ?: 0L) >
+                                        android.os.SystemClock.elapsedRealtime()
+                                    // ★★★ v0.4.77 真机取证（04:27:35）：
+                                    //     04:27:35.895  配置变更: 已重置对账计数 task=4448（旋转后…）
+                                    //     04:27:35.898  左上角点不一致: 记忆点=43,404 实际=1394,217 ⇒ 按记忆点重开
+                                    //     04:27:35.898  位置/尺寸对齐: 关闭→重开到 Rect(43,404-1213,2274)
+                                    //     04:27:36.474  task=4448 mode=1 bounds=Rect(0,0-2364,1672)  ← 变全屏
+                                    //   ⇒ **旋转后 MIUI 重排窗口，左上角点自然与记忆点不同**，
+                                    //     对账把这当成"位置不对"⇒ 关窗重开 ⇒ 中途被摆成全屏
+                                    //     ⇒ 用户看到「旋转时小窗概率性重启/丢失」。
+                                    //   旋转是**系统的正常重排**，不是用户把窗挪走了 ⇒ 必须豁免对账。
+                                    val justRotated = (android.os.SystemClock.elapsedRealtime() - lastConfigChangeAt) < 8_000
+                                    if (justRotated) {
+                                        Logx.once(
+                                            "rec-rotate-$id",
+                                            "对账跳过：task=$id 刚经历配置变更/旋转（${android.os.SystemClock.elapsedRealtime() - lastConfigChangeAt}ms 前），" +
+                                                "左上角差异是 MIUI 正常重排 ⇒ 不关窗重开（实际=$realNow）"
+                                        )
+                                    } else if (busy) {
                                         Logx.once("rec-align-busy-$id", "对账跳过：task=$id 正在关窗重开对齐中（不叠第二次）")
+                                    } else if (userOpen) {
+                                        Logx.once(
+                                            "rec-align-useropen-$id",
+                                            "对账跳过：task=$id pkg=$pkg 是用户主动开窗（侧边栏/图标），" +
+                                                "记忆已正确套用 ⇒ 不关窗重开（实际=$realNow）"
+                                        )
                                     } else {
+                                        // 只按**记忆点 + 当前 MIUI 尺寸**重开（不带任何尺寸主张）
+                                        val target = Rect(
+                                            memo.left, memo.top,
+                                            memo.left + realNow.width(), memo.top + realNow.height()
+                                        )
                                         Logx.e(
-                                            "位置/尺寸不一致: task=$id pkg=$pkg 目标=$target（记忆=$memo）实际=$realNow ⇒ 按目标整块重开"
+                                            "左上角点不一致: task=$id pkg=$pkg 记忆点=${memo.left},${memo.top} " +
+                                                "实际=${realNow.left},${realNow.top} ⇒ 按记忆点重开（尺寸保持 ${realNow.width()}x${realNow.height()}）"
                                         )
                                         reopenAtMemory(ctrl, target)
                                     }
@@ -2581,11 +3116,12 @@ object Hooks {
                 Logx.e("记录核对($why): 真实=$bounds 可视=$vis scale=$scale")
             }
         }
-        // ★ 记录：**真实 rect 原样**（"只对齐左上角"版本只需要左上角正确，尺寸交回 MIUI）。
-        //   历史教训：①「可视÷scale」会让尺寸乱跳/变小（scale 不受控，0.09~1.55）；
+        // ★★★ v0.4.48 用户要求：「去除对尺寸的记忆，只记忆横竖屏和小窗的左上角那个点的位置」。
+        //   ⇒ 这里**只取左上角点**，尺寸信息到此为止（不再进记忆）。
+        //   历史教训（顺带解决）：①「可视÷scale」会让尺寸乱跳/变小（scale 不受控，0.09~1.55）；
         //   ②「可视原样」依赖建窗时 scale==1.0，实测重开时 scale 常读到 0 ⇒ 失效。
-        //   尺寸的完整方案待定：必须先拿到 MIUI **建窗时算 scale 的那一步**（NOTES 40.15）。
-        val store = bounds
+        //   现在尺寸干脆不记 —— 恢复时由 MIUI 自己算，**位置**才是模块要保证的东西。
+        val store = Rect(bounds.left, bounds.top, bounds.left + 1, bounds.top + 1)
         // 折叠屏内外屏分开记录：用**任务所在的 display** 算 key（外屏是另一个 displayId）
         val dispId = (field(info, "displayId") as? Int) ?: -1
         val screen = Bounds.screenKeyFor(AppCtx.get(), dispId)

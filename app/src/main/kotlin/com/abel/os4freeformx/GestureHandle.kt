@@ -67,7 +67,34 @@ object GestureHandle {
     private var activeSwipeRevealed = false
 
     private val DETACHED_GESTURE_TIMEOUT = Runnable { finishActiveGesture(SystemClock.uptimeMillis()) }
-    private val HIDE = Runnable { invalidateHandles() }
+
+    /**
+     * 定时唤醒重绘：到点后让小白条按策略重新判定一次可见性。
+     *
+     * ★★★ v0.4.49：**自愈续排** —— 用户反馈"小白条有时候不消失、常驻在那儿"。
+     * 单次 `invalidate()` 不一定真的触发 `onDraw`（宿主可能刚被隐藏/重挂/正处于
+     * 转场中，SystemUI 会合并或丢弃这次无效化）。若就此停止排程，小白条就永远停在
+     * 上一帧（可见）状态。
+     * ⇒ 这里在唤醒后**再补排一次**：只要策略说"还没到该隐藏"或"动画未收敛"，
+     *   就继续排，直到真正到达终态（hidden 且 alpha≈0）。重复调用由 removeCallbacks 去重。
+     */
+    private val HIDE: Runnable = object : Runnable {
+        override fun run() {
+            invalidateHandles()
+            val now = SystemClock.uptimeMillis()
+            scheduledHideAt = 0L
+            if (!Cfg.gestureHandle) return
+            val remaining = POLICY.remaining(now)
+            if (remaining > 0L) {
+                // 到点还没隐藏（时钟被 touch 活跃期推后）⇒ 继续等到真正可以隐藏
+                main?.postDelayed(this, remaining.coerceAtMost(3000L))
+                scheduledHideAt = now + remaining
+            }
+        }
+    }
+
+    /** HIDE 已排到的时刻（0 = 未排）。用于去重与诊断。 */
+    @Volatile private var scheduledHideAt = 0L
 
     /** 安装全部 hook（幂等：每个 SystemUI 进程只装一次；开关在运行时经 [Cfg] 实时判断）。 */
     fun install(m: MainHook, cl: ClassLoader) {
@@ -163,7 +190,48 @@ object GestureHandle {
         val alpha = visual.fade.alpha(
             hidden, now, Cfg.gestureHandleFollow && POLICY.swipeRevealActive(now)
         )
-        if (visual.fade.running(now) || MOTION.running(now)) view.postInvalidateOnAnimation()
+        // ★★★ v0.4.49 用户反馈A：「小窗的小白条没有自动消失，有时候会不消失、常驻在那儿」。
+        //
+        //   这是 v0.4.46 那版修复的**残留缺口**：原来只在 `!hidden` 时补排程，
+        //   于是当 hidden 已经翻成 true、但淡出动画**还没跑完**（alpha 介于 1~0）时，
+        //   没有任何东西再排下一帧 ⇒ 若此刻没有其它重绘，画面就**停在半透明**（看起来"没消失/常驻"）。
+        //
+        //   现在改成**状态机驱动**：只要"绘制结果还没稳定到目标状态"，就一定续帧：
+        //     · 淡入/淡出动画还在跑 ⇒ 继续动画帧
+        //     · 动画已停但 alpha 与目标不符（被打断）⇒ 立刻再排一帧收敛
+        //     · 还没到该隐藏的时刻（策略倒计时未到）⇒ 排一次定时重绘，到点自动隐藏
+        //   三者互斥且自洽，保证"要么在动，要么有定时器等着动"，不会静默停住。
+        val targetAlpha = if (hidden) 0f else 1f
+        val animating = visual.fade.running(now) || MOTION.running(now)
+        // ★★★ v0.4.50 用户反馈：「小白条的隐藏也很不稳定，经常会出现没隐藏的情况」。
+        //
+        //   上一版（v0.4.49）把 `scheduleHide()` 放在 `when` 的**最后一个分支**，
+        //   于是只要 `animating` 为真（淡入淡出没跑完、或 MOTION 未复位），
+        //   就永远走不到那一支 ⇒ **隐藏定时器压根没排上**。
+        //   而 `MOTION.running()` 在手指/滑动状态没被正确复位时可能长期为真
+        //   ⇒ 无限续帧、永不到达隐藏 ⇒ 用户看到的"经常不隐藏"。
+        //
+        //   现在把两件事**解耦**：
+        //     ① 动画续帧：动画在跑 / alpha 未达目标 ⇒ 续帧（保证画面收敛）
+        //     ② 隐藏排程：**只要还没到"已隐藏"的终态，就必须确保定时器在排**
+        //        （不再是"要么续帧要么排程"的互斥关系）
+        if (animating || kotlin.math.abs(alpha - targetAlpha) > 0.01f) {
+            view.postInvalidateOnAnimation()
+        }
+        // 与动画状态无关：只要最终目标还是"可见"，就保证有一个隐藏定时器在等着
+        if (!hidden && appliesTo(view)) {
+            val due = scheduledHideAt
+            if (due == 0L) {
+                scheduleHide()
+            } else {
+                // 已排的定时器若已过期（例如被动画帧挤掉了执行机会）⇒ 补一次
+                val nowMs = SystemClock.uptimeMillis()
+                if (nowMs > due) {
+                    main?.removeCallbacks(HIDE)
+                    main?.post(HIDE)
+                }
+            }
+        }
         // 纯覆盖层：始终走系统原生绘制，仅用 alpha 控制可见性（alpha=0 → 完全透明 = 空闲隐藏）。
         // 不修改 mHideGestureLine、不增删导航栏宿主，因此不会禁用系统手势、不会破坏桌面布局。
         val canvas = chain.getArg(0) as Canvas
@@ -475,8 +543,18 @@ object GestureHandle {
     private fun scheduleHide() {
         main?.removeCallbacks(HIDE)
         if (!Cfg.gestureHandle) return
-        val remaining = POLICY.remaining(SystemClock.uptimeMillis())
-        if (remaining > 0L) main?.postDelayed(HIDE, remaining)
+        val now = SystemClock.uptimeMillis()
+        val remaining = POLICY.remaining(now)
+        if (remaining > 0L) {
+            main?.postDelayed(HIDE, remaining)
+            scheduledHideAt = now + remaining
+        } else {
+            // ★ v0.4.49 兜底：策略已经认为"该隐藏了"（remaining==0），但可能因为
+            //   上一次 invalidate 被合并/丢弃而**没有真的重绘**（用户反馈的"常驻不消失"）。
+            //   ⇒ 直接投一帧 HIDE，把终态画出来；它内部会自行判断是否还需要续排。
+            main?.post(HIDE)
+            scheduledHideAt = now
+        }
     }
 
 
@@ -495,7 +573,14 @@ object GestureHandle {
 
     private fun invalidateHandles() {
         val views = synchronized(HANDLES) { ArrayList(HANDLES.keys) }
-        for (view in views) if (view != null && view.isAttachedToWindow) view.invalidate()
+        for (view in views) {
+            if (view == null || !view.isAttachedToWindow) continue
+            // ★ v0.4.49：同一帧内 `invalidate()` 可能被 SystemUI 合并掉，
+            //   这里用 `postInvalidateOnAnimation` 作为**兜底**再排一帧，
+            //   确保"到点隐藏"一定会被绘制一次（否则小白条会停在可见帧）。
+            view.invalidate()
+            view.postInvalidateOnAnimation()
+        }
     }
 
     private fun dispatch(action: Runnable) {
