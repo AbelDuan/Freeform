@@ -1026,12 +1026,26 @@ object Hooks {
                                         //   clamp 后的目标"或 reopenAtMemory 登记，仍可能比屏幕宽/高（内屏
                                         //   记忆在外屏上用），越界就半边在屏外。
                                         val pfit = fitIntoDisplay(ctx, memo)
-                                        if (rectIdx >= 0) (chain.getArg(rectIdx) as? Rect)?.set(pfit)
-                                        res.set(pfit)
-                                        Logx.always(
-                                            "套用比例目标 $pkg@$screen -> $pfit（整块）" +
-                                                (if (pfit != memo) "（已从 $memo 缩回屏内）" else "")
-                                        )
+                                        // ★★★ v0.4.80 兜底：**绝不允许把退化矩形套给窗口**。
+                                        //   真机事故：记忆点被写坏后，这里把窗口设成了 1×1 像素 ⇒
+                                        //   白屏 + 拖不动（音频仍在播），用户只能强杀小窗。
+                                        //   `pendingTarget` 是"整块"套用（位置+尺寸一起），一旦里面是
+                                        //   退化值就会直接毁掉窗口；这里发现退化就**放弃套用**，
+                                        //   交回 MIUI 自己的默认几何（安全侧）。
+                                        if (pfit.width() < 100 || pfit.height() < 100) {
+                                            Logx.e(
+                                                "套用比例目标: 目标退化 $pfit（${pfit.width()}x${pfit.height()}）" +
+                                                    " ⇒ 放弃套用，交回 MIUI 默认几何（避免窗口被缩成 1×1）"
+                                            )
+                                            // 不套用、不报错：让 res 保持 MIUI 自己算出的值
+                                        } else {
+                                            if (rectIdx >= 0) (chain.getArg(rectIdx) as? Rect)?.set(pfit)
+                                            res.set(pfit)
+                                            Logx.always(
+                                                "套用比例目标 $pkg@$screen -> $pfit（整块）" +
+                                                    (if (pfit != memo) "（已从 $memo 缩回屏内）" else "")
+                                            )
+                                        }
                                     } else {
                                         // ★★★ v0.4.48 用户要求：「去除对尺寸的记忆，只记忆横竖屏和
                                         //   小窗的左上角那个点的位置」。
@@ -1070,15 +1084,25 @@ object Hooks {
                                         val target = Rect(memo.left, memo.top, memo.left + w, memo.top + h)
                                         // 只夹**位置**：保证窗口完整落在屏内（尺寸不动，故不会变形）
                                         val placed = placeInside(ctx, target)
-                                        if (rectIdx >= 0) (chain.getArg(rectIdx) as? Rect)?.set(placed)
-                                        res.set(placed)
-                                        Logx.always(
-                                            "恢复(记忆点+方向) $pkg@$screen -> $placed" +
+                                        // ★ v0.4.80 同样的兜底：尺寸取自 MIUI(systemDefault) 本应安全，
+                                        //   但若 MIUI 这次给的就是退化值（拖动/重开中），也别把它传下去。
+                                        if (placed.width() < 100 || placed.height() < 100) {
+                                            Logx.e(
+                                                "恢复(记忆点+方向): 几何退化 $placed" +
+                                                    "（MIUI尺寸=${systemDefault.width()}x${systemDefault.height()}）" +
+                                                    " ⇒ 放弃套用，交回 MIUI 默认几何"
+                                            )
+                                        } else {
+                                            if (rectIdx >= 0) (chain.getArg(rectIdx) as? Rect)?.set(placed)
+                                            res.set(placed)
+                                            Logx.always(
+                                                "恢复(记忆点+方向) $pkg@$screen -> $placed" +
                                                 "（记忆点=${memo.left},${memo.top} 记忆方向=" +
                                                 "${if (memoDir == null) "无" else if (memoDir) "横" else "竖"} " +
                                                 "MIUI尺寸=${systemDefault.width()}x${systemDefault.height()}" +
-                                                (if (placed != target) " 已夹回屏内" else "") + "）"
-                                        )
+                                                    (if (placed != target) " 已夹回屏内" else "") + "）"
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -3051,20 +3075,40 @@ object Hooks {
             Handler(Looper.getMainLooper()).postDelayed({
                 runCatching {
                     val b = snapshot(controller, if (attempt == 1) "$why/复核" else "$why/复核$attempt") ?: return@runCatching
-                    if (b.bounds == a.bounds && kotlin.math.abs(b.scale - a.scale) <= 0.0001f) {
+                    // ★★★ v0.4.80：用**真实几何**判稳（`bounds` 是折叠过的 1×1，比较它恒为真）。
+                    //   同时拒绝畸形尺寸：拖动/重开过程中 MIUI 可能短暂报出极小或越界的值，
+                    //   这种"稳定"是假稳定，落盘会把记忆点写坏（真机：窗口被缩成 1×1 像素）。
+                    val sane = b.real.width() >= MIN_SANE_W && b.real.height() >= MIN_SANE_H
+                    if (!sane) {
+                        if (attempt < 4) {
+                            Logx.once(
+                                "rec-insane-$why",
+                                "记录跳过：几何畸形 ${b.real}（${b.real.width()}x${b.real.height()}" +
+                                    " < ${MIN_SANE_W}x${MIN_SANE_H}），判为过渡态，第 ${attempt + 1} 次重试"
+                            )
+                            record(controller, why, attempt + 1)
+                        } else {
+                            Logx.once(
+                                "rec-insane-final-$why",
+                                "记录放弃：四次读数都是畸形几何 ${b.real}（不落盘，保持旧记忆）"
+                            )
+                        }
+                        return@runCatching
+                    }
+                    if (b.real == a.real && kotlin.math.abs(b.scale - a.scale) <= 0.0001f) {
                         persist(b.pkg, b.bounds, why, b.scale, b.screen)
                     } else if (attempt < 4) {
                         // 还在动（真机实测：350ms 后 scale 仍从 0.66 变到 0.132）⇒ 隔久一点再看，
                         // 四次都不稳才放弃 —— 只写"两次读数一致"的最终态，绝不写过渡态。
                         Logx.once(
                             "rec-retry-$why",
-                            "记录复核$attempt 不稳: ${a.bounds}@${a.scale} -> ${b.bounds}@${b.scale}，第 ${attempt + 1} 次重试"
+                            "记录复核$attempt 不稳: ${a.real}@${a.scale} -> ${b.real}@${b.scale}，第 ${attempt + 1} 次重试"
                         )
                         record(controller, why, attempt + 1)
                     } else {
                         Logx.once(
                             "rec-unstable-final-$why",
-                            "记录放弃（$why 四次复核都不稳）: ${a.bounds}@${a.scale} -> ${b.bounds}@${b.scale}"
+                            "记录放弃（$why 四次复核都不稳）: ${a.real}@${a.scale} -> ${b.real}@${b.scale}"
                         )
                     }
                 }
@@ -3074,8 +3118,34 @@ object Hooks {
         }
     }
 
+    /**
+     * 判定"几何是否可信"的最小尺寸。小于它视为过渡态（拖动/重开中 MIUI 会短暂报出极小值）。
+     * 取 100px：正常小窗最小也有几百像素，100 已足够宽松，不会误伤真实的极小窗。
+     */
+    private val MIN_SANE_W get() = 100
+    private val MIN_SANE_H get() = 100
+
     /** 一次读数快照（小窗 + 可见 + 非迷你/贴边 + 包名 + bounds + scale + 屏幕键）。 */
-    private class Snap(val pkg: String, val bounds: Rect, val scale: Float, val screen: String)
+    private class Snap(
+        val pkg: String,
+        /** 进记忆的形态：只有左上角点（1×1，按用户"只记点"的要求）。 */
+        val bounds: Rect,
+        val scale: Float,
+        val screen: String,
+        /**
+         * ★★★ v0.4.80 真实几何（**不折叠**）—— 仅用于 record 的一致性校验。
+         *
+         * 为什么必须有它：`bounds` 被折叠成 1×1 之后，`record` 里那句
+         *   `if (b.bounds == a.bounds && |Δscale| <= 1e-4) persist(...)`
+         * 中两个 Rect **永远相等**（都是 (x,y,x+1,y+1)，相等只看 left/top）。
+         * 于是这道"两次读数一致才落盘"的闸门形同虚设 ——
+         * 拖动中途读到畸形/极小 bounds 时照样落盘，把记忆点写坏。
+         * 真机取证：`记录核对(gestureMove): 真实=Rect(591,888-2461,2057)` 之后
+         * `落盘(bounds=Rect(591,888-592,889))`；用户随后遇到窗口被缩成 1×1 像素
+         * ⇒ 白屏、拖不动（音频仍在播）。校验用真实值才能挡住过渡态。
+         */
+        val real: Rect
+    )
 
     private fun snapshot(controller: Any, why: String): Snap? {
         val info = field(controller, "mRunningTaskInfo") ?: return null
@@ -3126,7 +3196,7 @@ object Hooks {
         val dispId = (field(info, "displayId") as? Int) ?: -1
         val screen = Bounds.screenKeyFor(AppCtx.get(), dispId)
         if (boundsLog.add("$pkg|$screen")) Logx.e("记忆 key: pkg=$pkg displayId=$dispId -> $screen")
-        return Snap(pkg, store, scale, screen)
+        return Snap(pkg, store, scale, screen, Rect(bounds))
     }
 
     /**
