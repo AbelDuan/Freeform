@@ -36,11 +36,22 @@ object Hooks {
         //     · 贴边小窗强制前台（MiuiFreeFormGestureController#needForegroundPin）
         //     · 强制允许应用以小窗打开（ActivityStarter#executeRequest）
         //   安装期只装 hook，不碰 Context / prefs（与上面同一条纪律）。
-        runCatching { FreeformExtra.installMultiFreeform(m, cl) }
+        // ★★★ v0.6.0 **三者改用 HyperCeiler 的成熟实现**（用户 2026-10-18 要求移植）
+        //
+        //   旧实现的三个问题（对照 HyperCeiler 源码后确认）：
+        //     ① 多小窗：没做 Android 36+ 分支，去挂已被移除的 `...ForFlashBack`；
+        //        实际只挂上 1 个，且不确定是不是有效那个。
+        //     ② 贴边前台：只 hook 了 `needForegroundPin`（MIUI 内部"要不要"的判断），
+        //        **并不能让跳转留在小窗** —— 真正生效点是 `ActivityStarterInjector`
+        //        `#modifyLaunchActivityOptionIfNeed` 改写 ActivityOptions。
+        //     ③ 强制小窗：hook `ActivityStarter#executeRequest` 改写启动意图，
+        //        只对"用户主动开窗"有效；应用自己跳转/从最近任务启动仍被黑名单拦。
+        //        HyperCeiler 是**从根上解除限制**（8 组共 14 处）。
+        runCatching { HcFreeform.installMaxCount(m, cl) }
             .onFailure { Logx.e("多小窗安装失败", it) }
-        runCatching { FreeformExtra.installEdgeFront(m, cl) }
+        runCatching { HcFreeform.installStickyFloating(m, cl) }
             .onFailure { Logx.e("贴边前台安装失败", it) }
-        runCatching { FreeformExtra.installForceFreeform(m, cl) }
+        runCatching { HcFreeform.installRemoveRestriction(m, cl) }
             .onFailure { Logx.e("强制小窗安装失败", it) }
 
         // ★★★ v0.4.56：小窗几何权威探针（system_server 侧）。
@@ -809,7 +820,23 @@ object Hooks {
                     //   只在 `resolveTaskOrientation`（旋转专用入口）上做，避免影响其它流程。
                     if (mm.name == "resolveTaskOrientation") {
                         runCatching {
-                            val pkg = call(chain.thisObject, "getStackPackageName") as? String
+                            // ★★★ v0.5.5 **修掉 NPE 打断 MIUI 横屏初始化**（真机崩溃取证）：
+                            //     java.lang.NullPointerException: Attempt to invoke virtual method
+                            //       'java.lang.Class java.lang.Object.getClass()' on a null object reference
+                            //       at ...resolveTaskOrientation(...)
+                            //       at MiuiFreeFormActivityStack.<init>(MiuiFreeFormActivityStack.java:229)
+                            //   ⇒ `chain.thisObject` 在此为 **null**（静态/lambda 调用上下文），
+                            //     直接 `call(null, ...)` 内部 `obj.javaClass` 抛 NPE，
+                            //     **打断 MIUI 的 MiuiFreeFormActivityStack 构造**（第 229 行正是横屏名单判定处）
+                            //     ⇒ setSkipAutoLayout 从未生效 ⇒ MIUI 自动重排成竖屏。
+                            //
+                            //   修法：先判空；thisObject 为空时退回"从第 0 个参数（Task）取包名"。
+                            val self = chain.thisObject
+                            val taskArg = runCatching { chain.args.firstOrNull() }.getOrNull()
+                            val pkg = self?.let { call(it, "getStackPackageName") } as? String
+                                ?: self?.let { call(it, "getTaskInfo") }?.let { taskPkg(it) }
+                                ?: self?.let { field(it, "mTaskInfo") }?.let { taskPkg(it) }
+                                ?: taskArg?.let { taskPkg(it) }
                             val ctx = AppCtx.get()
                             // ★ v0.4.38：这条守卫此前**静默失败**——两份分支各有一条日志，实测 5 份日志里
                             //   `系统探针★` 命中 0 次 ⇒ skipAutoLayout 杆从未生效过（查不到原因）。
@@ -819,10 +846,10 @@ object Hooks {
                             }
                             if (pkg != null && ctx != null) {
                                 val memo = Bounds.get(ctx, pkg, Bounds.screenKey(ctx))
-                                if (memo != null) {
-                                    chain.thisObject.javaClass
+                                if (memo != null && self != null) {
+                                    self.javaClass
                                         .getMethod("setSkipAutoLayout", java.lang.Boolean.TYPE)
-                                        .invoke(chain.thisObject, true)
+                                        .invoke(self, true)
                                     Logx.always("系统探针★: 有记忆 ⇒ setSkipAutoLayout(true) pkg=$pkg 记忆=$memo")
                                 } else {
                                     Logx.always("系统探针: 无记忆，不动 skipAutoLayout pkg=$pkg")

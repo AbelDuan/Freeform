@@ -106,6 +106,11 @@ object Bounds {
             )
             b?.keySet()?.forEach { k ->
                 val raw = b.getString(k)
+                // ★ v0.5.5：`@D` = 方向独立槽（"1"=横屏 / "0"=竖屏），与比例槽物理隔离
+                if (k.endsWith("@D")) {
+                    orientCache[k.removeSuffix("@D")] = (raw?.trim() == "1")
+                    return@forEach
+                }
                 parseRect(raw)?.let { cache[k] = it }
                 raw?.substringAfter('@', "")?.toFloatOrNull()?.takeIf { it > 0f }?.let { scaleCache[k] = it }
             }
@@ -178,10 +183,11 @@ object Bounds {
     fun putOrientation(ctx: Context, pkg: String, screen: String, landscape: Boolean) {
         val k = key(pkg, screen)
         synchronized(this) { orientCache[k] = landscape }
-        // 立刻落盘：把方向编码进 scale 字段（+10 表示横屏），保证跨进程可读
-        val base = getScale(ctx, pkg, screen)
-        write(ctx, k, cache[k], if (landscape) base + 10f else base)
-        Logx.always("记住方向 $k = ${if (landscape) "横屏" else "竖屏"}")
+        // ★★★ v0.5.5 **方向改用独立键 `@D`**，与比例槽彻底分开。
+        //   真机取证：同一个 `@` 字段被两种语义轮流覆写（比例 vs 方向+比例）⇒ 方向时有时无
+        //   ⇒ 用户看到"第一次横屏、之后弹回竖屏"。
+        write(ctx, "$k@D", null, 0f, raw = if (landscape) "1" else "0")
+        Logx.always("记住方向 $k = ${if (landscape) "横屏" else "竖屏"}（写入独立键 @D）")
     }
 
     /** 读方向：true=横屏，false=竖屏，null=没有记录（交回 MIUI 默认）。 */
@@ -305,8 +311,9 @@ object Bounds {
     }
 
     /** 落盘一条 `左,上,右,下[@scale]`；r=null 表示删除该键。所有写入走这里，不再各处手写 Bundle。 */
-    private fun write(ctx: Context, k: String, r: Rect?, scale: Float = 0f) {
-        val v = if (r == null) "" else
+    private fun write(ctx: Context, k: String, r: Rect?, scale: Float = 0f, raw: String? = null) {
+        // ★ v0.5.5：新增 `raw` —— 让 `@D` 这类"非矩形槽"能直接写任意字符串（如 "1"/"0"）
+        val v = if (raw != null) raw else if (r == null) "" else
             "${r.left},${r.top},${r.right},${r.bottom}" + if (scale > 0f) "@$scale" else ""
         runCatching {
             val b = Bundle().apply { putString("k", k); putString("v", v) }
@@ -407,9 +414,9 @@ object Bounds {
         synchronized(this) {
             // key 形如 `pkg|屏幕`；只看方向位为"横屏"（编码 > 10，见 putOrientation）
             orientCache.entries.forEach { (k, v) -> if (v) out.add(k.substringBefore('|')) }
-            scaleCache.entries.forEach { (k, raw) ->
-                if (raw > 10f) out.add(k.substringBefore('|'))
-            }
+            // ★★★ v0.5.5 **删除用比例槽判方向的旧逻辑**（用户主诉："用过横屏后永远横屏"）。
+            //   历史遗留值（如 10.77）会被 `> 10f` 误判成横屏 ⇒ 该应用被并入 ROM 的
+            //   getForceLandscapeApplication() 名单 ⇒ **永久横屏**。只信 `@D` 独立槽。
         }
         return out.toList()
     }
