@@ -25,10 +25,22 @@ object Cfg {
     @Volatile var gestureHandleIdle = Constants.DEF_GESTURE_HANDLE_IDLE
     @Volatile var gestureHandleArea = Constants.DEF_GESTURE_HANDLE_AREA
     @Volatile var assignRaw = Constants.DEF_NBI_ASSIGN
+    /** 魔法窗口总开关 + 逐应用比例表（包名 → 比例 label） */
+    @Volatile var magicWindow = Constants.DEF_MAGIC_WINDOW
+    @Volatile var magicRatioRaw = Constants.DEF_MAGIC_RATIO_MAP
+    @Volatile private var magicMap: Map<String, String> = emptyMap()
+
+    /** 该包是否由模块启用魔法窗口（总开关关掉时一律 false）。 */
+    fun magicRatioOf(pkg: String?): String? =
+        if (!magicWindow || pkg == null) null else magicMap[pkg]
+
+    fun magicSnapshot(): Map<String, String> = magicMap
     // 小窗增强（移植自 HyperCeiler）
     @Volatile var forceFreeform = Constants.DEF_FORCE_FREEFORM
     @Volatile var multiFreeform = Constants.DEF_MULTI_FREEFORM
     @Volatile var edgeFreeformFront = Constants.DEF_EDGE_FREEFORM_FRONT
+    /** 通知栏下滑开小窗（解除 canNotificationSlide 的应用限制） */
+    @Volatile var notificationSlide = Constants.DEF_NOTIFICATION_SLIDE
     @Volatile private var assign: Map<String, Int> = emptyMap()
 
     /** 该应用的归属（0=不处理 1=隐藏 2=取色）。热路径只读 volatile。 */
@@ -107,9 +119,29 @@ object Cfg {
             forceFreeform = p.getBoolean(Constants.K_FORCE_FREEFORM, Constants.DEF_FORCE_FREEFORM)
             multiFreeform = p.getBoolean(Constants.K_MULTI_FREEFORM, Constants.DEF_MULTI_FREEFORM)
             edgeFreeformFront = p.getBoolean(Constants.K_EDGE_FREEFORM_FRONT, Constants.DEF_EDGE_FREEFORM_FRONT)
+            notificationSlide = p.getBoolean(Constants.K_NOTIFICATION_SLIDE, Constants.DEF_NOTIFICATION_SLIDE)
             parseAssign(p.getString(Constants.K_NBI_ASSIGN, Constants.DEF_NBI_ASSIGN) ?: Constants.DEF_NBI_ASSIGN)
+            magicWindow = p.getBoolean(Constants.K_MAGIC_WINDOW, Constants.DEF_MAGIC_WINDOW)
+            parseMagic(p.getString(Constants.K_MAGIC_RATIO_MAP, Constants.DEF_MAGIC_RATIO_MAP) ?: Constants.DEF_MAGIC_RATIO_MAP)
             Logx.verbose = log
         }.onFailure { Logx.e("reload 失败", it) }
+    }
+
+    /** 解析 "包名=比例" 逐行配置，并推给 [MagicWindow] 的运行期名单。 */
+    private fun parseMagic(raw: String) {
+        magicRatioRaw = raw
+        val m = LinkedHashMap<String, String>()
+        raw.lineSequence().forEach { line ->
+            val t = line.trim()
+            if (t.isEmpty()) return@forEach
+            val i = t.indexOf('=')
+            if (i <= 0) return@forEach
+            val pkg = t.substring(0, i).trim()
+            val r = t.substring(i + 1).trim()
+            if (pkg.isNotEmpty() && MagicWindow.RATIOS.containsKey(r)) m[pkg] = r
+        }
+        magicMap = m
+        MagicWindow.refreshFromCfg(if (magicWindow) m else emptyMap())
     }
 
     private var lastReload = 0L

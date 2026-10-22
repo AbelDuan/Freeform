@@ -39,6 +39,8 @@ HyperOS 4（Android 17 / API 37）**小窗（freeform）与分屏体验增强** 
 
 > 两个功能共用**一份名单**：每个应用只归属一个功能（先选功能、再勾应用，勾选即覆盖原归属）⇒ 结构上不存在"同一应用两边都选"。 |
 | **清理系统干扰视觉** | 隐藏系统自带缩放描边；分屏场景下的镜像栏、应用图标遮罩、快照替身不显示 |
+| **通知栏下滑开小窗**（v0.6.4） | 解除 `AppMiniWindowManagerImpl#canNotificationSlide` 的应用限制：**任意应用**的通知都能在通知栏里滑出小窗入口（移植自 HyperFreeformX 1.3.0，2026-10-22） |
+| **魔法窗口**（v0.6.4，灰度） | 宽屏下把指定应用收成固定比例、两侧模糊；hook `MiuiEmbeddingWindowService#isEmbeddingEnabledForPackage`，切换**不杀进程**；默认关闭，设置页按应用开启 |
 
 
 ### 1.4 新手势（2026-09-21 新增）

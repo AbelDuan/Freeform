@@ -137,6 +137,13 @@ class SettingsActivity : Activity() {
         switchRow("折叠屏状态分别记忆", Constants.K_REMEMBER_FOLD, Cfg.rememberFold) { Cfg.rememberFold = it }
         switchRow("小窗比例调节（三点菜单那排比例按钮 + 放大可调范围）", Constants.K_RATIO_MENU, Cfg.ratioMenu) { Cfg.ratioMenu = it }
 
+        section("通知栏")
+        switchRow(
+            "通知栏下滑开小窗（所有应用）",
+            Constants.K_NOTIFICATION_SLIDE,
+            Cfg.notificationSlide
+        ) { Cfg.notificationSlide = it }
+
         section("手势")
         // 角滑已下线（2026-10-02）：该手势需要吞 MIUI 输入流才能屏蔽系统手势，
         // 而这条链路会 ANR → SystemUI 被杀，故整体移除。设置项一并移除。

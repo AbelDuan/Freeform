@@ -54,6 +54,13 @@ object Hooks {
         runCatching { HcFreeform.installRemoveRestriction(m, cl) }
             .onFailure { Logx.e("强制小窗安装失败", it) }
 
+        // ★★★ 魔法窗口（magic-windows）：任意应用在宽屏下收成固定比例 + 两侧模糊。
+        //   实现 = hook `MiuiEmbeddingWindowService#isEmbeddingEnabledForPackage(String)`（纯函数总闸），
+        //   把名单里的包在内存里判为 true ⇒ 系统走正常嵌入布局，**不触发 relaunch/杀进程**。
+        //   名单来自本模块配置，默认空 ⇒ 零行为变化。
+        runCatching { MagicWindow.install(m, cl) }
+            .onFailure { Logx.e("魔法窗口安装失败", it) }
+
         // ★★★ v0.4.56：小窗几何权威探针（system_server 侧）。
         //   目的：查明横屏后被 MIUI 覆盖回竖屏的**真正方法**。只打日志、不改行为。
         //   需要重启 zygote 才生效（system 作用域只在开机注入）。
@@ -119,12 +126,13 @@ object Hooks {
         Logx.always("手势功能已移除：不安装任何输入挂钩（角滑下线）")
         // 小白条（手势导航条）：跟随手势 / 淡入淡出 / 触摸显隐 / 空闲自动隐藏
         installGestureHandle(m, cl)
-        // 通知「下拉开小窗」相关功能已整体移除（用户 2026-10-02 决定放弃）：
-        //   原因：试过 HyperCeiler 的 canSlide 置位 + 名单补足 + 代理包还原 + 强制刷新 + 入口探针，
-        //   真机探针证实「长按焦点通知」**未进入** ModalController/小白条链路（探针零调用）
-        //   ⇒ 该系统交互在本 ROM 上未启用，继续做等于自建整套系统 UI（风险与前次手势同级）。
-        //   仍然可用的能力：通知**下拉即可开小窗**（系统自带，无需本模块介入）。
-        Logx.always("本模块不介入通知小窗（系统自带的下拉开小窗不受影响）")
+        // 通知栏下滑开小窗（2026-10-22 移植自 HyperFreeformX 1.3.0）：
+        //   2026-10-02 曾按 HyperCeiler 的 canSlide 思路试过并放弃，当时判断「长按焦点通知」
+        //   没进入 ModalController/小白条链路。反汇编本机 MiuiSystemUI.apk classes2.dex 后确认：
+        //   canNotificationSlide 的两个调用方是 ExpandableNotificationRowInjector#
+        //   updateFreeformTipView / #updateMiniWindowBar —— 是「通知行滑出小窗入口」，
+        //   不是长按链路，所以上次探针挂错了位置。HyperFreeformX 的做法是把它恒置 true，照此移植。
+        installNotificationSlide(m, cl)
 
         // ★★★ v0.4.60：把「强制横屏」也装到 **SystemUI 侧**（用户要求：能只 killall 就别重启）。
         //   说明：真正决定 MIUI 方向的是 system_server 里的 MiuiFreeFormActivityStack，
@@ -141,6 +149,40 @@ object Hooks {
         // ★ 主修复：在 MIUI 算 (bounds, scale) 的地方换成记忆值
         runCatching { installSizeLevelHook(m, cl) }.onFailure { Logx.e("尺寸档位挂钩安装失败", it) }
         runCatching { installSizePathProbe(m, cl) }.onFailure { Logx.e("路径探针安装失败", it) }
+    }
+
+    /**
+     * 通知栏下滑开小窗（移植自 HyperFreeformX 1.3.0 的 CanSlideNotification）。
+     *
+     * `AppMiniWindowManagerImpl#canNotificationSlide(String, PendingIntent)` 是系统里
+     * 「这条通知能不能在通知栏里滑出小窗入口」的唯一闸门。原实现串了 isTinyScreen /
+     * mHasMiniWindowFeature / multiFreeFormSupported / mAllowNotificationSlide 云控 /
+     * isPinMode / isDeskModeOn / slideInteractionCache / 微信支付特判 / isTopSameClass 等
+     * 一长串白名单（本机 classes2.dex 反汇编确认），绝大多数应用的通知都过不去。
+     *
+     * 置 true 后任意应用的通知都能滑出小窗入口；应用本身能否进小窗仍由
+     * 「强制允许所有应用打开小窗」负责，两者互补。
+     */
+    private fun installNotificationSlide(m: MainHook, cl: ClassLoader) {
+        if (!Cfg.notificationSlide) {
+            Logx.always("通知栏下滑开小窗: 开关关闭，跳过挂载")
+            return
+        }
+        val ok = m.hookMethod(
+            cl,
+            Constants.CLS_APP_MINI_WINDOW,
+            "canNotificationSlide",
+            arrayOf(String::class.java, android.app.PendingIntent::class.java),
+            XposedInterface.Hooker { chain ->
+                if (Cfg.notificationSlide) {
+                    Logx.once("notifSlide", "通知栏下滑开小窗: canNotificationSlide → true")
+                    true
+                } else {
+                    chain.proceed()
+                }
+            }
+        )
+        Logx.always("通知栏下滑开小窗: ${if (ok) "已挂载" else "挂载失败（类/方法不存在？）"}")
     }
 
     /** 小白条（手势导航条）：跟随手势 / 淡入淡出 / 触摸显隐 / 空闲自动隐藏。 */
@@ -1478,19 +1520,39 @@ object Hooks {
                             val pkg = info?.let { taskPkg(it) }
                             val memo = pkg?.let { Bounds.get(ctx, it, Bounds.screenKey(ctx)) }
                             if (memo != null) {
-                                // ★ 原样套用（不再按屏幕 clampKeepRatio）：记忆本来就是 MIUI 未缩放坐标里的 rect，
-                                //   夹取只会把用户放好的位置改成"右下贴边"。几何适配交回 MIUI。
-                                rect.set(memo)
-                                // 只替换恢复矩形，**不改 scale**：之前覆盖 scale 是为了修尺寸记忆，
-                                // 但后来证明那是别的原因，而覆盖 scale 会让 mini→正常的转换异常
-                                // （真机：贴边迷你态点击不再回到悬浮窗，而是点到内容）。
-                                runCatching {
-                                    val sc = runCatching { call(ti, "getFreeformScale") }.getOrNull()
-                                    Logx.always(
-                                        "迷你恢复: 套用记忆 $memo（scale 保持系统值）诊断: " +
-                                            "real=${runCatching { call(ti, "getBounds") }.getOrNull()} " +
-                                            "visual=${runCatching { call(ti, "getScaledBounds") }.getOrNull()} scale=$sc"
-                                    )
+                                if (memo.width() <= 1 || memo.height() <= 1) {
+                                    // ★ 2026-10-22 修复（用户报「迷你窗点回来背景很大、可操作区很小」）：
+                                    //   `Bounds.putPoint` 存的是「只记左上角」的 1×1 占位矩形（比例调整路径），
+                                    //   以前这里把它当完整矩形 rect.set ⇒ 窗口真实 bounds 变成 1×1，
+                                    //   而 freeformScale 仍是迷你态的 0.24 ⇒ 内容缩到不可见、装饰层却按大窗口画。
+                                    //   现在：点记忆只取左上角，尺寸用系统给的恢复目标，并夹回屏内。
+                                    val w = rect.width().coerceAtLeast(1)
+                                    val h = rect.height().coerceAtLeast(1)
+                                    val dm = ctx.resources.displayMetrics
+                                    val left = memo.left.coerceIn(0, (dm.widthPixels - w).coerceAtLeast(0))
+                                    val top = memo.top.coerceIn(0, (dm.heightPixels - h).coerceAtLeast(0))
+                                    rect.set(left, top, left + w, top + h)
+                                    runCatching {
+                                        Logx.always(
+                                            "迷你恢复: 点记忆(${memo.left},${memo.top}) + 系统尺寸 ${w}x${h} -> $rect " +
+                                                "诊断: scale=${runCatching { call(ti, "getFreeformScale") }.getOrNull()}"
+                                        )
+                                    }
+                                } else {
+                                    // ★ 原样套用（不再按屏幕 clampKeepRatio）：记忆本来就是 MIUI 未缩放坐标里的 rect，
+                                    //   夹取只会把用户放好的位置改成"右下贴边"。几何适配交回 MIUI。
+                                    rect.set(memo)
+                                    // 只替换恢复矩形，**不改 scale**：之前覆盖 scale 是为了修尺寸记忆，
+                                    // 但后来证明那是别的原因，而覆盖 scale 会让 mini→正常的转换异常
+                                    // （真机：贴边迷你态点击不再回到悬浮窗，而是点到内容）。
+                                    runCatching {
+                                        val sc = runCatching { call(ti, "getFreeformScale") }.getOrNull()
+                                        Logx.always(
+                                            "迷你恢复: 套用记忆 $memo（scale 保持系统值）诊断: " +
+                                                "real=${runCatching { call(ti, "getBounds") }.getOrNull()} " +
+                                                "visual=${runCatching { call(ti, "getScaledBounds") }.getOrNull()} scale=$sc"
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -3246,6 +3308,12 @@ object Hooks {
         val screen = screenIn ?: Bounds.screenKey(ctx)
         // 关闭→重开期间一律不记录（那时 MIUI 会把任务摆成全屏，写进去就把记忆污染了）
         val key = Bounds.key(pkg, screen)
+        // ★ 2026-10-22：退化几何（宽或高 <= 1px）不写记忆 —— 小窗从迷你/中转态 relayout 时
+        //   会短暂拿到 1×1，写进去会让下次恢复套用错乱（用户报「背景很大、可操作区很小」）。
+        if (bounds.width() <= 1 || bounds.height() <= 1) {
+            Logx.once("rec-degenerate-$key", "记录跳过：退化几何 $bounds（$why）")
+            return
+        }
         suppressRecord[key]?.let { until ->
             if (android.os.SystemClock.elapsedRealtime() < until) {
                 Logx.once("sup-$key", "记录跳过：正在关闭→重开小窗（$why）")

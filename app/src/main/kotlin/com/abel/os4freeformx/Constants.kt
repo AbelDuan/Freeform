@@ -42,10 +42,21 @@ object Constants {
     // ── 小窗增强（移植自 HyperCeiler，AGPL-3.0；出处见文件末尾）──
     /** 强制允许应用以小窗打开（不再受 MIUI 支持名单限制） */
     const val K_FORCE_FREEFORM = "force_freeform"
+    /**
+     * 通知栏下滑开小窗：解除 `AppMiniWindowManagerImpl#canNotificationSlide` 的应用限制，
+     * 让任意应用的通知都能在通知栏下拉后滑出小窗入口（移植自 HyperFreeformX 1.3.0）。
+     */
+    const val K_NOTIFICATION_SLIDE = "notification_slide"
     /** 不限制小窗数量（多小窗） */
     const val K_MULTI_FREEFORM = "multi_freeform"
     /** 贴边小窗强制前台 */
     const val K_EDGE_FREEFORM_FRONT = "edge_freeform_front"
+    // ── 魔法窗口（magic-windows）：宽屏把应用收成固定比例 + 两侧模糊 ──
+    /** 总开关 */
+    const val K_MAGIC_WINDOW = "magic_window"
+    /** 逐行 "包名=比例"，比例取值同 [MagicWindow.RATIOS]（如 "16:9"） */
+    const val K_MAGIC_RATIO_MAP = "magic_ratio_map"
+
     /** 调试开关：system_server 侧几何探针（198 个钩子，日志量大，默认关） */
     const val DBG_GEO_PROBE = false
 
@@ -65,10 +76,15 @@ object Constants {
     const val DEF_GESTURE_HANDLE_IDLE = true
     const val DEF_GESTURE_HANDLE_AREA = 24f
         const val DEF_NBI_ASSIGN = ""
+    // 魔法窗口：默认关闭（零行为变化，用户在设置里逐个应用打开）
+    const val DEF_MAGIC_WINDOW = false
+    const val DEF_MAGIC_RATIO_MAP = ""
+
     // 小窗增强默认值（用户 2026-10-15 要求移植，默认开）
     const val DEF_FORCE_FREEFORM = true
     const val DEF_MULTI_FREEFORM = true
     const val DEF_EDGE_FREEFORM_FRONT = true
+    const val DEF_NOTIFICATION_SLIDE = true
 
     // ---- 目标类（HyperOS 4 / Android 17 实测确认）----
     /** wm shell 小窗装饰（systemui 进程，来自 /system_ext/framework/Miui-WindowManager-Shell.jar） */
@@ -85,6 +101,14 @@ object Constants {
     const val CLS_DOT_VIEW_HOST = "com.android.wm.shell.multitasking.miuimultiwinswitch.miuiwindowdecor.decoration.MiuiDecorationDotViewHost"
     /** ★ v0.4.43：旋转时"算旋转后的 bounds 与 scale"的那个类（用户点破的正解入口） */
     const val CLS_FREEFORM_MODE_UTILS = "com.android.wm.shell.multitasking.miuifreeform.MiuiFreeformModeUtils"
+    /**
+     * SystemUI 通知行的小窗闸门（本机 MiuiSystemUI.apk classes2.dex 实测确认）。
+     * `canNotificationSlide(String, PendingIntent): boolean` 的两个调用方都在
+     * `ExpandableNotificationRowInjector#updateFreeformTipView / #updateMiniWindowBar`，
+     * 即「通知栏里这条通知能不能滑出小窗入口」。
+     */
+    const val CLS_APP_MINI_WINDOW =
+        "com.android.systemui.statusbar.notification.policy.AppMiniWindowManagerImpl"
 
     /** MIUI 小窗装饰的触摸监听（探针：确认装饰层是否收得到触摸） */
     const val CLS_DECOR_TOUCH = "com.android.wm.shell.multitasking.miuimultiwinswitch.miuiwindowdecor.decoration.MiuiDecorationTouchListener"
@@ -117,6 +141,14 @@ object Constants {
     const val CLS_SOSC_SPLIT_LAYOUT = "com.android.wm.shell.sosc.common.split.SplitLayout"
     /** 折叠屏走的那套（SoSc）分屏吸附算法 */
     const val CLS_SOSC_DIVIDER_SNAP = "com.android.wm.shell.sosc.common.split.DividerSnapAlgorithm"
+    // ── 魔法窗口（magic-windows）—— 来自 /system_ext/framework/miui-embedding-window.jar ──
+    /** 嵌入窗口总服务：isEmbeddingEnabledForPackage(String) 是"该包是否走 magic-windows"的总闸（纯函数） */
+    const val CLS_EMBED_SVC = "com.android.server.wm.MiuiEmbeddingWindowService"
+    /** 规则表：isEmbeddingEnabledForPackage 的真实实现类 */
+    const val CLS_EMBED_RULE = "com.android.server.wm.MiuiSystemEmbeddedRule"
+    /** 固定宽高比服务（决定 16:9 等比例，cmd MiuiSizeCompat 的实现） */
+    const val CLS_SIZE_COMPAT = "com.android.server.wm.MiuiSizeCompatInternal"
+
     /** 分屏布局：setDivideRatio(id) 按吸附目标的 snapPosition 定位 */
     const val CLS_SPLIT_LAYOUT = "com.android.wm.shell.common.split.SplitLayout"
     /** 小窗位置/尺寸计算（boot classpath: /system_ext/framework/miui-framework.jar） */
