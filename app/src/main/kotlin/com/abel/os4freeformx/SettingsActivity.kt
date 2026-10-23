@@ -29,6 +29,33 @@ class SettingsActivity : Activity() {
         super.onCreate(savedInstanceState)
         Cfg.attachLocal(this)
         buildUi()
+        restoreNavAssignIfEmpty()
+    }
+
+    /**
+     * 导航栏配置回填（2026-10-23）：模块 App 数据被清（卸载重装 / 清数据）后，
+     * 系统名单里往往还留着用户之前配置的规则。prefs 为空时从名单反读并写回，
+     * 避免设置页显示「隐藏 0 · 取色 0」、也避免旧规则在界面上无法取消。
+     *
+     * 读系统文件需要 root（su 可能耗时几百毫秒），因此走后台线程，完成后重建界面。
+     */
+    private fun restoreNavAssignIfEmpty() {
+        if (Cfg.assignRaw.isNotBlank()) return
+        Thread {
+            val restored = runCatching { Nbi.readAssignFromSystem() }.getOrDefault("")
+            if (restored.isBlank()) return@Thread
+            AppPrefs.putString(this, Constants.K_NBI_ASSIGN, restored)
+            Cfg.setAssign(restored)
+            Cfg.reloadThrottled(0)
+            runOnUiThread {
+                runCatching { buildUi() }
+                Toast.makeText(
+                    this,
+                    "已从系统名单恢复导航栏配置（${restored.lines().count { it.isNotBlank() }} 个应用）",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }.apply { isDaemon = true; name = "os4ffx-nbi-restore" }.start()
     }
 
 

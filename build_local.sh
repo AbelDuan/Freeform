@@ -76,7 +76,12 @@ if os.path.exists(outapk):
     os.remove(outapk)
 with zipfile.ZipFile(base) as zbase, zipfile.ZipFile(outapk, 'w', zipfile.ZIP_DEFLATED) as out:
     for n in zbase.namelist():
-        out.writestr(n, zbase.read(n))
+        # ★ 必须保留原条目的压缩方式：resources.arsc 在 aapt2 产物里是 STORED，
+        #   若这里用默认 DEFLATED 重压，targetSdk>=30 的安装器会直接拒绝：
+        #   "Targeting R+ requires the resources.arsc ... stored uncompressed
+        #    and aligned on a 4-byte boundary"（2026-10-22 的实际踩坑）。
+        info = zbase.getinfo(n)
+        out.writestr(info, zbase.read(n))
     for f in sorted(os.listdir(dexdir)):
         if f.endswith('.dex'):
             out.write(os.path.join(dexdir, f), f)
@@ -86,6 +91,10 @@ with zipfile.ZipFile(base) as zbase, zipfile.ZipFile(outapk, 'w', zipfile.ZIP_DE
             out.write(full, os.path.relpath(full, resdir))
 print('packed', outapk)
 PY
+
+echo "== 5.5/6 zipalign（resources.arsc 必须 4 字节对齐，否则 targetSdk>=30 安装器拒绝）=="
+ZIPALIGN=${ZIPALIGN:-/usr/bin/zipalign}
+"$ZIPALIGN" -f 4 "$OUT/unsigned.apk" "$OUT/aligned.apk"
 
 echo "== 6/6 签名 =="
 if [ ! -f "$KS" ]; then
@@ -97,10 +106,13 @@ if [ ! -f "$KS" ]; then
         -dname "CN=AbelDuan, OU=OS4FreeFromX, O=Abel, L=CN, ST=CN, C=CN" >/dev/null 2>&1
 fi
 APKOUT=$HERE/dist/OS4FreeFromX-v$VER.apk
-cp -f "$OUT/unsigned.apk" "$APKOUT"
-"$JAVA_HOME/bin/jarsigner" -keystore "$KS" -storepass os4freeformx -keypass os4freeformx \
-    -sigalg SHA256withRSA -digestalg SHA-256 "$APKOUT" os4freeformx >/dev/null 2>&1 \
-    && echo "   已签名" || echo "   ⚠️ 签名失败（产物为未签名包）"
+# ★ 必须用 apksigner（而非 jarsigner）：jarsigner 会重写整个 zip，
+#   把 zipalign 的 4 字节对齐破坏掉 ⇒ 安装器报 resources.arsc 未对齐（2026-10-22 实测）。
+APKSIGNER_JAR=${APKSIGNER_JAR:-/usr/lib/android-sdk/build-tools/debian/apksigner.jar}
+rm -f "$APKOUT"
+"$JAVA" -jar "$APKSIGNER_JAR" sign --ks "$KS" --ks-pass pass:os4freeformx --key-pass pass:os4freeformx \
+    --min-sdk-version 33 --out "$APKOUT" "$OUT/aligned.apk" \
+    && echo "   已签名" || echo "   ⚠️ 签名失败"
 
 echo
 echo "✅ $APKOUT ($(du -h "$APKOUT" | cut -f1))"

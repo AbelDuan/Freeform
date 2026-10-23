@@ -85,9 +85,83 @@ object Nbi {
         return dot
     }
 
+    /**
+     * 从系统名单反读「包名=mode」列表（多行，格式同 `Constants.K_NBI_ASSIGN`）。
+     *
+     * 为什么需要：模块 App 的 prefs 会因「卸载重装 / 清数据」丢失，而系统名单
+     * `/data/system/cloudFeature_navigation_bar_immersive_rules_list.json` 里的规则还在。
+     * 不回填的话设置页会显示「隐藏 0 · 取色 0」，用户以为配置没了；更麻烦的是
+     * 下次点「应用」时旧条目会被 [mergeRules] 当成"外部条目"保留，界面上却无法取消。
+     *
+     * 读取失败（无 root / 文件不存在）返回空串，调用方按"没有配置"处理。
+     */
+    fun readAssignFromSystem(): String {
+        val text = readSystemJson() ?: return ""
+        val key = text.indexOf("\"NBIRules\"")
+        if (key < 0) return ""
+        val open = text.indexOf('{', key)
+        if (open < 0) return ""
+        // 配对扫描定位 NBIRules 对象范围（正则跨对象容易误匹配）
+        var depth = 0
+        var end = -1
+        for (i in open until text.length) {
+            val c = text[i]
+            if (c == '{') {
+                depth++
+            } else if (c == '}') {
+                depth--
+                if (depth == 0) {
+                    end = i
+                    break
+                }
+            }
+        }
+        if (end < 0) return ""
+        val body = text.substring(open + 1, end)
+        val out = sortedMapOf<String, Int>()
+        var i = 0
+        while (i < body.length) {
+            val q1 = body.indexOf('"', i)
+            if (q1 < 0) break
+            val q2 = body.indexOf('"', q1 + 1)
+            if (q2 < 0) break
+            val name = body.substring(q1 + 1, q2)
+            val colon = body.indexOf(':', q2)
+            if (colon < 0) break
+            var j = colon + 1
+            while (j < body.length && body[j].isWhitespace()) j++
+            if (j >= body.length || body[j] != '{') {
+                i = q2 + 1
+                continue
+            }
+            var d = 0
+            var close = -1
+            var k = j
+            while (k < body.length) {
+                val c = body[k]
+                if (c == '{') {
+                    d++
+                } else if (c == '}') {
+                    d--
+                    if (d == 0) {
+                        close = k
+                        break
+                    }
+                }
+                k++
+            }
+            if (close < 0) break
+            val block = body.substring(j, close + 1)
+            val mode = Regex("\"mode\"\\s*:\\s*(\\d+)").find(block)
+                ?.groupValues?.get(1)?.toIntOrNull()
+            if (isPkg(name) && (mode == 1 || mode == 2)) out[name] = mode
+            i = close + 1
+        }
+        return out.entries.joinToString("\n") { "${it.key}=${it.value}" }
+    }
+
     /** 生成名单文件内容。 */
-    fun buildJson(desired: Map<String, String>): String {
-        val sorted = desired.keys.filter { isPkg(it) }.sorted()
+    fun buildJson(desired: Map<String, String>): String {        val sorted = desired.keys.filter { isPkg(it) }.sorted()
         val rules = sorted.joinToString(",\n") { "    \"$it\": ${desired[it]}" }
         return buildString {
             append("{\n")
@@ -189,10 +263,25 @@ object Nbi {
     }
 
     /**
+     * 用 root 读系统名单（App 进程直接 `File.readText()` 读 `/data/system` 会 EACCES）。
+     *
+     * ★ 2026-10-23：以前 [apply] 里直接 `File(PATH).readText()`，在模块 App 进程永远失败
+     * ⇒ `existing` 当作空 ⇒ 合并时把**系统里已有的其它规则（含厂商云配置）全部丢掉**。
+     * 现在读写统一走 `su`。
+     */
+    fun readSystemJson(): String? = runCatching {
+        val p = ProcessBuilder("su", "-c", "cat '$PATH'").redirectErrorStream(true).start()
+        val out = p.inputStream.bufferedReader().readText()
+        p.waitFor()
+        // cat 失败时 stdout 里会是错误消息；用花括号开头做基本判定
+        if (out.trimStart().startsWith("{")) out else null
+    }.getOrNull()
+
+    /**
      * 落地：读回现有名单 → 合并 → 用 `su -c` 写回并逐个 enable/disable。
      */
     fun apply(desired: Map<String, String>, applied: Set<String>): Result {
-        val existing = runCatching { File(PATH).readText() }.getOrNull()
+        val existing = readSystemJson()
         val rules = mergeRules(
             existing = if (existing == null) emptyMap() else extractRules(existing),
             applied = applied,
