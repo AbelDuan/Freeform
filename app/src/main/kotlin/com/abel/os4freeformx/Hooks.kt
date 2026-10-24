@@ -331,13 +331,13 @@ object Hooks {
         val start = if (leftRight) insets.left else insets.top
         val span = display - start - (if (leftRight) insets.right else insets.bottom)
         if (span <= 0) return null
-        // ★ 2026-10-24 用户要求：中间 5:5、16:9、最侧边这三档的吸附判定距离统一为 7%~10% 跨度。
-        //   取**总宽 8%（半宽 ±4%）**：16:9 档在 42.3% 跨度、中线在 50%，两者只差 7.7%；
-        //   若取 10%（±5%）两档区间会重叠 2.3%（45%~47.3% 判不准）；取 8% 时边界恰好相邻
-        //   （46.3% / 46%），且判断顺序把 16:9 放在中线前 ⇒ 重叠窄带归 16:9。
-        val magnet = (span * 0.04f).toInt()
-        val midMagnet = magnet                       // 中间 5:5 磁吸：半宽 4%
-        val edgeMagnet = magnet                      // 两侧 10% / 90% 台阶：半宽 4%
+        // ★ 2026-10-24 用户要求：三档（最侧边 / 16:9 / 中间 5:5）吸附判定距离统一为 **13%**。
+        //   这里 13% 指**判定区总宽**，即半宽 ±6.5%（span × 0.065）。
+        //
+        //   ⚠️ 16:9 档在 42.3% 跨度、中线在 50%，两者只差 7.7% ⇒ 13% 总宽时两档必然重叠 5.3%。
+        //      下面的判定改成「三档各自算距离、取最近的一档」，重叠区自动归更近者，
+        //      两档都保留完整的感应区（不会出现"拖到 47% 却跳去 940px"的跳档）。
+        val magnet = (span * 0.065f).toInt()
         val target = { p: Int, id: Int -> buildSnapTarget(o, p, id) }
 
         // 注意：firstObj/lastObj/midObj 是**官方 SnapTarget 对象**（要原样返回，带官方 snapPosition），
@@ -350,36 +350,50 @@ object Hooks {
         val last = lastObj?.let { field(it, "position") as? Int }
         val mid = midObj?.let { field(it, "position") as? Int }
 
-        // ① 两侧台阶：官方 10% / 90% 台阶位，判定半宽 ±4% 跨度（总宽 8%）。
-        //    ★ 2026-10-24 用户反馈「最靠右的系统吸附判定距离过于宽了」：
-        //      原来是 1%~25% 全吸 10%、75%~99% 全吸 90%（单档 24% 宽），
-        //      现在改成只认官方台阶位的 ±8% 总宽，其余位置全部自由无极调节。
+        // ① 拉满 / 甩动：完全交还官方 —— 官方手势负责全屏、退出分屏等（1% 以内 / 99% 以外）
         val loEdge = start + (span * 0.01f).toInt()
         val hiEdge = start + (span * 0.99f).toInt()
-        // 返回**官方自己的目标对象**（带官方 snapPosition），不要自造 id：
-        // 否则会绕过分屏状态机，官方"点击边缘切换比例"就失效（真机反馈）。
-        if (firstObj != null && first != null && kotlin.math.abs(pos - first) <= edgeMagnet) return firstObj
-        if (lastObj != null && last != null && kotlin.math.abs(pos - last) <= edgeMagnet) return lastObj
-
-        // ② 拉满 / 甩动：完全交还官方 —— 官方手势负责全屏、退出分屏等（1% 以内 / 99% 以外）
         if (pos <= loEdge || pos >= hiEdge) return null
 
-        // ③ ★ 16:9 / 9:16 磁吸档（用户 2026-10-18 实测定稿，2026-10-24 恢复）
+        // ② 三档候选：**距离最近者胜**
+        //
+        //   ★ 2026-10-24 用户要求：三档判定距离统一 13% 总宽（半宽 ±6.5%）。
+        //     16:9 档在 42.3% 跨度、中线在 50%，两者只差 7.7% ⇒ 13% 总宽必然重叠 5.3%。
+        //     若按「固定顺序、先命中先返回」，重叠区会一律归给排在前面的档
+        //     （拖到 47% 明明更靠近中线，却跳去 940px），手感很差。
+        //     所以改成**三档各自算距离、取最近的一档**：重叠区自动归更近者，两档都保留完整感应区。
+        var bestDist = Int.MAX_VALUE
+        var bestObj: Any? = null
+        var bestTag = ""
+        var best16P = -1
+        var best16Id = 0
+
+        fun consider(d: Int, obj: Any?, tag: String) {
+            if (obj != null && d <= magnet && d < bestDist) {
+                bestDist = d
+                bestObj = obj
+                bestTag = tag
+            }
+        }
+
+        // ②-1 最侧边：官方 10% / 90% 台阶位
+        //   返回**官方自己的目标对象**（带官方 snapPosition），不要自造 id：
+        //   否则会绕过分屏状态机，官方"点击边缘切换比例"就失效（真机反馈）。
+        if (firstObj != null && first != null) consider(kotlin.math.abs(pos - first), firstObj, "侧边10%")
+        if (lastObj != null && last != null) consider(kotlin.math.abs(pos - last), lastObj, "侧边90%")
+
+        // ②-2 ★ 16:9 / 9:16 磁吸档（用户 2026-10-18 实测定稿，2026-10-24 恢复）
         //
         //   物理含义：小边 = 940px 时恰好是「16:9 视频旋转后的竖条」
         //     （940 ÷ 1672 = 0.5622 ≈ 9 ÷ 16 = 0.5625，只差分割线取整），
         //     左窗放横屏视频：左右满铺、上下无黑边 —— 用户原话「这是播放视频的时候非常方便的」。
         //
         //   `SnapTarget.position` 的语义（两次真机 dump 定死）= **小窗在分割轴上的像素尺寸**，
-        //   不是分割线中心、也不是屏幕绝对坐标 —— 所以下面算 p 时**不加 start**
+        //   不是分割线中心、也不是屏幕绝对坐标 —— 所以算 p 时**不加 start**
         //   （加了只在上下分屏暴露：start = insets.top = 140，实测小边偏大 140）。
         //     小边在前 id=101：p = 940
         //     小边在后 id=102：p = 屏长 - 940 - divider
         //   屏长必须用**屏幕实际尺寸**：`display` 是扣过 insets 的值，拿它算镜像会偏大 140。
-        //
-        //   ★ 判定顺序放在中线之前：16:9 档在 42.3% 跨度、中线在 50%，两者只差 7.7%，
-        //     各取 ±4% 时边界相邻（46.3% / 46%），重叠的窄带优先给更"特殊"的 16:9。
-        val snapMagnet = magnet
         val targetSmallSide = Constants.SPLIT_SMALL_SIDE_PX
         if (span > targetSmallSide + divider) {
             val screenLong = runCatching {
@@ -393,21 +407,31 @@ object Hooks {
             val fB = (pB + divider / 2f) / span
             for ((fraction, id) in listOf(fA to 101, fB to 102)) {
                 val p = (span * fraction).toInt() - divider / 2
-                if (kotlin.math.abs(pos - p) <= snapMagnet) {
-                    // 用 always 而非 once：once 会把同一 id 的多次命中吞掉，排查吸附位置时看不到实际落点
-                    Logx.always(
-                        "分屏吸附: $pos -> 16:9档 id=$id position=$p" +
-                            "（span=$span divider=$divider 小边=${targetSmallSide}px 半径=$snapMagnet）"
-                    )
-                    return target(p, id)
+                val d = kotlin.math.abs(pos - p)
+                if (d <= magnet && d < bestDist) {
+                    bestDist = d
+                    bestObj = target(p, id)
+                    bestTag = "16:9档"
+                    best16P = p
+                    best16Id = id
                 }
             }
         }
 
-        // ④ 中线 5:5 磁吸（返回官方目标对象，状态机才认得出这是 5:5）
-        if (midObj != null && mid != null && kotlin.math.abs(pos - mid) <= midMagnet) return midObj
+        // ②-3 中线 5:5（返回官方目标对象，状态机才认得出这是 5:5）
+        if (midObj != null && mid != null) consider(kotlin.math.abs(pos - mid), midObj, "中线5:5")
 
-        // ⑤ 其余位置：松手即落点 → 任意比例（无极调节）
+        if (bestObj != null) {
+            // 用 always 而非 once：once 会把同一 id 的多次命中吞掉，排查吸附位置时看不到实际落点
+            Logx.always(
+                "分屏吸附: $pos -> $bestTag（span=$span divider=$divider 半径=$magnet 距离=$bestDist" +
+                    (if (bestTag == "16:9档") " position=$best16P id=$best16Id 小边=${targetSmallSide}px" else "") +
+                    "）"
+            )
+            return bestObj
+        }
+
+        // ③ 其余位置：松手即落点 → 任意比例（无极调节）
         target(pos, 103)
     }.onFailure { Logx.e("构造分屏吸附目标失败", it) }.getOrNull()
 
