@@ -331,8 +331,13 @@ object Hooks {
         val start = if (leftRight) insets.left else insets.top
         val span = display - start - (if (leftRight) insets.right else insets.bottom)
         if (span <= 0) return null
-        val midMagnet = (span * 0.05f).toInt()       // 中间 5:5 磁吸：5% 跨度
-        val edgeMagnet = (span * 0.05f).toInt()      // 两侧 1:9 / 9:1 磁吸：放宽到 5% 跨度
+        // ★ 2026-10-24 用户要求：中间 5:5、16:9、最侧边这三档的吸附判定距离统一为 7%~10% 跨度。
+        //   取**总宽 8%（半宽 ±4%）**：16:9 档在 42.3% 跨度、中线在 50%，两者只差 7.7%；
+        //   若取 10%（±5%）两档区间会重叠 2.3%（45%~47.3% 判不准）；取 8% 时边界恰好相邻
+        //   （46.3% / 46%），且判断顺序把 16:9 放在中线前 ⇒ 重叠窄带归 16:9。
+        val magnet = (span * 0.04f).toInt()
+        val midMagnet = magnet                       // 中间 5:5 磁吸：半宽 4%
+        val edgeMagnet = magnet                      // 两侧 10% / 90% 台阶：半宽 4%
         val target = { p: Int, id: Int -> buildSnapTarget(o, p, id) }
 
         // 注意：firstObj/lastObj/midObj 是**官方 SnapTarget 对象**（要原样返回，带官方 snapPosition），
@@ -345,27 +350,21 @@ object Hooks {
         val last = lastObj?.let { field(it, "position") as? Int }
         val mid = midObj?.let { field(it, "position") as? Int }
 
-        // ① 两侧台阶：
-        //    1%~15% 一律吸到 10%（官方 firstSplitTarget），85%~99% 吸到 90%（lastSplitTarget）；
-        //    这是用户要的"边缘 1~15% 都自动归到 10% 台阶"。
+        // ① 两侧台阶：官方 10% / 90% 台阶位，判定半宽 ±4% 跨度（总宽 8%）。
+        //    ★ 2026-10-24 用户反馈「最靠右的系统吸附判定距离过于宽了」：
+        //      原来是 1%~25% 全吸 10%、75%~99% 全吸 90%（单档 24% 宽），
+        //      现在改成只认官方台阶位的 ±8% 总宽，其余位置全部自由无极调节。
         val loEdge = start + (span * 0.01f).toInt()
         val hiEdge = start + (span * 0.99f).toInt()
-        // 用户要求：25% 以内一律磁吸到 10% 台阶（镜像侧：75% 以外 → 90%）。左右分屏同理。
-        val loStep = start + (span * 0.25f).toInt()
-        val hiStep = start + (span * 0.75f).toInt()
         // 返回**官方自己的目标对象**（带官方 snapPosition），不要自造 id：
         // 否则会绕过分屏状态机，官方"点击边缘切换比例"就失效（真机反馈）。
-        if (firstObj != null && first != null && pos > loEdge && pos <= loStep) return firstObj
-        if (lastObj != null && last != null && pos >= hiStep && pos < hiEdge) return lastObj
+        if (firstObj != null && first != null && kotlin.math.abs(pos - first) <= edgeMagnet) return firstObj
+        if (lastObj != null && last != null && kotlin.math.abs(pos - last) <= edgeMagnet) return lastObj
 
         // ② 拉满 / 甩动：完全交还官方 —— 官方手势负责全屏、退出分屏等（1% 以内 / 99% 以外）
         if (pos <= loEdge || pos >= hiEdge) return null
 
-        // ③ 中线 5:5 磁吸        // ② 中线 5:5 磁吸
-        // 返回官方 5:5 目标对象（带官方 id，状态机才认得出这是 5:5）
-        if (midObj != null && mid != null && kotlin.math.abs(pos - mid) <= midMagnet) return midObj
-
-        // ③ ★ 16:9 / 9:16 磁吸档（用户 2026-10-18 实测定稿，2026-10-24 要求恢复）
+        // ③ ★ 16:9 / 9:16 磁吸档（用户 2026-10-18 实测定稿，2026-10-24 恢复）
         //
         //   物理含义：小边 = 940px 时恰好是「16:9 视频旋转后的竖条」
         //     （940 ÷ 1672 = 0.5622 ≈ 9 ÷ 16 = 0.5625，只差分割线取整），
@@ -378,8 +377,9 @@ object Hooks {
         //     小边在后 id=102：p = 屏长 - 940 - divider
         //   屏长必须用**屏幕实际尺寸**：`display` 是扣过 insets 的值，拿它算镜像会偏大 140。
         //
-        //   磁吸半径 5% 跨度（用户指定；早前 2% 实测正常拖动划不过去、吸不上）。
-        val snapMagnet = (span * 0.05f).toInt()
+        //   ★ 判定顺序放在中线之前：16:9 档在 42.3% 跨度、中线在 50%，两者只差 7.7%，
+        //     各取 ±4% 时边界相邻（46.3% / 46%），重叠的窄带优先给更"特殊"的 16:9。
+        val snapMagnet = magnet
         val targetSmallSide = Constants.SPLIT_SMALL_SIDE_PX
         if (span > targetSmallSide + divider) {
             val screenLong = runCatching {
@@ -404,7 +404,10 @@ object Hooks {
             }
         }
 
-        // ④ 其余位置：松手即落点 → 任意比例（无极调节）
+        // ④ 中线 5:5 磁吸（返回官方目标对象，状态机才认得出这是 5:5）
+        if (midObj != null && mid != null && kotlin.math.abs(pos - mid) <= midMagnet) return midObj
+
+        // ⑤ 其余位置：松手即落点 → 任意比例（无极调节）
         target(pos, 103)
     }.onFailure { Logx.e("构造分屏吸附目标失败", it) }.getOrNull()
 
