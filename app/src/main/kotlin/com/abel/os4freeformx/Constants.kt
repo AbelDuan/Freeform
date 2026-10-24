@@ -151,6 +151,18 @@ object Constants {
 
     /** 分屏布局：setDivideRatio(id) 按吸附目标的 snapPosition 定位 */
     const val CLS_SPLIT_LAYOUT = "com.android.wm.shell.common.split.SplitLayout"
+
+    /**
+     * 分屏「16:9 磁吸档」的小边像素（用户 2026-10-18 实测定稿，2026-10-24 要求恢复）。
+     *
+     * 物理含义：小窗的短边 = 940px 时，恰好是「16:9 视频旋转后的竖条」——
+     *   左窗 940 ÷ 屏高 1672 = 0.5622，而 9 ÷ 16 = 0.5625（只差分割线取整）。
+     *   左窗放横屏视频：左右满铺、上下无黑边。
+     *
+     * 吸在固定像素而不是固定百分比，是为了内屏/外屏、横屏/竖屏都得到同样大小的"小边"；
+     * 磁吸半径 5% 跨度（用户指定，2% 实测太窄划不过去）。
+     */
+    const val SPLIT_SMALL_SIDE_PX = 940
     /** 小窗位置/尺寸计算（boot classpath: /system_ext/framework/miui-framework.jar） */
     const val CLS_MULTIWINDOW_UTILS = "android.util.MiuiMultiWindowUtils"
 }

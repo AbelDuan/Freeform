@@ -331,7 +331,6 @@ object Hooks {
         val start = if (leftRight) insets.left else insets.top
         val span = display - start - (if (leftRight) insets.right else insets.bottom)
         if (span <= 0) return null
-        val magnet = (span * 0.02f).toInt()          // 精确档磁吸半径：2% 跨度
         val midMagnet = (span * 0.05f).toInt()       // 中间 5:5 磁吸：5% 跨度
         val edgeMagnet = (span * 0.05f).toInt()      // 两侧 1:9 / 9:1 磁吸：放宽到 5% 跨度
         val target = { p: Int, id: Int -> buildSnapTarget(o, p, id) }
@@ -366,13 +365,46 @@ object Hooks {
         // 返回官方 5:5 目标对象（带官方 id，状态机才认得出这是 5:5）
         if (midObj != null && mid != null && kotlin.math.abs(pos - mid) <= midMagnet) return midObj
 
-        // ③ 精确 3.5:6.5 / 6.5:3.5（小半径磁吸）
-        for ((fraction, id) in listOf(0.35f to 101, 0.65f to 102)) {
-            val p = start + (span * fraction).toInt() - divider / 2
-            if (kotlin.math.abs(pos - p) <= magnet) return target(p, id)
+        // ③ ★ 16:9 / 9:16 磁吸档（用户 2026-10-18 实测定稿，2026-10-24 要求恢复）
+        //
+        //   物理含义：小边 = 940px 时恰好是「16:9 视频旋转后的竖条」
+        //     （940 ÷ 1672 = 0.5622 ≈ 9 ÷ 16 = 0.5625，只差分割线取整），
+        //     左窗放横屏视频：左右满铺、上下无黑边 —— 用户原话「这是播放视频的时候非常方便的」。
+        //
+        //   `SnapTarget.position` 的语义（两次真机 dump 定死）= **小窗在分割轴上的像素尺寸**，
+        //   不是分割线中心、也不是屏幕绝对坐标 —— 所以下面算 p 时**不加 start**
+        //   （加了只在上下分屏暴露：start = insets.top = 140，实测小边偏大 140）。
+        //     小边在前 id=101：p = 940
+        //     小边在后 id=102：p = 屏长 - 940 - divider
+        //   屏长必须用**屏幕实际尺寸**：`display` 是扣过 insets 的值，拿它算镜像会偏大 140。
+        //
+        //   磁吸半径 5% 跨度（用户指定；早前 2% 实测正常拖动划不过去、吸不上）。
+        val snapMagnet = (span * 0.05f).toInt()
+        val targetSmallSide = Constants.SPLIT_SMALL_SIDE_PX
+        if (span > targetSmallSide + divider) {
+            val screenLong = runCatching {
+                val dm = AppCtx.get()?.resources?.displayMetrics
+                if (leftRight) dm?.widthPixels?.takeIf { it >= display }
+                else dm?.heightPixels?.takeIf { it >= display }
+            }.getOrNull() ?: display
+            val pA = targetSmallSide
+            val pB = screenLong - targetSmallSide - divider
+            val fA = (pA + divider / 2f) / span
+            val fB = (pB + divider / 2f) / span
+            for ((fraction, id) in listOf(fA to 101, fB to 102)) {
+                val p = (span * fraction).toInt() - divider / 2
+                if (kotlin.math.abs(pos - p) <= snapMagnet) {
+                    // 用 always 而非 once：once 会把同一 id 的多次命中吞掉，排查吸附位置时看不到实际落点
+                    Logx.always(
+                        "分屏吸附: $pos -> 16:9档 id=$id position=$p" +
+                            "（span=$span divider=$divider 小边=${targetSmallSide}px 半径=$snapMagnet）"
+                    )
+                    return target(p, id)
+                }
+            }
         }
 
-        // ④ 其余位置：松手即落点 → 任意比例
+        // ④ 其余位置：松手即落点 → 任意比例（无极调节）
         target(pos, 103)
     }.onFailure { Logx.e("构造分屏吸附目标失败", it) }.getOrNull()
 

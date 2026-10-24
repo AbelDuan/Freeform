@@ -23,7 +23,7 @@ KSTDLIB=$KDIR/kotlin-stdlib.jar
 KCP="$KDIR/kotlin-compiler.jar:$KDIR/kotlin-stdlib.jar:$KDIR/kotlin-reflect.jar:$KDIR/kotlin-script-runtime.jar:$KDIR/annotations-13.0.jar"
 AJAR=$HERE/tools/android-api-only.jar
 RESJAR=$HERE/tools/android-framework-res.apk
-AAPT2=/usr/bin/aapt2
+AAPT2=${AAPT2:-/usr/lib/android-sdk/build-tools/debian/aapt2}
 R8=$HERE/tools/r8.jar
 KS=${KS:-$HERE/keystore/os4freeformx.jks}
 
@@ -93,7 +93,7 @@ print('packed', outapk)
 PY
 
 echo "== 5.5/6 zipalign（resources.arsc 必须 4 字节对齐，否则 targetSdk>=30 安装器拒绝）=="
-ZIPALIGN=${ZIPALIGN:-/usr/bin/zipalign}
+ZIPALIGN=${ZIPALIGN:-/usr/lib/android-sdk/build-tools/debian/zipalign}
 "$ZIPALIGN" -f 4 "$OUT/unsigned.apk" "$OUT/aligned.apk"
 
 echo "== 6/6 签名 =="
@@ -108,7 +108,7 @@ fi
 APKOUT=$HERE/dist/OS4FreeFromX-v$VER.apk
 # ★ 必须用 apksigner（而非 jarsigner）：jarsigner 会重写整个 zip，
 #   把 zipalign 的 4 字节对齐破坏掉 ⇒ 安装器报 resources.arsc 未对齐（2026-10-22 实测）。
-APKSIGNER_JAR=${APKSIGNER_JAR:-/usr/lib/android-sdk/build-tools/debian/apksigner.jar}
+APKSIGNER_JAR=${APKSIGNER_JAR:-/usr/share/java/apksigner-31.0.2.jar}
 rm -f "$APKOUT"
 "$JAVA" -jar "$APKSIGNER_JAR" sign --ks "$KS" --ks-pass pass:os4freeformx --key-pass pass:os4freeformx \
     --min-sdk-version 33 --out "$APKOUT" "$OUT/aligned.apk" \
