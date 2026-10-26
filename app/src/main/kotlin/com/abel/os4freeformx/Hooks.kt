@@ -241,7 +241,17 @@ object Hooks {
                 m.hookMethod(cl, cls0, "snap", arrayOf(Integer.TYPE, java.lang.Boolean.TYPE),
                     XposedInterface.Hooker { chain ->
                         val pos = chain.getArg(0) as? Int
-                        val ours = pos?.let { splitRatioTarget(chain.thisObject, it) }
+                        // ★ 单侧分屏（另一侧是桌面，SoSc minimized，SplitState=-1）绝不介入：
+                        //   官方状态机不认我们的自造目标（id=101/102/103），反复拖会把 Shell
+                        //   窗口状态搞坏（真机实证：v0.7.3 拖一次 NPE 崩 SystemUI；
+                        //   v0.7.4 不崩但弹回 + 两次拖后应用/状态栏消失、桌面锁死）。
+                        val ours = if (soScMinimized()) {
+                            Logx.once("sosc-min-gate",
+                                "分屏吸附: minimized 单侧分屏，交还官方（pos=$pos）")
+                            null
+                        } else {
+                            pos?.let { splitRatioTarget(chain.thisObject, it) }
+                        }
                         val result = ours ?: chain.proceed()
                         // 比例记忆改挂在 snap 上（原先挂的 setDividerPosition 拖动里 0 命中，记忆从没写进去）
                         // ★ 分屏不再记忆（用户要求：只记每个应用的小窗尺寸 ✓）
@@ -335,6 +345,16 @@ object Hooks {
         //      shell 的 resize 流程，真机表现为**分隔条卡住无法拖动**（异步+限频也救不回来）。
         // 结论：拖动期间两侧应用被 OS 有意冻结（官方遮罩就是为此而生），保持官方行为。
     }
+
+    /**
+     * 当前 SoSc 是否处于「单侧分屏 / minimized」态（一个应用 + 另一侧桌面）。
+     * 判据：`SoScStageCoordinator#mMinimized`（真机日志实证：
+     * `updateSoScState ... mMinimized:true -> true`，且此时 `SplitState is -1, expected 1`）。
+     */
+    private fun soScMinimized(): Boolean = runCatching {
+        val coord = lastCoordinator ?: return@runCatching false
+        field(coord, "mMinimized") as? Boolean ?: false
+    }.getOrDefault(false)
 
     private fun splitRatioTarget(o: Any, pos: Int): Any? = runCatching {
         splitActiveAt = android.os.SystemClock.elapsedRealtime()
