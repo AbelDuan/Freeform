@@ -174,7 +174,6 @@ adb shell su -c 'killall com.android.systemui'
 | **多分屏无级调节宽度** | **3 个及以上**分屏时拖动分隔线可停在任何位置，不再吸附系统档位（含 `MultipleSplitSnapAlgorithm` 的吸附收窄） | `MultiSplitRatio.kt` |
 | **切换方向保持比例** | 左右 ↔ 上下切换时，每个应用保持原占比（拦 `switchSplitDirection` 前先记下各 stage 比例，切换后回写） | `SplitRatioKeep.kt` |
 | **把手菜单同时显示双向分屏** | 未进分屏时 ··· 菜单同时给出左右与上下两对按钮，不再只按当前方向二选一 | `CaptionSplitBoth.kt` |
-| **全屏 ··· 菜单带四方向分屏图标**（v0.7.1） | 应用全屏时顶部悬浮的 ··· 把手菜单里，系统**原本一个分屏入口都不放**，这里补出 `左 / 右 / 上 / 下` 四个图标，点哪个方向就往哪个方向分屏 | `CaptionSplitBoth.kt` |
 
 - 方向判定统一走 `SoScSupport.kt` 的兼容层（折叠屏 `DividerView` / `SplitLayout` 的字段与方法名在不同 ROM 上有差异，做了反射缓存）。
 - 四项都是**热开关**：设置页关掉立刻退回系统原行为，不用重启 SystemUI。

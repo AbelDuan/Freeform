@@ -2,7 +2,7 @@ package com.abel.os4freeformx
 
 /** 模块常量：包名、prefs 名、配置键、目标类名。 */
 object Constants {
-    const val VERSION = "0.7.1"
+    const val VERSION = "0.7.0"
     const val PREFS_CFG = "os4freeformx_cfg"
     const val PREFS_BOUNDS = "os4freeformx_bounds"
     const val AUTHORITY = "com.abel.os4freeformx.store"
@@ -32,14 +32,6 @@ object Constants {
     const val K_SPLIT_RATIO_KEEP = "split_ratio_keep"
     /** 把手（···）菜单同时显示左右与上下两对分屏按钮。实现见 CaptionSplitBoth.kt。 */
     const val K_CAPTION_SPLIT_BOTH = "caption_split_both"
-    /**
-     * **全屏应用的把手菜单**（顶部悬浮「···」）里补出四个方向的分屏图标（左/右/上/下）。
-     *
-     * 系统在全屏（windowingMode=1）菜单里本来不放分屏按钮，而且本机 `lhasa` 展开态下
-     * `MiuiDecorationDot#isHideSplitButtons()` 还额外把分屏按钮藏掉，于是全屏时只能进小窗、
-     * 不能直接进分屏。实现见 CaptionSplitBoth.kt（`hookAddFreeformStateButton`）。
-     */
-    const val K_FULLSCREEN_SPLIT_ICON = "fullscreen_split_icon"
     // 注：原 K_RESIZE（"允许拖动调整尺寸"）是死开关：值存了、也读了，但全库没有任何代码用它，
     //     已移除（角柄缩放本来就是 MIUI 原生行为，模块不接管）。
     // 手势总开关已移除（用户 2026-10-02）：只保留「左右下角内滑→小窗」这一个手势，常开。
@@ -93,7 +85,6 @@ object Constants {
     const val DEF_MULTI_SPLIT_FREE = true
     const val DEF_SPLIT_RATIO_KEEP = true
     const val DEF_CAPTION_SPLIT_BOTH = true
-    const val DEF_FULLSCREEN_SPLIT_ICON = true
     const val DEF_GESTURES = true
     const val DEF_CORNER_FREEFORM = true
     const val DEF_GESTURE_HANDLE = true
