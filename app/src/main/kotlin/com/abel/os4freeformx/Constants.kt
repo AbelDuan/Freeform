@@ -2,7 +2,7 @@ package com.abel.os4freeformx
 
 /** 模块常量：包名、prefs 名、配置键、目标类名。 */
 object Constants {
-    const val VERSION = "0.7.5"
+    const val VERSION = "0.7.6"
     const val PREFS_CFG = "os4freeformx_cfg"
     const val PREFS_BOUNDS = "os4freeformx_bounds"
     const val AUTHORITY = "com.abel.os4freeformx.store"
@@ -32,6 +32,10 @@ object Constants {
     const val K_SPLIT_RATIO_KEEP = "split_ratio_keep"
     /** 把手（···）菜单同时显示左右与上下两对分屏按钮。实现见 CaptionSplitBoth.kt。 */
     const val K_CAPTION_SPLIT_BOTH = "caption_split_both"
+    /** 轻折一下 → 分屏 +1（铰链角度判定触发）。实现见 FoldSplitTrigger.kt。 */
+    const val K_FOLD_SPLIT = "fold_split"
+    /** 轻折触发时当前应用留在哪一侧。取值为 [FOLD_SPLIT_LEFT] / [FOLD_SPLIT_RIGHT]。 */
+    const val K_FOLD_SPLIT_SIDE = "fold_split_side"
     // 注：原 K_RESIZE（"允许拖动调整尺寸"）是死开关：值存了、也读了，但全库没有任何代码用它，
     //     已移除（角柄缩放本来就是 MIUI 原生行为，模块不接管）。
     // 手势总开关已移除（用户 2026-10-02）：只保留「左右下角内滑→小窗」这一个手势，常开。
@@ -85,6 +89,11 @@ object Constants {
     const val DEF_MULTI_SPLIT_FREE = true
     const val DEF_SPLIT_RATIO_KEEP = true
     const val DEF_CAPTION_SPLIT_BOTH = true
+    const val FOLD_SPLIT_LEFT = "left"
+    const val FOLD_SPLIT_RIGHT = "right"
+    // 轻折加分屏**默认关**：这个功能会在用户毫无预期的时刻改动屏幕，属于"用户主动开"的那类。
+    const val DEF_FOLD_SPLIT = false
+    const val DEF_FOLD_SPLIT_SIDE = FOLD_SPLIT_LEFT
     const val DEF_GESTURES = true
     const val DEF_CORNER_FREEFORM = true
     const val DEF_GESTURE_HANDLE = true

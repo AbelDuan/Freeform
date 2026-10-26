@@ -5,5 +5,5 @@ description=HyperOS 4 分屏增强：解除分屏方向限制 / 多分屏（3 �
 minApiVersion=100
 targetApiVersion=102
 staticScope=true
-version=0.7.5
-versionCode=144
+version=0.7.6
+versionCode=145

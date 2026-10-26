@@ -11,6 +11,8 @@ import android.view.ViewGroup
 import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
+import android.widget.RadioButton
+import android.widget.RadioGroup
 import android.widget.ScrollView
 import android.widget.SeekBar
 import android.widget.Switch
@@ -169,6 +171,18 @@ class SettingsActivity : Activity() {
         switchRow("切换方向保持比例（左右 ↔ 上下时每个应用占比不变）", Constants.K_SPLIT_RATIO_KEEP, Cfg.splitRatioKeep) { Cfg.splitRatioKeep = it }
         switchRow("把手菜单同时显示双向分屏（··· 里同时给左右与上下两对按钮）", Constants.K_CAPTION_SPLIT_BOTH, Cfg.captionSplitBoth) { Cfg.captionSplitBoth = it }
         switchRow("多分屏无级调节宽度（3 个及以上分屏，拖分割线可任意宽度）", Constants.K_MULTI_SPLIT_FREE, Cfg.multiSplitFree) { Cfg.multiSplitFree = it }
+        // 轻折加分屏（折叠屏专属）：默认关 —— 它会在用户毫无预期的时刻改动屏幕，得用户主动开
+        switchRow(
+            "轻折一下加分屏（展开内屏时轻轻折一下再松开，当前应用进分屏）",
+            Constants.K_FOLD_SPLIT, Cfg.foldSplit,
+        ) { Cfg.foldSplit = it }
+        radioRow(
+            "轻折展开方向（当前应用留在哪一侧）", Constants.K_FOLD_SPLIT_SIDE, Cfg.foldSplitSide,
+            arrayOf(
+                Constants.FOLD_SPLIT_LEFT to "留在左侧（新一格开在右边）",
+                Constants.FOLD_SPLIT_RIGHT to "留在右侧（新一格开在左边）",
+            ),
+        ) { Cfg.foldSplitSide = it }
 
         section("通知栏")
         switchRow(
@@ -292,6 +306,41 @@ class SettingsActivity : Activity() {
             setOnCheckedChangeListener { _, v ->
                 AppPrefs.putBoolean(this@SettingsActivity, key, v)
                 onChange(v)
+            }
+        })
+    }
+
+    /**
+     * 互斥选项组（比开关多一个"不选"没有意义的语义 —— 例如"展开方向"必然是左或右）。
+     * @param options 取值 → 显示名，按给定顺序单选。
+     */
+    private fun radioRow(
+        title: String,
+        key: String,
+        value: String,
+        options: Array<Pair<String, String>>,
+        onChange: (String) -> Unit,
+    ) {
+        body.addView(TextView(this).apply {
+            text = title
+            textSize = 13f
+            setTextColor(Color.parseColor("#111114"))
+            setPadding(dp(4), dp(8), 0, dp(2))
+        })
+        body.addView(RadioGroup(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(4), 0, 0, dp(2))
+            options.forEach { (v, label) ->
+                addView(RadioButton(this@SettingsActivity).apply {
+                    text = label
+                    textSize = 14f
+                    isChecked = value == v
+                    setPadding(0, dp(2), 0, dp(2))
+                    setOnClickListener {
+                        AppPrefs.putString(this@SettingsActivity, key, v)
+                        onChange(v)
+                    }
+                })
             }
         })
     }

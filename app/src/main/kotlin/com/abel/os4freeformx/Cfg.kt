@@ -22,6 +22,9 @@ object Cfg {
     @Volatile var multiSplitFree = Constants.DEF_MULTI_SPLIT_FREE
     @Volatile var splitRatioKeep = Constants.DEF_SPLIT_RATIO_KEEP
     @Volatile var captionSplitBoth = Constants.DEF_CAPTION_SPLIT_BOTH
+    // 轻折加分屏（折叠屏）
+    @Volatile var foldSplit = Constants.DEF_FOLD_SPLIT
+    @Volatile var foldSplitSide = Constants.DEF_FOLD_SPLIT_SIDE
     @Volatile var gestures = Constants.DEF_GESTURES
     @Volatile var cornerFreeform = Constants.DEF_CORNER_FREEFORM
     @Volatile var gestureHandle = Constants.DEF_GESTURE_HANDLE
@@ -118,6 +121,9 @@ object Cfg {
             multiSplitFree = p.getBoolean(Constants.K_MULTI_SPLIT_FREE, Constants.DEF_MULTI_SPLIT_FREE)
             splitRatioKeep = p.getBoolean(Constants.K_SPLIT_RATIO_KEEP, Constants.DEF_SPLIT_RATIO_KEEP)
             captionSplitBoth = p.getBoolean(Constants.K_CAPTION_SPLIT_BOTH, Constants.DEF_CAPTION_SPLIT_BOTH)
+            foldSplit = p.getBoolean(Constants.K_FOLD_SPLIT, Constants.DEF_FOLD_SPLIT)
+            foldSplitSide = p.getString(Constants.K_FOLD_SPLIT_SIDE, Constants.DEF_FOLD_SPLIT_SIDE)
+                ?: Constants.DEF_FOLD_SPLIT_SIDE
             gestures = p.getBoolean(Constants.K_GESTURES, Constants.DEF_GESTURES)
             cornerFreeform = p.getBoolean(Constants.K_CORNER_FREEFORM, Constants.DEF_CORNER_FREEFORM)
             gestureHandle = p.getBoolean(Constants.K_GESTURE_HANDLE, Constants.DEF_GESTURE_HANDLE)

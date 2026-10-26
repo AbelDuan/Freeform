@@ -129,6 +129,10 @@ object Hooks {
         runCatching { CaptionSplitBoth.install(m, cl) }.onFailure { Logx.e("双向分屏安装失败", it) }
         // 最后装：给 snapToTarget 兜住 null 目标（竖屏单侧分屏拖分隔条会崩 SystemUI）
         runCatching { SplitSnapGuard.install(m, cl) }.onFailure { Logx.e("分屏吸附守卫安装失败", it) }
+        // ★★★ 轻折加分屏（2026-10-27，思路来自 HyperPlus v0.9.0-alpha，AGPL-3.0）：
+        //   展开内屏时轻轻折一下再松开 ⇒ 当前应用进分屏（左右可选）；已在多分屏则追加一格。
+        //   安装只负责"接电"（抓实例 + 注册折角传感器），开关读 Cfg ⇒ 热开关，改完立即生效。
+        runCatching { FoldSplitTrigger.install(m, cl) }.onFailure { Logx.e("轻折加分屏安装失败", it) }
         installBoundsRecorder(m, cl)
         installSplitRatio(m, cl)
         // ★★ 手势功能已整体移除（用户 2026-10-02）。

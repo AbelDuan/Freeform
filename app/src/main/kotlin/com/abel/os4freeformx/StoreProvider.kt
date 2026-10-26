@@ -33,6 +33,8 @@ class StoreProvider : ContentProvider() {
                 putBoolean(Constants.K_MULTI_SPLIT_FREE, c?.getBoolean(Constants.K_MULTI_SPLIT_FREE, Constants.DEF_MULTI_SPLIT_FREE) ?: Constants.DEF_MULTI_SPLIT_FREE)
                 putBoolean(Constants.K_SPLIT_RATIO_KEEP, c?.getBoolean(Constants.K_SPLIT_RATIO_KEEP, Constants.DEF_SPLIT_RATIO_KEEP) ?: Constants.DEF_SPLIT_RATIO_KEEP)
                 putBoolean(Constants.K_CAPTION_SPLIT_BOTH, c?.getBoolean(Constants.K_CAPTION_SPLIT_BOTH, Constants.DEF_CAPTION_SPLIT_BOTH) ?: Constants.DEF_CAPTION_SPLIT_BOTH)
+                putBoolean(Constants.K_FOLD_SPLIT, c?.getBoolean(Constants.K_FOLD_SPLIT, Constants.DEF_FOLD_SPLIT) ?: Constants.DEF_FOLD_SPLIT)
+                putString(Constants.K_FOLD_SPLIT_SIDE, c?.getString(Constants.K_FOLD_SPLIT_SIDE, Constants.DEF_FOLD_SPLIT_SIDE) ?: Constants.DEF_FOLD_SPLIT_SIDE)
                 putBoolean(Constants.K_GESTURE_HANDLE, c?.getBoolean(Constants.K_GESTURE_HANDLE, Constants.DEF_GESTURE_HANDLE) ?: Constants.DEF_GESTURE_HANDLE)
                 putBoolean(Constants.K_GESTURE_HANDLE_FOLLOW, c?.getBoolean(Constants.K_GESTURE_HANDLE_FOLLOW, Constants.DEF_GESTURE_HANDLE_FOLLOW) ?: Constants.DEF_GESTURE_HANDLE_FOLLOW)
                 putBoolean(Constants.K_GESTURE_HANDLE_TOUCH, c?.getBoolean(Constants.K_GESTURE_HANDLE_TOUCH, Constants.DEF_GESTURE_HANDLE_TOUCH) ?: Constants.DEF_GESTURE_HANDLE_TOUCH)

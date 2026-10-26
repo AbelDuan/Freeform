@@ -201,11 +201,57 @@ adb shell su -c 'killall com.android.systemui'
 > 容易短暂不一致，稳定性不足以进正式版，故整体下线（`FreeRatio.kt` / `DeviceForm.kt` 已删除）。
 > 小窗自身的角柄缩放仍是 MIUI 原生行为，不受影响。
 
+### 1.7 轻折一下 → 分屏（v0.7.6 新增，折叠屏专属）
+
+展开内屏使用手机时，**轻轻折一下再松开**，当前应用就进分屏（另一侧由系统补位）；
+已经在多分屏（3 格及以上）时再折一下 → **追加一格**。实现见 `FoldSplitTrigger.kt`。
+
+| 设置项 | 说明 |
+| --- | --- |
+| **轻折一下加分屏** | 总开关，**默认关** —— 它会在用户毫无预期的时刻改动屏幕，属于"用户主动开"的那类 |
+| **轻折展开方向** | 当前应用留在**左侧**（新格开在右）还是**右侧**（新格开在左），对应 `splitPrimaryTask(pos, taskId)` 的 `pos = 0 / 1` |
+
+**判定规格**（角度越大越展开；本机实测 全展 ≈ 179° / 半开 89~92° / 合上 2~3°）：
+
+| 代号 | 值 | 含义 | 判据 |
+| --- | --- | --- | --- |
+| D1 | 20° | 进入：比展开基线低这么多 ⇒ 认为开始折了 | `A0 - angle > D1` |
+| D2 | 6° | 回弹：回到基线附近 ⇒ 认为折完松手 | `angle ≥ A0 - D2` |
+| D3 | 90° | 合上保护：折这么深 ⇒ 判为"要合上手机"，不触发 | `A0 - angle ≥ D3` |
+| 窗口 | 1000 ms | 从**开始折**起算的绝对期限，超时不触发 | `now - foldStart > WIN` |
+
+回弹有两条触发路径：`angle ≥ A0 - D2`（完全弹回），或 `angle - 谷底 ≥ D1`（松手必回弹，只判回升）。
+合上过程单调下降，不会误入后者。
+
+**三条不能动的约束**（来源项目踩过坑，改动前先读）：
+
+1. **超时必须排在两条回弹之前**。`hinge_angle` 是 **on-change 传感器**，手机静置时零回调。
+   「折一下停几秒再展开」这条路上只有"展开那一下"一个样本，它天然满足「自谷底回升 ≥ D1」；
+   超时若排在最后就永远够不着 ⇒ 「过了动作时限还是进分屏」。
+2. **判为"合上"必须清空展开基线窗口**。否则合上之前那个 179° 还留在 8 秒滑动窗口里，
+   重新展开时 `A0(179) - 158 = 21 > D1` ⇒ **打开手机这个动作本身被当成"轻折又松手"**。
+3. **计时起点是"开始往下折"那一刻**（自基线下降 5° 即为开局），不是"折深越过 D1"那一刻 ——
+   用户口径的「1 秒内」是**一个完整动作**的时长，含"折下去"那段。
+
+**触发后怎么落地：**
+
+- 全屏（stage < 2）⇒ `SoScSplitScreenController#splitPrimaryTask(pos, taskId)` —— 与系统三指滑同一条链，
+  它第一行就是 `if (isSplitScreenVisible()) return false;`，天然只做 0 → 2；
+- 已在多分屏（≥2）⇒ `MultipleSplitRootTaskOrganizer#dockMultipleSplitTasks(Bundle)`，
+  Bundle 装分屏 **root** 的 `RunningTaskInfo`（键 `multiple_split_dock_task`）—— 与「拖到多分屏图标」同一条链；
+- 两次调用都投递到 **WMShell 主线程**；`Handler.post` 返回 false 时当场释放并发闸，避免永久卡死。
+
+> **单侧（minimized）分屏绝不触发**：`SplitState=-1` 是雷区（见 §4 与 v0.7.5 记录），
+> 动手前先问 `SoScSupport.inMinimizedMode`，命中就放手。
+
+> 实现思路来自 HyperPlus v0.9.0-alpha（`FoldJudge.kt` / `SplitTrigger.kt`，AGPL-3.0），
+> 按其公开的行为规格重写；绑定的类名均在机上 dex 里逐个 grep 验证过。
+
 ---
 
 ## 2. 安装
 
-1. 安装 `dist/OS4FreeFromX-v0.7.5.apk`；
+1. 安装 `dist/OS4FreeFromX-v0.7.6.apk`；
 2. 在 LSPosed 里启用模块，并勾选作用域：**系统框架** + **系统界面**；
 3. 按需执行 §1.2 的 `setprop`；
 4. 重启 SystemUI 载入新 dex：`adb shell su -c 'killall com.android.systemui'`；
