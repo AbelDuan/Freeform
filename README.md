@@ -173,11 +173,16 @@ adb shell su -c 'killall com.android.systemui'
 | **解除分屏方向限制** | 竖屏也能左右分屏、横屏也能上下分屏（放开 `SplitUtilsImpl#allowLeftRightSplitInPortrait` 与 SoSc 的 `supportTopBottomSplitFeature/Device`） | `SplitDirection.kt` |
 | **多分屏无级调节宽度** | **3 个及以上**分屏时拖动分隔线可停在任何位置，不再吸附系统档位（含 `MultipleSplitSnapAlgorithm` 的吸附收窄） | `MultiSplitRatio.kt` |
 | **切换方向保持比例** | 左右 ↔ 上下切换时，每个应用保持原占比（拦 `switchSplitDirection` 前先记下各 stage 比例，切换后回写） | `SplitRatioKeep.kt` |
-| **把手菜单同时显示双向分屏** | 未进分屏时 ··· 菜单同时给出左右与上下两对按钮，不再只按当前方向二选一 | `CaptionSplitBoth.kt` |
+| **把手菜单同时显示双向分屏** | **小窗 / 分屏态**的 ··· 菜单同时给出左右与上下两对按钮，不再只按当前方向二选一 | `CaptionSplitBoth.kt` |
 
 - 方向判定统一走 `SoScSupport.kt` 的兼容层（折叠屏 `DividerView` / `SplitLayout` 的字段与方法名在不同 ROM 上有差异，做了反射缓存）。
 - 四项都是**热开关**：设置页关掉立刻退回系统原行为，不用重启 SystemUI。
 - 2 分屏的吸附行为不受影响（那是 §1.2 里另一套 `DividerSnapAlgorithm` 的逻辑）。
+
+> **全屏态的 ··· 菜单不需要本模块补按钮**：系统在全屏下本来就给出四个方向的分屏按钮
+> （实测关掉本模块时该菜单是「全屏 / 小窗 / 上 / 下 / 左 / 右 / 关闭」7 个）。
+> v0.7.0 因为不分窗口模式一律「补另一对」，在全屏下多出一对重复图标（变 9 个）；
+> v0.7.2 起按 `MiuiDecorationBase#mWindowingMode` 判断，**只在非全屏态补**。
 
 > **v0.7.0 起移除**「小窗无极调节（四角拖动自由宽高比）」：实测它要与系统的比例吸附、
 > `MultiTaskingAnimTarget` 的两套参数（当前态 / 目标态）三方对齐才能自洽，内容层与背景容器
@@ -188,7 +193,7 @@ adb shell su -c 'killall com.android.systemui'
 
 ## 2. 安装
 
-1. 安装 `dist/OS4FreeFromX-v0.7.0.apk`；
+1. 安装 `dist/OS4FreeFromX-v0.7.2.apk`；
 2. 在 LSPosed 里启用模块，并勾选作用域：**系统框架** + **系统界面**；
 3. 按需执行 §1.2 的 `setprop`；
 4. 重启 SystemUI 载入新 dex：`adb shell su -c 'killall com.android.systemui'`；
