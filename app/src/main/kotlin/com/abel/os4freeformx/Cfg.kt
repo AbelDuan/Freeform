@@ -22,6 +22,7 @@ object Cfg {
     @Volatile var multiSplitFree = Constants.DEF_MULTI_SPLIT_FREE
     @Volatile var splitRatioKeep = Constants.DEF_SPLIT_RATIO_KEEP
     @Volatile var captionSplitBoth = Constants.DEF_CAPTION_SPLIT_BOTH
+    @Volatile var fullscreenSplitIcon = Constants.DEF_FULLSCREEN_SPLIT_ICON
     @Volatile var gestures = Constants.DEF_GESTURES
     @Volatile var cornerFreeform = Constants.DEF_CORNER_FREEFORM
     @Volatile var gestureHandle = Constants.DEF_GESTURE_HANDLE
@@ -118,6 +119,7 @@ object Cfg {
             multiSplitFree = p.getBoolean(Constants.K_MULTI_SPLIT_FREE, Constants.DEF_MULTI_SPLIT_FREE)
             splitRatioKeep = p.getBoolean(Constants.K_SPLIT_RATIO_KEEP, Constants.DEF_SPLIT_RATIO_KEEP)
             captionSplitBoth = p.getBoolean(Constants.K_CAPTION_SPLIT_BOTH, Constants.DEF_CAPTION_SPLIT_BOTH)
+            fullscreenSplitIcon = p.getBoolean(Constants.K_FULLSCREEN_SPLIT_ICON, Constants.DEF_FULLSCREEN_SPLIT_ICON)
             gestures = p.getBoolean(Constants.K_GESTURES, Constants.DEF_GESTURES)
             cornerFreeform = p.getBoolean(Constants.K_CORNER_FREEFORM, Constants.DEF_CORNER_FREEFORM)
             gestureHandle = p.getBoolean(Constants.K_GESTURE_HANDLE, Constants.DEF_GESTURE_HANDLE)
@@ -225,6 +227,7 @@ object Cfg {
             multiSplitFree = b.getBoolean(Constants.K_MULTI_SPLIT_FREE, Constants.DEF_MULTI_SPLIT_FREE)
             splitRatioKeep = b.getBoolean(Constants.K_SPLIT_RATIO_KEEP, Constants.DEF_SPLIT_RATIO_KEEP)
             captionSplitBoth = b.getBoolean(Constants.K_CAPTION_SPLIT_BOTH, Constants.DEF_CAPTION_SPLIT_BOTH)
+            fullscreenSplitIcon = b.getBoolean(Constants.K_FULLSCREEN_SPLIT_ICON, Constants.DEF_FULLSCREEN_SPLIT_ICON)
             gestures = b.getBoolean(Constants.K_GESTURES, Constants.DEF_GESTURES)
             cornerFreeform = b.getBoolean(Constants.K_CORNER_FREEFORM, Constants.DEF_CORNER_FREEFORM)
             gestureHandle = b.getBoolean(Constants.K_GESTURE_HANDLE, Constants.DEF_GESTURE_HANDLE)
@@ -252,7 +255,7 @@ object Cfg {
     /** 分屏四项的开关快照（只用于日志与变化判定）。 */
     private val splitExtras: String
         get() = "解锁方向=$splitUnlockDir 多分屏无级=$multiSplitFree " +
-                "换向保比例=$splitRatioKeep 双向分屏=$captionSplitBoth"
+                "换向保比例=$splitRatioKeep 双向分屏=$captionSplitBoth 全屏分屏图标=$fullscreenSplitIcon"
 
     /** 兼容旧调用点。 */
     fun reloadThrottled(intervalMs: Long = 1500) = refreshAsync(intervalMs)

@@ -168,6 +168,7 @@ class SettingsActivity : Activity() {
         switchRow("解除分屏方向限制（竖屏也能左右、横屏也能上下）", Constants.K_SPLIT_UNLOCK_DIR, Cfg.splitUnlockDir) { Cfg.splitUnlockDir = it }
         switchRow("切换方向保持比例（左右 ↔ 上下时每个应用占比不变）", Constants.K_SPLIT_RATIO_KEEP, Cfg.splitRatioKeep) { Cfg.splitRatioKeep = it }
         switchRow("把手菜单同时显示双向分屏（··· 里同时给左右与上下两对按钮）", Constants.K_CAPTION_SPLIT_BOTH, Cfg.captionSplitBoth) { Cfg.captionSplitBoth = it }
+        switchRow("全屏把手菜单显示四个方向的分屏图标（顶部 ··· 里加 左/右/上/下）", Constants.K_FULLSCREEN_SPLIT_ICON, Cfg.fullscreenSplitIcon) { Cfg.fullscreenSplitIcon = it }
         switchRow("多分屏无级调节宽度（3 个及以上分屏，拖分割线可任意宽度）", Constants.K_MULTI_SPLIT_FREE, Cfg.multiSplitFree) { Cfg.multiSplitFree = it }
 
         section("通知栏")

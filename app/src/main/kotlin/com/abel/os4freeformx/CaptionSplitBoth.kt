@@ -61,6 +61,18 @@ object CaptionSplitBoth {
      */
     @Volatile private var pendingDotPivotShift = 0f
 
+    /**
+     * 当前正在构建的把手菜单所属任务的 **windowing mode**。
+     *
+     * 菜单构建是同步的（`MiuiDecorationDot#createHandleMenu` → `MiuiCaptionContainerView#init`
+     * → `addSplitStateButton` / `addFreeformStateButton`），所以用 ThreadLocal 传递最稳：
+     * 万一两个任务的菜单在不同线程同时重建也不会串。
+     */
+    private val menuWindowMode = ThreadLocal<Int>()
+
+    /** `WindowConfiguration.ACTIVITY_TYPE_STANDARD` 下的 `WINDOWING_MODE_FULLSCREEN`。 */
+    private const val WM_FULLSCREEN = 1
+
     fun install(m: MainHook, cl: ClassLoader) {
         loader = cl
         val cc = SoScSupport.findClass(cl, Constants.CLS_CAPTION_CONTAINER) ?: run {
@@ -77,11 +89,19 @@ object CaptionSplitBoth {
             .onFailure { Logx.e("双向分屏: 挂 addWindow 失败", it) }
         runCatching { ok += hookDotPositionInfo(m, cl) }
             .onFailure { Logx.e("双向分屏: 挂 updateDotPositionInfo 失败", it) }
+        // 全屏把手菜单：系统原本一个分屏按钮都不放，这里补四个方向的
+        runCatching { ok += hookCreateHandleMenu(m, cl) }
+            .onFailure { Logx.e("全屏分屏图标: 挂 createHandleMenu 失败", it) }
+        runCatching { ok += hookAddFreeformStateButton(m, cc) }
+            .onFailure { Logx.e("全屏分屏图标: 挂 addFreeformStateButton 失败", it) }
         if (ok == 0) {
             Logx.e("双向分屏: 一个都没挂上（本机把手菜单类名可能变了）")
             return
         }
-        Logx.always("把手菜单双向分屏: 已挂 $ok/3（开关=${Cfg.captionSplitBoth}）")
+        Logx.always(
+            "把手菜单双向分屏: 已挂 $ok/5（开关=${Cfg.captionSplitBoth} " +
+                    "全屏分屏图标=${Cfg.fullscreenSplitIcon}）"
+        )
     }
 
     // ---------------- 1) 官方建完一对按钮后补另一对 ----------------
@@ -281,6 +301,114 @@ object CaptionSplitBoth {
                     chain.proceed(args.toTypedArray())
                 }
             })) 1 else 0
+    }
+
+    // ---------------- 1b) 全屏把手菜单：补四个方向的分屏按钮 ----------------
+
+    /**
+     * 记录「正在构建的菜单属于哪个窗口模式」。
+     *
+     * dexdump 实证（本机 `Miui-WindowManager-Shell.jar`）：
+     * `MiuiCaptionContainerView#init` 里只有一个分支会建分屏按钮，条件为「分屏状态」；
+     * 全屏（windowingMode=1）走的是 `addFreeformStateButton`（只建「小窗」按钮）。
+     * 而且本机 `lhasa` 展开态下 `MiuiDecorationDot#isHideSplitButtons()` 直接返回 true
+     * （`isDevice("lhasa") && MultiTaskingDeviceUtils.isFoldOutScreen(ctx)`），
+     * 连菜单宽度都不给分屏按钮留槽位 —— 这就是全屏菜单里没有分屏入口的原因。
+     */
+    private fun hookCreateHandleMenu(m: MainHook, cl: ClassLoader): Int {
+        val cls = SoScSupport.findClass(cl, Constants.CLS_DECOR_DOT) ?: run {
+            Logx.e("全屏分屏图标: 找不到 ${Constants.CLS_DECOR_DOT}")
+            return 0
+        }
+        val method = SoScSupport.methodOf(cls, "createHandleMenu", 2) ?: run {
+            Logx.e("全屏分屏图标: 找不到 createHandleMenu/2")
+            return 0
+        }
+        return if (m.hookExecutable(method, XposedInterface.Hooker { chain ->
+                // mWindowingMode 在父类 MiuiDecorationBase 上，SoScSupport.field 会沿继承链找
+                menuWindowMode.set(SoScSupport.intField(chain.thisObject, "mWindowingMode") ?: -1)
+                try {
+                    chain.proceed()
+                } finally {
+                    menuWindowMode.remove()
+                }
+            })) 1 else 0
+    }
+
+    /**
+     * 全屏菜单建完「小窗」按钮后，补上 左 / 右 / 上 / 下 四个分屏按钮。
+     *
+     * 选这个挂点而不是 `init`：`addFreeformStateButton` 只在「非分屏」分支被调用，
+     * 天然就是全屏 / 普通小窗的状态，且它的 6 个参数与 `addSplitStateButton` 的
+     * 前 4 个（宽、高、左右 padding、上下 padding）和容器 padding 位置一致，
+     * 可以直接复用同一套建按钮代码（`createAndAddCaptionButton`，9 参）。
+     * 再叠加 [menuWindowMode] 只认全屏，普通小窗菜单保持原样。
+     */
+    private fun hookAddFreeformStateButton(m: MainHook, cls: Class<*>): Int {
+        // 签名：(IIIIZI)V ⇒ 4 个 int + 1 个 boolean + 1 个 int = **6** 个参数
+        val method = SoScSupport.methodOf(cls, "addFreeformStateButton", 6) ?: run {
+            Logx.e("全屏分屏图标: 找不到 addFreeformStateButton/6")
+            return 0
+        }
+        return if (m.hookExecutable(method, XposedInterface.Hooker { chain ->
+                val r = chain.proceed()
+                // 菜单构建不在热路径上：顺带节流刷新配置，改完开关点开一次菜单即可生效
+                Cfg.reloadThrottled()
+                if (Cfg.fullscreenSplitIcon && menuWindowMode.get() == WM_FULLSCREEN) {
+                    runCatching { addFourSplitButtons(chain) }
+                        .onFailure { Logx.e("全屏分屏图标: 补四个分屏按钮失败", it) }
+                }
+                r
+            })) 1 else 0
+    }
+
+    /**
+     * 建 左/右/上/下 四个分屏按钮（本模块自己的 id，点击监听在 [attachOwnListeners] 里挂）。
+     *
+     * 宽度不用自己算：[widenMenuWindow] 按「本模块 id 的按钮实际有几个」补槽位，
+     * 补 4 个就补 4 个槽位，圆点缩放枢轴也一并对齐。
+     */
+    private fun addFourSplitButtons(chain: XposedInterface.Chain) {
+        val cl = loader ?: return
+        val create = createButton ?: return
+        val container = chain.thisObject as? ViewGroup ?: return
+        val width = chain.getArg(0) as? Int ?: return
+        val height = chain.getArg(1) as? Int ?: return
+        val padLr = chain.getArg(2) as? Int ?: return
+        val padTb = chain.getArg(3) as? Int ?: return
+        val containerPad = chain.getArg(5) as? Int ?: return
+        val buttons = SoScSupport.call(container, "getCaptionButtonContainer") as? ViewGroup ?: return
+        // 已经补过就不再补（菜单重建时容器是新对象，这里只是防同一容器被处理两次）
+        if (buttons.findViewById<View>(ID_LR_LEFT) != null) return
+
+        val bg = SoScSupport.wmRes(cl, "drawable", "caption_selector_press_selected")
+        val icons = arrayOf(
+            "caption_selector_splitleft", "caption_selector_splitright",
+            "caption_selector_splittop", "caption_selector_splitbottom"
+        )
+        val descs = arrayOf(RES_CONTENT_LEFT, RES_CONTENT_RIGHT, RES_CONTENT_TOP, RES_CONTENT_BOTTOM)
+
+        var added = 0
+        for (i in SPLIT_IDS.indices) {
+            val icon = SoScSupport.wmRes(cl, "drawable", icons[i])
+            if (icon == 0) {
+                Logx.e("全屏分屏图标: 图标资源缺失 ${icons[i]}（WMShell 资源名可能变了）")
+                continue
+            }
+            val desc = SoScSupport.wmRes(cl, "string", descs[i])
+            runCatching {
+                create.invoke(
+                    container,
+                    SPLIT_IDS[i], bg, icon, desc,
+                    padLr, padTb, containerPad, true,
+                    ViewGroup.MarginLayoutParams(width, height)
+                )
+            }.onFailure { Logx.e("全屏分屏图标: 创建按钮 0x${SPLIT_IDS[i].toString(16)} 失败", it) }
+            if (buttons.findViewById<View>(SPLIT_IDS[i]) != null) added++
+        }
+        if (added > 0) {
+            Logx.always("全屏分屏图标: 全屏把手菜单已补 $added/4 个方向的分屏按钮")
+        }
     }
 
     // ---------------- 点击处理 ----------------
