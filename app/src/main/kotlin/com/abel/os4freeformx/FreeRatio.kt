@@ -109,6 +109,8 @@ object FreeRatio {
      * 只在 `guess.mode == 1`（正常窗口态）接管 —— mode 0/2 是"回全屏 / 迷你态"的过渡，别碰。
      */
     private fun remember(positioner: Any) {
+        // 拖动是最热的热路径：让开关改动 1~2 秒内生效（节流 + 异步，绝不阻塞拖动）
+        Cfg.reloadThrottled()
         val bounds = fieldValue(positioner, "mLastMovingBounds") as? Rect ?: return
         if (bounds.isEmpty) return
         val wrapper = fieldValue(positioner, "mTaskWrapper") ?: return
