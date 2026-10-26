@@ -30,6 +30,11 @@ object Hooks {
         installLaunchBounds(m, cl)
         runCatching { installSystemFreeformProbe(m, cl) }.onFailure { Logx.e("系统侧探针失败", it) }
 
+        // ★★★ 小窗无极调节（移植自 HyperRefine，见 FreeRatio.kt）
+        //   落点 = WMShell 的 MiuiFreeformModeResizeHandler#calBoundsAfterMoving，
+        //   该类由 system_server 加载 ⇒ 必须装在这边，不是 SystemUI。
+        runCatching { FreeRatio.install(m, cl) }.onFailure { Logx.e("无极调节安装失败", it) }
+
         // ★★★ 2026-10-15 移植自 HyperCeiler 的三项小窗增强（AGPL-3.0，见 FreeformExtra.kt）。
         //   全部落在 system_server：
         //     · 不限制小窗数量（MiuiFreeFormStackDisplayStrategy#getMaxMiuiFreeFormStackCount）
@@ -114,8 +119,10 @@ object Hooks {
         runCatching { installRotationGeometryHook(m, cl) }.onFailure { Logx.e("旋转几何钩子失败", it) }
         installImmersive(m, cl)
         installRatioMenu(m, cl)
-        // 小窗无极调节（移植自 HyperRefine）：四角拖动宽高各自跟手，见 FreeRatio.kt
-        FreeRatio.install(m, cl)
+        // ⚠️ 小窗无极调节（FreeRatio）**不在 SystemUI**：它挂的 MiuiFreeformModeResizeHandler
+        //    属于 WMShell，跑在 system_server ⇒ 见 installSystemServer 里的调用。
+        //    （2026-10-26 真机取证：装在 SystemUI 会报"找不到 miuiinfinitymode 链路"，
+        //     且本机压根没有那个包，实际链路是 miuifreeform。）
 
         // ★★★ 分屏四项（2026-10-26 移植自 HyperRefine，AGPL-3.0，各自独立文件）
         //   1) 解除分屏方向限制（+ 方向判定兼容层）—— 折叠屏横屏也能上下分屏、竖屏也能左右
