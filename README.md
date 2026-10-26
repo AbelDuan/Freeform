@@ -149,12 +149,15 @@ logcat -s NavImmersive                          # 隐藏：start choosing immers
     导致「点击边缘切换比例」失效；
   - 自造档位（35%/65%、任意比例）需要在 `SoScUtilsImpl.findSnapTarget` 处放行。
 
-> **单侧分屏的兜底（v0.7.4）**：竖屏下只把一个应用放进一侧、另一侧是桌面时，
-> 系统松手求吸附目标会得到 **null**，`SplitLayout#snapToTarget` 里直接读
-> `target.snapPosition` → SystemUI 崩（横屏两应用分屏不复现）。
-> `SplitSnapGuard.kt` 钩住这个方法，目标为 null 时改用官方
-> `mFixedSnapTarget` / `calculateNonDismissingSnapTarget(x)` 就地吸附；
-> 都取不到就跳过本次吸附。**正常路径零改动**。
+> **单侧分屏：完全不介入（v0.7.5）+ 兜底（v0.7.4）**：竖屏下只把一个应用放进一侧、
+> 另一侧是桌面时，SoSc 处于 **minimized 态（`SplitState=-1`）**——
+> 官方状态机不认本模块注入的自造吸附目标（id=101/102/103），后果按版本不同：
+> v0.7.3 拖一次就 `snapToTarget(null)` NPE 崩 SystemUI；v0.7.4 不崩但窗口弹回、
+> 反复拖会把 Shell 窗口状态搅坏（分屏应用消失、状态栏消失、桌面锁死）。
+> 因此 v0.7.5 起 `snap` 钩子检测到 `SoScStageCoordinator#mMinimized` 就**完全交还官方**；
+> 另有 `SplitSnapGuard.kt` 兜底官方路径本身的 null 目标
+> （改用 `mFixedSnapTarget` / `calculateNonDismissingSnapTarget(x)` 就地吸附）。
+> 双应用 / 多分屏的磁吸与无极调节不受影响。
 
 **启用系统自带的比例自定义**（部分档位依赖它）：
 
@@ -202,7 +205,7 @@ adb shell su -c 'killall com.android.systemui'
 
 ## 2. 安装
 
-1. 安装 `dist/OS4FreeFromX-v0.7.4.apk`；
+1. 安装 `dist/OS4FreeFromX-v0.7.5.apk`；
 2. 在 LSPosed 里启用模块，并勾选作用域：**系统框架** + **系统界面**；
 3. 按需执行 §1.2 的 `setprop`；
 4. 重启 SystemUI 载入新 dex：`adb shell su -c 'killall com.android.systemui'`；
