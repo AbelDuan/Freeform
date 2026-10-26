@@ -1,6 +1,7 @@
 package com.abel.os4freeformx
 
 import android.graphics.Rect
+import android.os.SystemClock
 import io.github.libxposed.api.XposedInterface
 import java.lang.reflect.Method
 
@@ -22,17 +23,48 @@ import java.lang.reflect.Method
  * 之前依据的 `_recon/out_jadx` 是**另一版 ROM**（jar 8,999,939B）反编译的，与本机（8,693,603B）不同，
  * 那次"逐条核对签名"其实核对了一个不存在的世界 —— 教训：recon 必须来自当前设备的 jar。
  *
- * ## 为什么这条链路只能等比（dex 级证据）
- * `MiuiFreeformModeResizeHandler#calBoundsAfterMoving` 里：
+ * ## 形态分流（两套体系，二选一）
+ * HyperOS 按设备形态用**两种完全不同的小窗**，所以本文件两套都保留、运行时择一：
+ *   - **平板** → 无极小窗 `miuiinfinitymode`（`installInfinity`）；
+ *   - **折叠屏 / 手机** → 经典小窗 `miuifreeform`（`installFreeform` + `installAnimTarget`）。
+ * 判定见 `DeviceForm.kt`；平板若没挂上（有些 ROM 也用经典小窗）自动回退到后者。
+ * 参考实现 HyperRefine 只写了前者（`deviceScope={PAD,FOLD}`），在折叠屏上等于空转。
+ *
+ * ## 为什么这条链路只能等比（dexdump 级证据，2 处锁死）
+ *
+ * ① 高度被宽高比反推 —— `calBoundsAfterMoving(FFFF Rect II TaskInfo F)` 里：
  * ```
- * float fWidth = rect.width() / rect.height();   // 拖动开始时的宽高比
- * int   iAfterFriction = right - left;           // 宽度，按拖动量 ±
- * int   i7 = (int) (iAfterFriction / fWidth);    // ★ 高度 = 宽度 / 宽高比 ⇒ 结构上只能等比
- * return resizeAboutCtrlType(ctrlType, l, t, r, b, iAfterFriction, i7);
+ * float ratio = rect.width() / rect.height();   // 拖动开始时的宽高比
+ * int   w     = right - left;                   // 宽度，按 dx 增减
+ * int   h     = (int)(w / ratio);               // ★ 高度 = 宽度 / 宽高比
+ * return resizeAboutCtrlType(ctrlType, l, t, r, b, w, h);
  * ```
- * **宽度**已经是"跟手"的自由值（只受最小/最大宽与摩擦限幅约束），
- * 唯一的锁死点是高度被宽高比反推。所以不必动宽度，只把**高度**按纵向拖动量重算，
- * 并保持"被拖动的那个边不动"即可。
+ * 注意 4 个 float 里**只有 p1-p3（dx）参与运算**，p2/p4（dy）被编译器判定为无用而丢弃 ——
+ * 原方法根本没接收纵向输入，所以结构上不可能是自由比例。
+ *
+ * ② ★ 更关键：`calBoundsAfterMoving` 的返回高度**根本没人用**。
+ * `handleResize` 拿到返回值后只做两件事：
+ * ```
+ * bounds.offsetTo(result.left, result.top);      // 只取位置，尺寸不动
+ * float scale = result.width() / bounds.width(); // 只取宽度
+ * target.setAnimParam(bounds, scale, scale, 0f); // ★ scaleX 与 scaleY 传同一个 scale
+ * ```
+ * 于是"改返回值的高度"注定无效（第一版就踩了这个坑）：高度在多帧之后必然被 `scale` 拉回等比。
+ *
+ * ## 真正生效的通道
+ * `MultiTaskingAnimTarget` 的 `scaleX / scaleY` 是**两个独立字段**：
+ * ```
+ * getWidth()  = taskBounds.width()  * scaleX
+ * getHeight() = taskBounds.height() * scaleY
+ * ```
+ * 且 `applyResizeAnimation` 把它们分别喂给 Folme 的 `FOLME_WIDTH` / `FOLME_HEIGHT` 两个独立属性。
+ * 所以只要把 `scaleY` 换成"自由高度 / 当前高度"，高度就自由了 —— 这是唯一有效的落点。
+ *
+ * ## 实现（两段配合）
+ * 1. `calBoundsAfterMoving`：按纵向拖动量算自由高度，改返回 Rect 的 `top/bottom`
+ *    （它决定窗口位置，因为 `offsetTo` 取的就是 `result.left/top`），并把高度记为 pending；
+ * 2. `MultiTaskingAnimTarget#setAnimParam`：紧接其后消费 pending，把 `scaleY` 换成
+ *    `pendingFreeH / bounds.height()`。位置由 ① 给出、尺寸由 ② 给出，两者自洽。
  *
  * ctrlType 位（与上面 width 的 `&1 / &2` 同源）：1=左 2=右 4=上 8=下。
  *   - 含 4（上边跟着手）：`top = bottom - h`，h = baseH - dy
@@ -45,9 +77,13 @@ import java.lang.reflect.Method
  */
 object FreeRatio {
 
-    /** 经典小窗缩放处理器（WMShell → 跑在 system_server）。 */
+    /** 经典小窗缩放处理器（WMShell → 本机由 **SystemUI** 加载，不是 system_server）。 */
     private const val CLS_RESIZE_HANDLER =
         "com.android.wm.shell.multitasking.miuifreeform.MiuiFreeformModeResizeHandler"
+
+    /** ★ 真正决定"缩放到多大"的载体：scaleX / scaleY 是两个独立字段。 */
+    private const val CLS_ANIM_TARGET =
+        "com.android.wm.shell.multitasking.common.animation.MultiTaskingAnimTarget"
 
     /** 参考实现那条链路；本机没有，保留兼容别的 ROM（不存在就只是少挂 4 个钩子）。 */
     private const val CLS_INFINITY_POS =
@@ -58,12 +94,36 @@ object FreeRatio {
     /** 成功接管次数（诊断：能区分"hook 没挂上"和"挂了但链路没走"）。 */
     @Volatile private var hits = 0
 
+    /**
+     * 本帧要的自由高度：由 `calBoundsAfterMoving` 写入、`setAnimParam` 消费。
+     * 用「线程 + 时间窗」双重约束，保证只作用于紧随其后的那一次 resize 动画参数，
+     * 绝不会污染 translate / mini 等其它动画。
+     */
+    @Volatile private var pendingFreeH = 0
+    @Volatile private var pendingAtMs = 0L
+    @Volatile private var pendingThread: Thread? = null
+
     fun install(m: MainHook, cl: ClassLoader) {
+        val form = DeviceForm.current
+        Logx.always("无极调节: 设备形态=${form.name}（${DeviceForm.describe()}）")
+
+        if (form == DeviceForm.Form.PAD) {
+            // 平板：HyperOS 走「无极小窗」miuiinfinitymode，与折叠屏的经典小窗是两套体系
+            val ok = runCatching { installInfinity(m, cl) }
+                .onFailure { Logx.e("无极调节: 平板（infinity）链路安装失败", it) }
+                .getOrDefault(false)
+            if (ok) return
+            // 有些平板 ROM 也走经典小窗；形态判定与 ROM 实现未必一致，回退保证不会整体失效
+            Logx.always("无极调节: 平板链路未挂上 → 回退经典小窗（miuifreeform）链路")
+        } else {
+            // 折叠屏 / 手机：经典小窗 miuifreeform（本机 lhasa 实测就是这条）
+            Logx.always("无极调节: ${form.name} → 使用经典小窗（miuifreeform）链路")
+        }
+
         runCatching { installFreeform(m, cl) }
             .onFailure { Logx.e("无极调节: 安装 miuifreeform 链路失败", it) }
-        // 兼容别的 ROM：本机没有 miuiinfinitymode，这里只会留一条 verbose 日志
-        runCatching { installInfinity(m, cl) }
-            .onFailure { Logx.v("无极调节: infinity 链路安装异常: $it") }
+        runCatching { installAnimTarget(m, cl) }
+            .onFailure { Logx.e("无极调节: 安装动画高度通道失败", it) }
     }
 
     // ---------------- 主链路：miuifreeform ----------------
@@ -177,26 +237,98 @@ object FreeRatio {
         }
         if (free.height() == out.height() && free.top == out.top) return null
 
-        val n = ++hits
-        if (n == 1) {
-            Logx.always(
-                "无极调节: 首次接管（ctrl=$ctrl dy=$dy 等比高=${out.height()} → 自由高=${free.height()} " +
-                        "宽=${free.width()}）"
-            )
-        } else {
-            Logx.v("无极调节: 接管 #$n ctrl=$ctrl ${free.width()}x${free.height()}")
-        }
+        // 位置这一步就定了（下面 offsetTo 用的是 result.left/top）；
+        // 尺寸要等紧随其后的 setAnimParam 把 scaleY 换掉，这里先把目标高度挂出去。
+        pendingFreeH = free.height()
+        pendingAtMs = SystemClock.uptimeMillis()
+        pendingThread = Thread.currentThread()
+        Logx.v("无极调节: 帧内目标 ctrl=$ctrl dy=$dy 等比高=${out.height()} → 自由高=${free.height()}")
         return free
     }
 
-    // ---------------- 兼容：miuiinfinitymode（本机不存在） ----------------
+    // ---------------- 关键通道：把 scaleY 换成自由高度 ----------------
 
-    private fun installInfinity(m: MainHook, cl: ClassLoader) {
+    /**
+     * `MultiTaskingAnimTarget#setAnimParam(Rect bounds, float scaleX, float scaleY, float anchorY)`
+     *
+     * 系统对 resize 传的是 `setAnimParam(bounds, scale, scale, 0)` —— 宽高共用同一个 scale，
+     * 所以高度必然 = 宽度 / 原宽高比。这里只把第 3 个参数（scaleY）换成
+     * `自由高度 / bounds.height()`，宽度与位置完全不碰。
+     *
+     * 严格只在 resize 帧内生效：pending 由 `calBoundsAfterMoving` 设置，
+     * 且要求同一线程 + 150ms 内，消费一次即清空。
+     */
+    private fun installAnimTarget(m: MainHook, cl: ClassLoader) {
+        val cls = runCatching { Class.forName(CLS_ANIM_TARGET, false, cl) }.getOrNull()
+        if (cls == null) {
+            Logx.e("无极调节: 找不到 $CLS_ANIM_TARGET（高度通道无法接管）")
+            return
+        }
+        val floats = Float::class.javaPrimitiveType
+        val method = cls.declaredMethods.firstOrNull {
+            it.name == "setAnimParam" && it.parameterCount == 4 &&
+                    Rect::class.java.isAssignableFrom(it.parameterTypes[0]) &&
+                    it.parameterTypes[1] == floats &&
+                    it.parameterTypes[2] == floats &&
+                    it.parameterTypes[3] == floats
+        }
+        if (method == null) {
+            Logx.e(
+                "无极调节: setAnimParam 签名不符（实际 " +
+                        cls.declaredMethods.filter { md -> md.name == "setAnimParam" }
+                            .joinToString("|") { md ->
+                                md.name + "(" + md.parameterTypes.joinToString(",") { it.simpleName } + ")"
+                            } + "）"
+            )
+            return
+        }
+        val ok = try {
+            method.isAccessible = true
+            m.hookExecutable(method, XposedInterface.Hooker { chain ->
+                val fh = pendingFreeH
+                // 非 resize 帧一律不干预（热路径，先做最便宜的判断）
+                if (fh <= 0 || Thread.currentThread() !== pendingThread ||
+                    SystemClock.uptimeMillis() - pendingAtMs > 150L
+                ) {
+                    return@Hooker chain.proceed()
+                }
+                pendingFreeH = 0
+                val bounds = chain.getArg(0) as? Rect
+                val oldH = bounds?.height() ?: 0
+                if (oldH <= 0) return@Hooker chain.proceed()
+                val sy = fh.toFloat() / oldH
+                if (sy.isNaN() || sy <= 0.05f || sy > 20f) return@Hooker chain.proceed()
+
+                val args = chain.args.toTypedArray()
+                args[2] = sy
+                val r = chain.proceed(args)
+                val n = ++hits
+                if (n == 1) {
+                    Logx.always(
+                        "无极调节: 首次接管 ctrl 生效，高度 ${oldH}px × $sy = ${fh}px" +
+                                "（宽 scaleX=${args[1]}）"
+                    )
+                } else {
+                    Logx.v("无极调节: 接管 #$n 高 $oldH→$fh（scaleY=$sy）")
+                }
+                r
+            })
+        } catch (t: Throwable) {
+            Logx.e("无极调节: hook setAnimParam 失败", t)
+            false
+        }
+        Logx.always("无极调节: 动画高度通道已挂 ${if (ok) 1 else 0}/1（开关=${Cfg.freeRatio}）")
+    }
+
+    // ---------------- 平板：miuiinfinitymode（无极小窗） ----------------
+
+    /** @return 是否真正挂上（拖动 + 写目的地这两条核心链路齐全才算）。 */
+    private fun installInfinity(m: MainHook, cl: ClassLoader): Boolean {
         val posCls = runCatching { Class.forName(CLS_INFINITY_POS, false, cl) }.getOrNull()
         val wrapCls = runCatching { Class.forName(CLS_INFINITY_WRAP, false, cl) }.getOrNull()
         if (posCls == null || wrapCls == null) {
-            Logx.v("无极调节: 本机没有 miuiinfinitymode（走 miuifreeform，正常）")
-            return
+            Logx.v("无极调节: 没有 miuiinfinitymode（不是平板形态，正常）")
+            return false
         }
         val move = posCls.declaredMethods.firstOrNull { it.name == "onGestureDragMove" && it.parameterCount == 2 }
         val end = posCls.declaredMethods.firstOrNull { it.name == "onGestureDragEnd" && it.parameterCount == 2 }
@@ -204,15 +336,17 @@ object FreeRatio {
             it.name == "updateDestinationAttributes" && it.parameterCount == 4
         }
         if (move == null || end == null || update == null) {
-            Logx.v("无极调节: infinity 签名不匹配，跳过")
-            return
+            Logx.v("无极调节: infinity 签名不匹配（move=$move end=$end update=$update）")
+            return false
         }
         var ok = 0
         if (hookInfinityMove(m, move, wrapCls)) ok++
-        if (hookPatch(m, update, "updateDestinationAttributes")) ok++
         if (hookPatch(m, move, "onGestureDragMove")) ok++
         if (hookPatch(m, end, "onGestureDragEnd")) ok++
-        Logx.always("无极调节: infinity 链路已挂 ${ok}/4（其它 ROM 用）")
+        val core = hookPatch(m, update, "updateDestinationAttributes")
+        if (core) ok++
+        Logx.always("无极调节: 平板 infinity 链路已挂 $ok/4（核心 updateDestinationAttributes=$core）")
+        return core
     }
 
     /** infinity 链路里"真正的自由比例"矩形（仅其它 ROM 用）。 */
