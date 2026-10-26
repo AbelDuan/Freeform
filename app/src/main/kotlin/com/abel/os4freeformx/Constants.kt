@@ -2,7 +2,7 @@ package com.abel.os4freeformx
 
 /** 模块常量：包名、prefs 名、配置键、目标类名。 */
 object Constants {
-    const val VERSION = "0.4.0"
+    const val VERSION = "0.6.9"
     const val PREFS_CFG = "os4freeformx_cfg"
     const val PREFS_BOUNDS = "os4freeformx_bounds"
     const val AUTHORITY = "com.abel.os4freeformx.store"
@@ -20,6 +20,9 @@ object Constants {
     // 小窗比例调节（三点菜单那排比例按钮 + 放大可调尺寸范围）。
     // 关掉后模块完全不碰 MIUI 的菜单与缩放上限 —— 避免"背景框大于应用可操作区、底部一片白"。
     const val K_RATIO_MENU = "ratio_menu"
+    // 小窗无极调节（移植自 HyperRefine）：四角拖动时宽高各自跟手，
+    // 不再被 `MiuiInfinityModeRatioPositioner` 吸附回系统的等比档位。实现见 FreeRatio.kt。
+    const val K_FREE_RATIO = "freeform_free_ratio"
     // 注：原 K_RESIZE（"允许拖动调整尺寸"）是死开关：值存了、也读了，但全库没有任何代码用它，
     //     已移除（角柄缩放本来就是 MIUI 原生行为，模块不接管）。
     // 手势总开关已移除（用户 2026-10-02）：只保留「左右下角内滑→小窗」这一个手势，常开。
@@ -68,6 +71,7 @@ object Constants {
     const val DEF_REMEMBER_BOUNDS = true
     const val DEF_REMEMBER_FOLD = true
     const val DEF_RATIO_MENU = true
+    const val DEF_FREE_RATIO = true
     const val DEF_GESTURES = true
     const val DEF_CORNER_FREEFORM = true
     const val DEF_GESTURE_HANDLE = true

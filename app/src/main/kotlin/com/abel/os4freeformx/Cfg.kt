@@ -17,6 +17,7 @@ object Cfg {
     @Volatile var rememberBounds = Constants.DEF_REMEMBER_BOUNDS
     @Volatile var rememberFold = Constants.DEF_REMEMBER_FOLD
     @Volatile var ratioMenu = Constants.DEF_RATIO_MENU
+    @Volatile var freeRatio = Constants.DEF_FREE_RATIO
     @Volatile var gestures = Constants.DEF_GESTURES
     @Volatile var cornerFreeform = Constants.DEF_CORNER_FREEFORM
     @Volatile var gestureHandle = Constants.DEF_GESTURE_HANDLE
@@ -109,6 +110,7 @@ object Cfg {
             rememberBounds = p.getBoolean(Constants.K_REMEMBER_BOUNDS, Constants.DEF_REMEMBER_BOUNDS)
             rememberFold = p.getBoolean(Constants.K_REMEMBER_FOLD, Constants.DEF_REMEMBER_FOLD)
             ratioMenu = p.getBoolean(Constants.K_RATIO_MENU, Constants.DEF_RATIO_MENU)
+            freeRatio = p.getBoolean(Constants.K_FREE_RATIO, Constants.DEF_FREE_RATIO)
             gestures = p.getBoolean(Constants.K_GESTURES, Constants.DEF_GESTURES)
             cornerFreeform = p.getBoolean(Constants.K_CORNER_FREEFORM, Constants.DEF_CORNER_FREEFORM)
             gestureHandle = p.getBoolean(Constants.K_GESTURE_HANDLE, Constants.DEF_GESTURE_HANDLE)
@@ -205,13 +207,14 @@ object Cfg {
             Logx.once("cfgNull", "读配置失败: provider 返回 null（authority=${Constants.AUTHORITY}）")
             return
         }
-        val before = "$log|$immersive|$rememberBounds|$assignRaw"
+        val before = "$log|$immersive|$rememberBounds|$freeRatio|$assignRaw"
         runCatching {
             log = b.getBoolean(Constants.K_ENABLE_LOG, Constants.DEF_ENABLE_LOG)
             immersive = b.getBoolean(Constants.K_IMMERSIVE, Constants.DEF_IMMERSIVE)
             rememberBounds = b.getBoolean(Constants.K_REMEMBER_BOUNDS, Constants.DEF_REMEMBER_BOUNDS)
             rememberFold = b.getBoolean(Constants.K_REMEMBER_FOLD, Constants.DEF_REMEMBER_FOLD)
             ratioMenu = b.getBoolean(Constants.K_RATIO_MENU, Constants.DEF_RATIO_MENU)
+            freeRatio = b.getBoolean(Constants.K_FREE_RATIO, Constants.DEF_FREE_RATIO)
             gestures = b.getBoolean(Constants.K_GESTURES, Constants.DEF_GESTURES)
             cornerFreeform = b.getBoolean(Constants.K_CORNER_FREEFORM, Constants.DEF_CORNER_FREEFORM)
             gestureHandle = b.getBoolean(Constants.K_GESTURE_HANDLE, Constants.DEF_GESTURE_HANDLE)
@@ -225,13 +228,13 @@ object Cfg {
             parseAssign(b.getString(Constants.K_NBI_ASSIGN, Constants.DEF_NBI_ASSIGN) ?: Constants.DEF_NBI_ASSIGN)
             Logx.verbose = log
         }.onFailure { Logx.e("读配置失败", it) }
-        val after = "$log|$immersive|$rememberBounds|$assignRaw"
+        val after = "$log|$immersive|$rememberBounds|$freeRatio|$assignRaw"
         // 把悬浮门禁（开关/模式/名单）一并打出来：实测排查中，"名单为空 ⇒ 门禁恒 false ⇒ hook 空转"
         // 曾让人误判成"名单和开关都无效"。这条日志让配置是否送达被 hook 进程一眼可见。
         if (before != after) {
             Logx.always(
                 "配置更新: log=$log immersive=$immersive rememberBounds=$rememberBounds " +
-                        "导航栏归属=[$assignRaw]"
+                        "无极调节=$freeRatio 导航栏归属=[$assignRaw]"
             )
         }
     }

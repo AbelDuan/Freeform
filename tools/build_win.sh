@@ -3,8 +3,9 @@
 # 关键点：所有传给 Windows .exe / java 的参数必须用 C:/ 盘符形式，
 # 否则 MSYS 不会转换 /c/...，导致 .exe 找不到文件。
 set -u
-HERE_W="C:/Users/Abel/WorkBuddy/2026-09-29-16-48-37/Freeform"
-HERE_U="/c/Users/Abel/WorkBuddy/2026-09-29-16-48-37/Freeform"
+# 仓库根目录：从脚本位置推导（原来写死某台机器的绝对路径，换目录/换工作树就跑不了）
+HERE_U="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+HERE_W="$(cd "$HERE_U" && pwd -W 2>/dev/null || echo "$HERE_U")"
 SRC_W="$HERE_W/app/src/main"
 SRC_U="$HERE_U/app/src/main"
 OUT_W="$HERE_W/build"; OUT_U="$HERE_U/build"
@@ -20,10 +21,31 @@ ZIPALIGN="C:/Android/Sdk/build-tools/35.0.0/zipalign.exe"
 D8_JAR="C:/Android/Sdk/build-tools/35.0.0/lib/d8.jar"
 APKSIGNER_JAR="C:/Android/Sdk/build-tools/35.0.0/lib/apksigner.jar"
 ANDROID_JAR="C:/Android/Sdk/platforms/android-36/android.jar"
-KOTLINC_JAR="C:/Users/Abel/.gradle/wrapper/dists/gradle-8.10-bin/deqhafrv1ntovfmgh0nh3npr9/gradle-8.10/lib/kotlin-compiler-embeddable-1.9.24.jar"
-KOTLIN_STDLIB="C:/Users/Abel/.gradle/wrapper/dists/gradle-8.10-bin/deqhafrv1ntovfmgh0nh3npr9/gradle-8.10/lib/kotlin-stdlib-1.9.24.jar"
-TROVE4J="C:/Users/Abel/.gradle/wrapper/dists/gradle-8.10-bin/deqhafrv1ntovfmgh0nh3npr9/gradle-8.10/lib/trove4j-1.0.20200330.jar"
-ANNOTATIONS="C:/Users/Abel/.gradle/wrapper/dists/gradle-8.10-bin/deqhafrv1ntovfmgh0nh3npr9/gradle-8.10/lib/annotations-24.0.1.jar"
+
+# ── Kotlin 编译器：必须 K2（≥2.0）────────────────────────────────────────────
+# 0.6.x 的源码里有「布尔局部变量 + 空判断 → 智能转换」的写法（如 Hooks.kt 的
+#   `val ff = now != null && ...; when { ff -> taskBounds(now) }`），
+# 这种数据流智能转换只有 K2 支持；用 Gradle 8.10 自带的 1.9.24（K1）会直接报
+#   `type mismatch: inferred type is Any? but Any was expected` —— 报的却是业务代码，
+# 极易误判成自己写错了。这里优先挑 Gradle 8.14.5 自带的 2.0.21，找不到才退回 1.9.24。
+KVER=""; KDIR=""
+for base in C:/Users/Abel/.gradle/wrapper/dists/gradle-8.14.5-bin/*/gradle-8.14.5/lib; do
+  if [ -f "$base/kotlin-compiler-embeddable-2.0.21.jar" ]; then KVER="2.0.21"; KDIR="$base"; break; fi
+done
+if [ -z "$KDIR" ]; then
+  KVER="1.9.24"
+  KDIR="C:/Users/Abel/.gradle/wrapper/dists/gradle-8.10-bin/deqhafrv1ntovfmgh0nh3npr9/gradle-8.10/lib"
+  echo "!!! 没找到 Kotlin 2.x 编译器，退回 $KVER —— 0.6.x 源码可能编不过（见脚本注释）"
+fi
+echo "Kotlin: $KVER ($KDIR)"
+KOTLINC_JAR="$KDIR/kotlin-compiler-embeddable-$KVER.jar"
+KOTLIN_STDLIB="$KDIR/kotlin-stdlib-$KVER.jar"
+TROVE4J="$KDIR/trove4j-1.0.20200330.jar"
+ANNOTATIONS="$KDIR/annotations-24.0.1.jar"
+KCP3="$KOTLINC_JAR;$KOTLIN_STDLIB;$TROVE4J;$ANNOTATIONS"
+# K2 的 embeddable 编译器还要 kotlinx-coroutines（否则 ClassNotFoundException: CoroutineScope）
+COROUTINES="$KDIR/kotlinx-coroutines-core-jvm-1.6.4.jar"
+[ -f "$COROUTINES" ] && KCP3="$KCP3;$COROUTINES"
 LIBXP="$HERE_W/app/libs/libxposed-api-102.jar"
 
 # 版本单一来源：从 module.prop 读，避免与 aapt2 versionName 打架
@@ -50,7 +72,7 @@ echo "== 3/6 kotlinc =="
 find "$SRC_U/kotlin" -name '*.kt' | sed 's|^/c/|C:/|' > "$OUT_W/sources.txt"
 wc -l < "$OUT_W/sources.txt"
 CP3="$ANDROID_JAR;$LIBXP;$KOTLIN_STDLIB"
-"$JAVA" -Xmx3000m -cp "$KOTLINC_JAR;$KOTLIN_STDLIB;$TROVE4J;$ANNOTATIONS" org.jetbrains.kotlin.cli.jvm.K2JVMCompiler -nowarn -jvm-target 17 \
+"$JAVA" -Xmx3000m -cp "$KCP3" org.jetbrains.kotlin.cli.jvm.K2JVMCompiler -nowarn -jvm-target 17 \
   -classpath "$CP3" -d "$OUT_W/kt" "@$OUT_W/sources.txt" || fail "kotlinc" $?
 
 echo "== 4/6 d8 =="

@@ -163,6 +163,7 @@ class SettingsActivity : Activity() {
         switchRow("分应用记忆窗口尺寸", Constants.K_REMEMBER_BOUNDS, Cfg.rememberBounds) { Cfg.rememberBounds = it }
         switchRow("折叠屏状态分别记忆", Constants.K_REMEMBER_FOLD, Cfg.rememberFold) { Cfg.rememberFold = it }
         switchRow("小窗比例调节（三点菜单那排比例按钮 + 放大可调范围）", Constants.K_RATIO_MENU, Cfg.ratioMenu) { Cfg.ratioMenu = it }
+        switchRow("小窗无极调节（四角拖动宽高各自跟手，不再吸附等比档位）", Constants.K_FREE_RATIO, Cfg.freeRatio) { Cfg.freeRatio = it }
 
         section("通知栏")
         switchRow(

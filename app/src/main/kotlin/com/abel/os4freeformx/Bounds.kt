@@ -101,9 +101,18 @@ object Bounds {
     fun load(ctx: Context) {
         if (loaded) return
         runCatching {
-            val b = ctx.contentResolver.call(
-                android.net.Uri.parse("content://${Constants.AUTHORITY}"), "getAll", null, null
-            )
+            // ★ 修复：system_server / systemui 跨进程读本模块 StoreProvider 时，框架会校验
+            //   calling package 与 calling uid 是否匹配（ContentProviderHelper.getContentProvider），
+            //   不匹配会抛 SecurityException 并打断开窗转场（半透明背景卡住）。
+            //   clearCallingIdentity 让这次 call 以当前进程身份发出，绕过该校验。
+            val token = android.os.Binder.clearCallingIdentity()
+            val b = try {
+                ctx.contentResolver.call(
+                    android.net.Uri.parse("content://${Constants.AUTHORITY}"), "getAll", null, null
+                )
+            } finally {
+                android.os.Binder.restoreCallingIdentity(token)
+            }
             b?.keySet()?.forEach { k ->
                 val raw = b.getString(k)
                 // ★ v0.5.5：`@D` = 方向独立槽（"1"=横屏 / "0"=竖屏），与比例槽物理隔离
@@ -316,8 +325,14 @@ object Bounds {
         val v = if (raw != null) raw else if (r == null) "" else
             "${r.left},${r.top},${r.right},${r.bottom}" + if (scale > 0f) "@$scale" else ""
         runCatching {
+            // ★ 修复：同上，跨进程写也要 clearCallingIdentity，否则 system_server/systemui 写记忆抛 SecurityException
             val b = Bundle().apply { putString("k", k); putString("v", v) }
-            ctx.contentResolver.call(android.net.Uri.parse("content://${Constants.AUTHORITY}"), "put", null, b)
+            val token = android.os.Binder.clearCallingIdentity()
+            try {
+                ctx.contentResolver.call(android.net.Uri.parse("content://${Constants.AUTHORITY}"), "put", null, b)
+            } finally {
+                android.os.Binder.restoreCallingIdentity(token)
+            }
         }.onFailure { Logx.e("bounds 写入失败($k)", it) }
     }
 

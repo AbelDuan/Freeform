@@ -114,6 +114,8 @@ object Hooks {
         runCatching { installRotationGeometryHook(m, cl) }.onFailure { Logx.e("旋转几何钩子失败", it) }
         installImmersive(m, cl)
         installRatioMenu(m, cl)
+        // 小窗无极调节（移植自 HyperRefine）：四角拖动宽高各自跟手，见 FreeRatio.kt
+        FreeRatio.install(m, cl)
         installBoundsRecorder(m, cl)
         installSplitRatio(m, cl)
         // ★★ 手势功能已整体移除（用户 2026-10-02）。
@@ -751,10 +753,20 @@ object Hooks {
                             if (memo != null) {
                                 val dm = ctx.resources.displayMetrics
                                 val area = Rect(0, statusBarHeight(ctx), dm.widthPixels, dm.heightPixels)
-                                val t = Bounds.clampKeepRatio(memo, area)
-                                if (cur == null || cur.width() != t.width() || cur.height() != t.height() ||
+                                // ★ 修复（v0.4.48「只记点」模型）：memo 是 1×1 的退化矩形（只存左上角点）。
+                                //   原代码直接 clampKeepRatio(memo) ⇒ 1×1 窗 ⇒ 窗口退化成 1×1 像素。
+                                //   与 installLaunchBounds 保持一致：只取 memo 的位置，尺寸沿用 MIUI 现算的 cur，
+                                //   既保住"只记点"语义，又不会把窗口缩成 1×1。
+                                val t = if (memo.width() <= 1 || memo.height() <= 1) {
+                                    if (cur != null && cur.width() > 1 && cur.height() > 1)
+                                        Rect(memo.left, memo.top, memo.left + cur.width(), memo.top + cur.height())
+                                    else null
+                                } else {
+                                    Bounds.clampKeepRatio(memo, area)
+                                }
+                                if (t != null && (cur == null || cur.width() != t.width() || cur.height() != t.height() ||
                                     cur.left != t.left || cur.top != t.top
-                                ) {
+                                )) {
                                     val replaced = ctor.newInstance(t, scale)
                                     Logx.always("尺寸档位★: 用记忆替换 -> bounds=$t scale=$scale（$pkg）")
                                     return@Hooker replaced
@@ -984,8 +996,16 @@ object Hooks {
                                 ?: return@runCatching
                             val dm = ctx.resources.displayMetrics
                             val area = Rect(0, statusBarHeight(ctx), dm.widthPixels, dm.heightPixels)
-                            val target = Bounds.clampKeepRatio(memo, area)
                             val before = Rect(first)
+                            // ★ 修复（v0.4.48「只记点」模型）：memo 是 1×1 退化矩形时，只取位置、
+                            //   尺寸沿用 MIUI 刚算的 before，避免旋转后窗口退化成 1×1。
+                            val target = if (memo.width() <= 1 || memo.height() <= 1) {
+                                if (before.width() > 1 && before.height() > 1)
+                                    Rect(memo.left, memo.top, memo.left + before.width(), memo.top + before.height())
+                                else null
+                            } else {
+                                Bounds.clampKeepRatio(memo, area)
+                            } ?: return@runCatching
                             if (before.left == target.left && before.top == target.top &&
                                 before.width() == target.width() && before.height() == target.height()
                             ) {
