@@ -61,6 +61,18 @@ object CaptionSplitBoth {
      */
     @Volatile private var pendingDotPivotShift = 0f
 
+    /**
+     * 当前正在构建的把手菜单所属任务的 **windowing mode**。
+     *
+     * 菜单构建是同步的（`MiuiDecorationDot#createHandleMenu` → `MiuiCaptionContainerView#init`
+     * → `addSplitStateButton`），所以用 ThreadLocal 传递最稳：两个任务的菜单在不同线程
+     * 同时重建也不会串。
+     */
+    private val menuWindowMode = ThreadLocal<Int>()
+
+    /** `WINDOWING_MODE_FULLSCREEN`。 */
+    private const val WM_FULLSCREEN = 1
+
     fun install(m: MainHook, cl: ClassLoader) {
         loader = cl
         val cc = SoScSupport.findClass(cl, Constants.CLS_CAPTION_CONTAINER) ?: run {
@@ -77,11 +89,13 @@ object CaptionSplitBoth {
             .onFailure { Logx.e("双向分屏: 挂 addWindow 失败", it) }
         runCatching { ok += hookDotPositionInfo(m, cl) }
             .onFailure { Logx.e("双向分屏: 挂 updateDotPositionInfo 失败", it) }
+        runCatching { ok += hookCreateHandleMenu(m, cl) }
+            .onFailure { Logx.e("双向分屏: 挂 createHandleMenu 失败", it) }
         if (ok == 0) {
             Logx.e("双向分屏: 一个都没挂上（本机把手菜单类名可能变了）")
             return
         }
-        Logx.always("把手菜单双向分屏: 已挂 $ok/3（开关=${Cfg.captionSplitBoth}）")
+        Logx.always("把手菜单双向分屏: 已挂 $ok/4（开关=${Cfg.captionSplitBoth}）")
     }
 
     // ---------------- 1) 官方建完一对按钮后补另一对 ----------------
@@ -113,6 +127,10 @@ object CaptionSplitBoth {
         val cl = loader ?: return
         val cc = containerCls ?: return
         val create = createButton ?: return
+        // ★ 全屏菜单里系统**本来就把四个方向都给全了**（真机 A/B 证实：
+        //   关掉本模块时 全屏/小窗/上/下/左/右/关闭 共 7 个按钮），这里再补就成了
+        //   「上 下 左 右 + 我们补的左 右」6 个分屏按钮，纯重复。所以全屏一律不补。
+        if (menuWindowMode.get() == WM_FULLSCREEN) return
         val container = chain.thisObject as? ViewGroup ?: return
         val leftRight = chain.getArg(4) as? Boolean ?: return
         val supported = chain.getArg(5) as? Boolean ?: return
@@ -279,6 +297,40 @@ object CaptionSplitBoth {
                     val pivotX = args.getOrNull(2) as? Float
                     if (pivotX != null && scale > 0f) args[2] = pivotX - shift / scale
                     chain.proceed(args.toTypedArray())
+                }
+            })) 1 else 0
+    }
+
+    // ---------------- 1b) 记录菜单所属的窗口模式 ----------------
+
+    /**
+     * 记录「正在构建的菜单属于哪个窗口模式」，供 [addOppositeSplitPair] 判断要不要补按钮。
+     *
+     * dexdump 实证：`MiuiDecorationDot#createHandleMenu(int, String)` 是把手菜单的唯一构造入口，
+     * 内部同步调 `MiuiCaptionContainerView#init(ZZZZZIZZZ)`。全屏（windowingMode=1）时系统
+     * 已经在同一行里给出 上/下/左/右 四个分屏按钮，只有「小窗 / 分屏」态才需要补另一方向。
+     */
+    private fun hookCreateHandleMenu(m: MainHook, cl: ClassLoader): Int {
+        val cls = SoScSupport.findClass(cl, Constants.CLS_DECOR_DOT) ?: run {
+            Logx.e("双向分屏: 找不到 ${Constants.CLS_DECOR_DOT}")
+            return 0
+        }
+        val method = SoScSupport.methodOf(cls, "createHandleMenu", 2) ?: run {
+            Logx.e("双向分屏: 找不到 createHandleMenu/2")
+            return 0
+        }
+        return if (m.hookExecutable(method, XposedInterface.Hooker { chain ->
+                // mWindowingMode 在父类 MiuiDecorationBase 上，SoScSupport.field 会沿继承链找
+                val mode = SoScSupport.intField(chain.thisObject, "mWindowingMode") ?: -1
+                menuWindowMode.set(mode)
+                // 低频路径（每次开菜单一次），留着方便现场核对「全屏到底补不补」
+                Logx.always("双向分屏: 菜单 windowingMode=$mode（${
+                    if (mode == WM_FULLSCREEN) "全屏→不补" else "非全屏→补另一对"
+                }）")
+                try {
+                    chain.proceed()
+                } finally {
+                    menuWindowMode.remove()
                 }
             })) 1 else 0
     }
