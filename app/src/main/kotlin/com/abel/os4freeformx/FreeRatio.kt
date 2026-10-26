@@ -108,6 +108,18 @@ object FreeRatio {
     @Volatile private var pendingThread: Thread? = null
 
     /**
+     * 上一帧算出的自由高度 / 方向位 / 时间戳。
+     *
+     * 用途：抬手那一帧 `getCtrlType()` 会被系统清零，`freeHeight` 若照常 return null，
+     * 该帧的 `setAnimParam` 就退回系统等比参数，`AnimTarget.taskBounds` 停在旧高度；
+     * 落盘 rect 虽能被 WCT 兜底改对（内容正确），但背景 / 阴影 / 圆角走 taskBounds，
+     * 于是出现「内容对了、背景还是原比例」。这里留一份上一帧结果给抬手帧兜住。
+     */
+    @Volatile private var lastFreeH = 0
+    @Volatile private var lastFreeAtMs = 0L
+    @Volatile private var lastDirCtrl = 0
+
+    /**
      * 松手落盘用的自由尺寸（视觉坐标）。
      *
      * 拖动中改 `scaleY` 只能让**视觉**自由；抬手时
@@ -278,19 +290,34 @@ object FreeRatio {
 
         val minH = (baseH / 4).coerceAtLeast(120)
         val free = Rect(out)
+        val now = SystemClock.uptimeMillis()
         val h = when {
             // 上边跟着手：底边固定
             ctrl and 4 != 0 -> baseH - dy
             // 下边跟着手：顶边固定
             ctrl and 8 != 0 -> baseH + dy
             // 纯左右手柄（只有 1/2 位）：高度本就该不变，不干预
-            else -> return null
+            else -> {
+                // ★ 抬手瞬间 ctrl 常被系统清零，这一帧如果直接 return null，
+                //   `setAnimParam` 就会用系统等比参数、`AnimTarget.taskBounds` 停在旧高度，
+                //   于是落盘 rect 也是旧高度 —— 内容会被 WCT 兜底改对，但
+                //   背景 / 阴影 / 圆角这些走 taskBounds 的视觉层就还是原比例
+                //   （正是 0.6.17 用户看到的现象）。所以这里沿用上一帧的自由高，
+                //   保证"最后一帧也是自由比例"，整条链路自洽。
+                if (lastFreeH > 0 && now - lastFreeAtMs > 240L) return null
+                lastFreeH.toFloat()
+            }
         }.toInt().coerceIn(minH, maxOf(minH, maxHeightPx))
 
+        // 锚点用"上一次真正带方向的那帧"，因为抬手帧的 ctrl 已经不可信
+        val anchor = if (ctrl and 12 != 0) ctrl else lastDirCtrl
         when {
-            ctrl and 4 != 0 -> free.top = free.bottom - h
+            anchor and 4 != 0 -> free.top = free.bottom - h
             else -> free.bottom = free.top + h
         }
+        lastFreeH = h
+        lastFreeAtMs = now
+        if (ctrl and 12 != 0) lastDirCtrl = ctrl
         // ⚠ 这里**不能**"高度没变就 return null"。
         //   纯横向拖动（dy=0）时 h 恰好等于 baseH，正是要靠这次覆盖把高度钉回原值；
         //   否则系统会拿新的宽度按原宽高比把高度一起放大 —— 那还是等比，只是换了个方向。
@@ -401,37 +428,89 @@ object FreeRatio {
         val ok = try {
             method.isAccessible = true
             m.hookExecutable(method, XposedInterface.Hooker { chain ->
-                val fh = pendingFreeH
-                // 非 resize 帧一律不干预（热路径，先做最便宜的判断）
-                if (fh <= 0 || Thread.currentThread() !== pendingThread ||
-                    SystemClock.uptimeMillis() - pendingAtMs > 150L
-                ) {
-                    return@Hooker chain.proceed()
+                // ★ 优先用本帧 `calBoundsAfterMoving` 挂出的目标；没有则回落到
+                //   「本次 resize 会话最近一次算出的自由高」。
+                //   抬手那一帧系统往往不再走 calBoundsAfterMoving，pending 已被上一帧消费清空；
+                //   若在这里直接用系统原始参数，`setTaskBounds` 会把 AnimTarget.taskBounds
+                //   设回旧高度，于是落盘 rect 是旧高 —— 内容靠 WCT 兜底能改对，
+                //   但背景 / 阴影 / 圆角这些视觉层就还是原比例。
+                val inSession = landFreeH > 0 &&
+                        SystemClock.uptimeMillis() - landAtMs < 300L &&
+                        Thread.currentThread() === pendingThread
+                val fh = when {
+                    pendingFreeH > 0 -> pendingFreeH
+                    inSession -> landFreeH
+                    else -> 0
                 }
+                // 非 resize 帧一律不干预（热路径，先做最便宜的判断）
+                if (fh <= 0) return@Hooker chain.proceed()
                 pendingFreeH = 0
                 val bounds = chain.getArg(0) as? Rect
                 val oldH = bounds?.height() ?: 0
                 if (oldH <= 0) return@Hooker chain.proceed()
-                // ★ 落盘基准：这一帧的 scaleX（系统会原样存成 miuiFreeformScale）与 task 高度。
-                //   抬手时 `setBounds` 收到的是 taskBounds（尺寸**不乘** scale），
-                //   所以写回时要 `taskH = 视觉高 / landScaleX`（见 landScaleX 注释）。
-                landScaleX = (chain.getArg(1) as? Float) ?: 1f
+                // scaleX 由系统按宽度算出：scale = 视觉宽 / task 宽。
+                // 它是**唯一会被落盘保存的比例**（见 landScaleX 注释），所以换算以它为基准。
+                val sx = (chain.getArg(1) as? Float) ?: 1f
+                if (sx.isNaN() || sx <= 0.05f || sx > 20f) return@Hooker chain.proceed()
+                // ★ 0.6.18 关键改动：改 **bounds 高度**（换算到 task 空间），而不是改 scaleY。
+                //
+                // 为什么必须这样（dexdump 证据）：
+                //   setAnimParam(bounds, scaleX, scaleY, anchorY) 内部第一件事就是
+                //     setTaskBounds(bounds);   // ← 直接把这个 Rect 存成 AnimTarget.taskBounds
+                //   getWidth()  = taskBounds.width()  * scaleX
+                //   getHeight() = taskBounds.height() * scaleY
+                //   getCurrentBounds() = taskBounds 原地 offsetTo(视觉位置)，尺寸**不乘** scale
+                // 抬手时 `applyResizeAnimation` 用 getCurrentBounds() 去 setBounds 落盘。
+                //
+                // 0.6.17 只改 scaleY：视觉对了、task bounds 落盘也被 WCT hook 改对了，
+                // 但 **AnimTarget.taskBounds 仍是旧高度** —— 窗口背景 / 阴影 / 圆角这些
+                // "容器视觉层"用的正是它，于是出现"内容对了、背景还是原比例"。
+                // 改成写 bounds 高度后，task 比例与视觉比例一致（scaleX == scaleY），
+                // 落盘 rect 与容器视觉层同时自洽，不再需要事后打补丁。
+                val taskH = (fh / sx).toInt()
+                if (taskH <= 0) return@Hooker chain.proceed()
+
+                // 落盘兜底基准（WCT hook 只在这条链路没生效时才需要动手）
+                // ⚠ `landAtMs` **只能**由 `freeHeight`（每帧 calBoundsAfterMoving）更新。
+                //   在这里更新会让「resize 会话」永远为真 —— 之后所有 setAnimParam
+                //   （平移 / 进入退出动画）都会被按自由高改写，窗口行为会乱。
+                landScaleX = sx
                 landTaskH = oldH
-                landAtMs = SystemClock.uptimeMillis()
-                val sy = fh.toFloat() / oldH
-                if (sy.isNaN() || sy <= 0.05f || sy > 20f) return@Hooker chain.proceed()
 
                 val args = chain.args.toTypedArray()
-                args[2] = sy
+                val nb = Rect(bounds)
+                nb.bottom = nb.top + taskH
+                args[0] = nb
+                // scaleY 显式跟 scaleX 对齐：getHeight() = taskH * sx = 视觉自由高
+                args[2] = sx
+                val anchorY = (chain.getArg(3) as? Float) ?: 0f
                 val r = chain.proceed(args)
+                // ★★ 关键：**同时覆盖目标态（destination）**。
+                //
+                // 对照 HyperRefine（hook/.../FreeformFreeRatioHook.kt）：
+                //   它在 `updateDestinationAttributes` 之后调
+                //     setDestinationBounds / setDestinationVisualBounds / setDestinationNormalScale
+                //   —— 也就是"任务边界"和"视觉边界"两套都要覆盖，只改一套会出现
+                //   「内容对了、背景 / 阴影 / 圆角还是原比例」。
+                //
+                // 经典小窗（miuifreeform）的等价物是 `MultiTaskingAnimTarget` 上的两套字段：
+                //   setAnimParam        → taskBounds / scaleX / scaleY   （当前态）
+                //   setDestinationParam → destinationTaskBounds / destinationScaleX / destinationScaleY（目标态）
+                //   setBaseAnimTargetParam = 两者一起调
+                // 而 `handleResize` 每帧只调 `setAnimParam`，目标态一直是系统算的等比 ——
+                // 视觉层读的是
+                //   getScaledDestinationBounds() = scaleBounds(getDestinationBounds(), getDestinationScaleX())
+                // 所以这里必须手动补一次 `setDestinationParam`，让目标态与当前态一致。
+                // 注意：`setAnimParam` 是 void，proceed() 必然返回 null，所以这里不能写 `if (r != null)`。
+                if (Cfg.freeRatio) syncDestination(chain.thisObject, nb, sx, anchorY)
                 val n = ++hits
                 if (n == 1) {
                     Logx.always(
-                        "无极调节: 首次接管 ctrl 生效，高度 ${oldH}px × $sy = ${fh}px" +
-                                "（宽 scaleX=${args[1]}）"
+                        "无极调节: 首次接管生效，task 高 $oldH → $taskH" +
+                                "（scaleX=$sx，视觉高=${(taskH * sx).toInt()} ≈ 目标 $fh）"
                     )
                 } else {
-                    Logx.v("无极调节: 接管 #$n 高 $oldH→$fh（scaleY=$sy）")
+                    Logx.v("无极调节: 接管 #$n task 高 $oldH→$taskH（scale=$sx，视觉=${fh}px）")
                 }
                 r
             })
@@ -441,6 +520,40 @@ object FreeRatio {
         }
         Logx.always("无极调节: 动画高度通道已挂 ${if (ok) 1 else 0}/1（开关=${Cfg.freeRatio}）")
     }
+
+    /**
+     * 把「目标态」也覆盖成自由尺寸。
+     *
+     * `MultiTaskingAnimTarget` 有两套平行参数（dexdump 实证）：
+     * ```
+     * setAnimParam(bounds, sx, sy, anchorY)        → taskBounds / scaleX / scaleY / centerX / anchorY / elegantY
+     * setDestinationParam(bounds, sx, sy, anchorY) → destinationTaskBounds / destinationScaleX / destinationScaleY / ...
+     * setBaseAnimTargetParam = 上面两个连着调
+     * ```
+     * `MiuiFreeformModeTaskInfo` 的 `getDestinationBounds()` 转发到 AnimTarget，
+     * 视觉层用的是 `getScaledDestinationBounds() = scaleBounds(destinationBounds, destinationScaleX)`。
+     * resize 期间系统每帧只调 `setAnimParam`，destination 停在旧值 —— 这就是
+     * 「内容对了、背景 / 阴影 / 圆角还是原比例」的根因。HyperRefine 在平板链路上
+     * 也是靠同时覆盖 destination 才让整条链路一致，这里做同样的事。
+     */
+    private fun syncDestination(target: Any?, bounds: Rect, scale: Float, anchorY: Float) {
+        if (target == null) return
+        val m = destParamCache.getOrPut(target.javaClass) {
+            runCatching {
+                target.javaClass.getMethod(
+                    "setDestinationParam",
+                    Rect::class.java,
+                    Float::class.javaPrimitiveType,
+                    Float::class.javaPrimitiveType,
+                    Float::class.javaPrimitiveType
+                ).also { it.isAccessible = true }
+            }.getOrNull()
+        } ?: return
+        runCatching { m.invoke(target, bounds, scale, scale, anchorY) }
+    }
+
+    /** `setDestinationParam` 的反射缓存（resize 每帧都要用，不能每次查找）。 */
+    private val destParamCache = java.util.concurrent.ConcurrentHashMap<Class<*>, Method?>()
 
     // ---------------- 松手落盘：把提交给 WindowManager 的尺寸改对 ----------------
 
@@ -508,13 +621,21 @@ object FreeRatio {
                     else -> fh
                 }
                 if (wantTaskH <= 0) return@Hooker chain.proceed()
+                // 幂等：0.6.18 起 `setAnimParam` 已把 bounds 高度换算成 task 空间，
+                // 落盘 rect 本来就是对的 —— 这时绝不能重复换算（会再除一次 scale）。
+                if (kotlin.math.abs(rect.height() - wantTaskH) <= 2) {
+                    Logx.v(
+                        "无极调节: 落盘 rect 已是自由尺寸（高=${rect.height()}），无需改写"
+                    )
+                    return@Hooker chain.proceed()
+                }
                 val args = chain.args.toTypedArray()
                 val nb = Rect(rect)
                 nb.bottom = nb.top + wantTaskH
                 args[1] = nb
                 Logx.always(
-                    "无极调节: 松手落盘 视觉高 $fh → task 高 $wantTaskH" +
-                            "（scaleX=$sx，收到 rect 高 ${rect.height()} 宽 ${rect.width()}，" +
+                    "无极调节: 松手落盘兜底 视觉高 $fh → task 高 $wantTaskH" +
+                            "（rect 原高 ${rect.height()}，scaleX=$sx，" +
                             "落盘后视觉高=${(wantTaskH * sx).toInt()}）"
                 )
                 chain.proceed(args)
