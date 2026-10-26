@@ -214,8 +214,18 @@ object SplitRatioKeep {
     private fun syncFixedSnapTarget(layout: Any, position: Int) {
         runCatching {
             val algorithm = SoScSupport.call(layout, "getDividerSnapAlgorithm") ?: return
-            val target = SoScSupport.call(algorithm, "calculateNonDismissingSnapTarget", position) ?: return
+            val target = SoScSupport.call(algorithm, "calculateNonDismissingSnapTarget", position) ?: run {
+                Logx.always("换向保比例: 固定吸附目标取不到（pos=$position），保持原值")
+                return
+            }
             SoScSupport.setField(layout, "mFixedSnapTarget", target)
+            // 单侧分屏（另一侧是桌面）下这个字段直接决定松手吸附，出问题会崩 SystemUI，
+            // 所以落一条可追溯的日志（仅换向时触发，不是热路径）。
+            Logx.always(
+                "换向保比例: 同步固定吸附目标 pos=$position " +
+                    "target=${SoScSupport.intField(target, "position")}" +
+                    "/snapPosition=${SoScSupport.intField(target, "snapPosition")}"
+            )
         }.onFailure { Logx.e("换向保比例: 同步固定吸附目标失败", it) }
     }
 

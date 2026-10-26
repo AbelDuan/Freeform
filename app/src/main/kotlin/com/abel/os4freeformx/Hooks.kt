@@ -127,6 +127,8 @@ object Hooks {
         runCatching { MultiSplitRatio.install(m, cl) }.onFailure { Logx.e("多分屏无级安装失败", it) }
         runCatching { SplitRatioKeep.install(m, cl) }.onFailure { Logx.e("换向保比例安装失败", it) }
         runCatching { CaptionSplitBoth.install(m, cl) }.onFailure { Logx.e("双向分屏安装失败", it) }
+        // 最后装：给 snapToTarget 兜住 null 目标（竖屏单侧分屏拖分隔条会崩 SystemUI）
+        runCatching { SplitSnapGuard.install(m, cl) }.onFailure { Logx.e("分屏吸附守卫安装失败", it) }
         installBoundsRecorder(m, cl)
         installSplitRatio(m, cl)
         // ★★ 手势功能已整体移除（用户 2026-10-02）。
