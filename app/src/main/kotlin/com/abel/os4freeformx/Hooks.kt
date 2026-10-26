@@ -30,10 +30,7 @@ object Hooks {
         installLaunchBounds(m, cl)
         runCatching { installSystemFreeformProbe(m, cl) }.onFailure { Logx.e("系统侧探针失败", it) }
 
-        // ★★★ 小窗无极调节（移植自 HyperRefine，见 FreeRatio.kt）
-        //   ★ 位置已纠正：本机 WMShell 由 **SystemUI** 加载，不在 system_server。
-        //     取证：/proc/<systemui>/maps 命中 /system_ext/framework/Miui-WindowManager-Shell.jar（3 处），
-        //     而 /proc/<system_server>/maps 里 0 处。所以装在 installSystemUi，见下方。
+        // ★ 注：小窗「无极调节」（FreeRatio.kt）已在 v0.7.0 整体移除，system_server 侧不留任何相关 hook。
 
         // ★★★ 2026-10-15 移植自 HyperCeiler 的三项小窗增强（AGPL-3.0，见 FreeformExtra.kt）。
         //   全部落在 system_server：
@@ -119,15 +116,6 @@ object Hooks {
         runCatching { installRotationGeometryHook(m, cl) }.onFailure { Logx.e("旋转几何钩子失败", it) }
         installImmersive(m, cl)
         installRatioMenu(m, cl)
-        // ★★★ 小窗无极调节（移植自 HyperRefine，见 FreeRatio.kt）
-        //   落点 = WMShell 的 MiuiFreeformModeResizeHandler#calBoundsAfterMoving
-        //        + MultiTaskingAnimTarget#setAnimParam（真正决定缩放大小的通道）。
-        //   ★ 必须装在 SystemUI：本机 WMShell 由 SystemUI 加载。
-        //     取证：`grep WindowManager-Shell /proc/<pid>/maps` →
-        //       system_server 命中 0 处，com.android.systemui 命中 3 处
-        //       （/system_ext/framework/Miui-WindowManager-Shell.jar + odex + vdex）。
-        //     0.6.11 曾误装在 installSystemServer，那边连 jar 都没加载，Class.forName 必然失败。
-        runCatching { FreeRatio.install(m, cl) }.onFailure { Logx.e("无极调节安装失败", it) }
 
         // ★★★ 分屏四项（2026-10-26 移植自 HyperRefine，AGPL-3.0，各自独立文件）
         //   1) 解除分屏方向限制（+ 方向判定兼容层）—— 折叠屏横屏也能上下分屏、竖屏也能左右

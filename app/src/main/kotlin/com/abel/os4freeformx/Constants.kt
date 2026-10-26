@@ -2,7 +2,7 @@ package com.abel.os4freeformx
 
 /** 模块常量：包名、prefs 名、配置键、目标类名。 */
 object Constants {
-    const val VERSION = "0.6.20"
+    const val VERSION = "0.7.0"
     const val PREFS_CFG = "os4freeformx_cfg"
     const val PREFS_BOUNDS = "os4freeformx_bounds"
     const val AUTHORITY = "com.abel.os4freeformx.store"
@@ -20,9 +20,9 @@ object Constants {
     // 小窗比例调节（三点菜单那排比例按钮 + 放大可调尺寸范围）。
     // 关掉后模块完全不碰 MIUI 的菜单与缩放上限 —— 避免"背景框大于应用可操作区、底部一片白"。
     const val K_RATIO_MENU = "ratio_menu"
-    // 小窗无极调节（移植自 HyperRefine）：四角拖动时宽高各自跟手，
-    // 不再被 `MiuiInfinityModeRatioPositioner` 吸附回系统的等比档位。实现见 FreeRatio.kt。
-    const val K_FREE_RATIO = "freeform_free_ratio"
+    // 注：原「小窗无极调节」（K_FREE_RATIO / freeform_free_ratio）已于 v0.7.0 移除。
+    //     实测四角拖动自由宽高比会与系统的比例吸附 / destination 几何互相覆盖，
+    //     内容层与背景层难以始终自洽，稳定性不足以进正式版，故整体下线。
     // ── 分屏四项（移植自 HyperRefine）──
     /** 解除分屏方向限制：竖屏也能左右分屏、横屏也能上下分屏。实现见 SplitDirection.kt。 */
     const val K_SPLIT_UNLOCK_DIR = "split_unlock_direction"
@@ -80,7 +80,6 @@ object Constants {
     const val DEF_REMEMBER_BOUNDS = true
     const val DEF_REMEMBER_FOLD = true
     const val DEF_RATIO_MENU = true
-    const val DEF_FREE_RATIO = true
     // 分屏四项默认开（移植即生效；均为热开关，关掉立刻退回系统原行为，不用重启 SystemUI）
     const val DEF_SPLIT_UNLOCK_DIR = true
     const val DEF_MULTI_SPLIT_FREE = true
