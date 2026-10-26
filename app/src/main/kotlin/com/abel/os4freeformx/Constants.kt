@@ -2,7 +2,7 @@ package com.abel.os4freeformx
 
 /** 模块常量：包名、prefs 名、配置键、目标类名。 */
 object Constants {
-    const val VERSION = "0.6.9"
+    const val VERSION = "0.6.10"
     const val PREFS_CFG = "os4freeformx_cfg"
     const val PREFS_BOUNDS = "os4freeformx_bounds"
     const val AUTHORITY = "com.abel.os4freeformx.store"
@@ -23,6 +23,15 @@ object Constants {
     // 小窗无极调节（移植自 HyperRefine）：四角拖动时宽高各自跟手，
     // 不再被 `MiuiInfinityModeRatioPositioner` 吸附回系统的等比档位。实现见 FreeRatio.kt。
     const val K_FREE_RATIO = "freeform_free_ratio"
+    // ── 分屏四项（移植自 HyperRefine）──
+    /** 解除分屏方向限制：竖屏也能左右分屏、横屏也能上下分屏。实现见 SplitDirection.kt。 */
+    const val K_SPLIT_UNLOCK_DIR = "split_unlock_direction"
+    /** 多分屏（**3 个及以上**，不含 2 分屏）无级调节各应用宽度。实现见 MultiSplitRatio.kt。 */
+    const val K_MULTI_SPLIT_FREE = "multi_split_free_ratio"
+    /** 切换分屏方向（左右 ↔ 上下）时保持每个应用的占比。实现见 SplitRatioKeep.kt。 */
+    const val K_SPLIT_RATIO_KEEP = "split_ratio_keep"
+    /** 把手（···）菜单同时显示左右与上下两对分屏按钮。实现见 CaptionSplitBoth.kt。 */
+    const val K_CAPTION_SPLIT_BOTH = "caption_split_both"
     // 注：原 K_RESIZE（"允许拖动调整尺寸"）是死开关：值存了、也读了，但全库没有任何代码用它，
     //     已移除（角柄缩放本来就是 MIUI 原生行为，模块不接管）。
     // 手势总开关已移除（用户 2026-10-02）：只保留「左右下角内滑→小窗」这一个手势，常开。
@@ -72,6 +81,11 @@ object Constants {
     const val DEF_REMEMBER_FOLD = true
     const val DEF_RATIO_MENU = true
     const val DEF_FREE_RATIO = true
+    // 分屏四项默认开（移植即生效；均为热开关，关掉立刻退回系统原行为，不用重启 SystemUI）
+    const val DEF_SPLIT_UNLOCK_DIR = true
+    const val DEF_MULTI_SPLIT_FREE = true
+    const val DEF_SPLIT_RATIO_KEEP = true
+    const val DEF_CAPTION_SPLIT_BOTH = true
     const val DEF_GESTURES = true
     const val DEF_CORNER_FREEFORM = true
     const val DEF_GESTURE_HANDLE = true
@@ -145,6 +159,32 @@ object Constants {
     const val CLS_SOSC_SPLIT_LAYOUT = "com.android.wm.shell.sosc.common.split.SplitLayout"
     /** 折叠屏走的那套（SoSc）分屏吸附算法 */
     const val CLS_SOSC_DIVIDER_SNAP = "com.android.wm.shell.sosc.common.split.DividerSnapAlgorithm"
+    // ── 分屏四项（移植自 HyperRefine，类名均与本机 _recon/out_jadx 逐条核对）──
+    /** 分屏能力总闸：`allowLeftRightSplitInPortrait(Context)` / `isLeftRightSplit()` */
+    const val CLS_SPLIT_UTILS_IMPL = "com.android.wm.shell.common.split.SplitUtilsImpl"
+    /** `SplitUtilsImpl` 的单例入口（`getInstance()`） */
+    const val CLS_SPLIT_UTILS_STUB = "com.android.wm.shell.common.split.SplitUtilsStub"
+    /** `allowLeftRightSplitInPortrait(Resources)`（静态） */
+    const val CLS_SPLIT_SCREEN_UTILS = "com.android.wm.shell.common.split.SplitScreenUtils"
+    /** SoSc 分屏总服务：`supportTopBottomSplitFeature/Device()`、`switchSplitDirection()` 等 */
+    const val CLS_SOSC_UTILS_IMPL = "com.android.wm.shell.sosc.SoScUtilsImpl"
+    /** SoSc 分屏协调器：`switchSplitDirection(String)`、`updateDividerFixedState(boolean)` */
+    const val CLS_SOSC_STAGE_COORD = "com.android.wm.shell.sosc.SoScStageCoordinator"
+    /** 把手菜单未进分屏时的方向来源（`isLeftRightSplit()` 静态） */
+    const val CLS_MULWIN_SPLIT_UTILS =
+        "com.android.wm.shell.multitasking.miuimultiwinswitch.MulWinSwitchSplitUtils"
+    /** 多分屏（3 个及以上）吸附算法：`calculateSnapTarget/snap/isValidWidth` */
+    const val CLS_MULTI_SPLIT_SNAP = "com.android.wm.shell.multiplesplit.MultipleSplitSnapAlgorithm"
+    /** 多分屏吸附目标（非静态内部类，构造需外部实例） */
+    const val CLS_MULTI_SPLIT_SNAP_TARGET =
+        "com.android.wm.shell.multiplesplit.MultipleSplitSnapAlgorithm\$SnapTarget"
+    /** 多分屏布局：`getSnapPosition(int)`、`mCurrentDividerPosition`（size+1 = 当前分屏数量） */
+    const val CLS_MULTI_SPLIT_LAYOUT = "com.android.wm.shell.multiplesplit.MultipleSplitLayout"
+    /** 把手菜单圆点的缩放/枢轴动画：`updateDotPositionInfo(5 参)` */
+    const val CLS_DECOR_ANIM =
+        "com.android.wm.shell.multitasking.miuimultiwinswitch.miuiwindowdecor.decoration.MiuiDecorationAnim"
+    /** 显示尺寸（补宽后的菜单按屏幕边界避让） */
+    const val CLS_MULTITASKING_DISPLAY_INFO = "com.android.wm.shell.multitasking.common.MultiTaskingDisplayInfo"
     // ── 魔法窗口（magic-windows）—— 来自 /system_ext/framework/miui-embedding-window.jar ──
     /** 嵌入窗口总服务：isEmbeddingEnabledForPackage(String) 是"该包是否走 magic-windows"的总闸（纯函数） */
     const val CLS_EMBED_SVC = "com.android.server.wm.MiuiEmbeddingWindowService"

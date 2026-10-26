@@ -165,6 +165,12 @@ class SettingsActivity : Activity() {
         switchRow("小窗比例调节（三点菜单那排比例按钮 + 放大可调范围）", Constants.K_RATIO_MENU, Cfg.ratioMenu) { Cfg.ratioMenu = it }
         switchRow("小窗无极调节（四角拖动宽高各自跟手，不再吸附等比档位）", Constants.K_FREE_RATIO, Cfg.freeRatio) { Cfg.freeRatio = it }
 
+        section("分屏")
+        switchRow("解除分屏方向限制（竖屏也能左右、横屏也能上下）", Constants.K_SPLIT_UNLOCK_DIR, Cfg.splitUnlockDir) { Cfg.splitUnlockDir = it }
+        switchRow("切换方向保持比例（左右 ↔ 上下时每个应用占比不变）", Constants.K_SPLIT_RATIO_KEEP, Cfg.splitRatioKeep) { Cfg.splitRatioKeep = it }
+        switchRow("把手菜单同时显示双向分屏（··· 里同时给左右与上下两对按钮）", Constants.K_CAPTION_SPLIT_BOTH, Cfg.captionSplitBoth) { Cfg.captionSplitBoth = it }
+        switchRow("多分屏无级调节宽度（3 个及以上分屏，拖分割线可任意宽度）", Constants.K_MULTI_SPLIT_FREE, Cfg.multiSplitFree) { Cfg.multiSplitFree = it }
+
         section("通知栏")
         switchRow(
             "通知栏下滑开小窗（所有应用）",

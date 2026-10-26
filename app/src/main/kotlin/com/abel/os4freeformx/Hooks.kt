@@ -116,6 +116,17 @@ object Hooks {
         installRatioMenu(m, cl)
         // 小窗无极调节（移植自 HyperRefine）：四角拖动宽高各自跟手，见 FreeRatio.kt
         FreeRatio.install(m, cl)
+
+        // ★★★ 分屏四项（2026-10-26 移植自 HyperRefine，AGPL-3.0，各自独立文件）
+        //   1) 解除分屏方向限制（+ 方向判定兼容层）—— 折叠屏横屏也能上下分屏、竖屏也能左右
+        //   2) 多分屏（**3 个及以上**，不含 2 分屏）无级调节各应用宽度
+        //   3) 切换分屏方向时保持每个应用的占比
+        //   4) 把手（···）菜单同时显示左右与上下两对分屏按钮
+        //   安装顺序有依赖：方向判定兼容层要先就位，比例记忆与双向分屏都读它的结果。
+        runCatching { SplitDirection.install(m, cl) }.onFailure { Logx.e("分屏方向限制安装失败", it) }
+        runCatching { MultiSplitRatio.install(m, cl) }.onFailure { Logx.e("多分屏无级安装失败", it) }
+        runCatching { SplitRatioKeep.install(m, cl) }.onFailure { Logx.e("换向保比例安装失败", it) }
+        runCatching { CaptionSplitBoth.install(m, cl) }.onFailure { Logx.e("双向分屏安装失败", it) }
         installBoundsRecorder(m, cl)
         installSplitRatio(m, cl)
         // ★★ 手势功能已整体移除（用户 2026-10-02）。

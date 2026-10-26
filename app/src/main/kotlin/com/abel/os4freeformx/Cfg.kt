@@ -18,6 +18,11 @@ object Cfg {
     @Volatile var rememberFold = Constants.DEF_REMEMBER_FOLD
     @Volatile var ratioMenu = Constants.DEF_RATIO_MENU
     @Volatile var freeRatio = Constants.DEF_FREE_RATIO
+    // ── 分屏四项（移植自 HyperRefine）──
+    @Volatile var splitUnlockDir = Constants.DEF_SPLIT_UNLOCK_DIR
+    @Volatile var multiSplitFree = Constants.DEF_MULTI_SPLIT_FREE
+    @Volatile var splitRatioKeep = Constants.DEF_SPLIT_RATIO_KEEP
+    @Volatile var captionSplitBoth = Constants.DEF_CAPTION_SPLIT_BOTH
     @Volatile var gestures = Constants.DEF_GESTURES
     @Volatile var cornerFreeform = Constants.DEF_CORNER_FREEFORM
     @Volatile var gestureHandle = Constants.DEF_GESTURE_HANDLE
@@ -111,6 +116,10 @@ object Cfg {
             rememberFold = p.getBoolean(Constants.K_REMEMBER_FOLD, Constants.DEF_REMEMBER_FOLD)
             ratioMenu = p.getBoolean(Constants.K_RATIO_MENU, Constants.DEF_RATIO_MENU)
             freeRatio = p.getBoolean(Constants.K_FREE_RATIO, Constants.DEF_FREE_RATIO)
+            splitUnlockDir = p.getBoolean(Constants.K_SPLIT_UNLOCK_DIR, Constants.DEF_SPLIT_UNLOCK_DIR)
+            multiSplitFree = p.getBoolean(Constants.K_MULTI_SPLIT_FREE, Constants.DEF_MULTI_SPLIT_FREE)
+            splitRatioKeep = p.getBoolean(Constants.K_SPLIT_RATIO_KEEP, Constants.DEF_SPLIT_RATIO_KEEP)
+            captionSplitBoth = p.getBoolean(Constants.K_CAPTION_SPLIT_BOTH, Constants.DEF_CAPTION_SPLIT_BOTH)
             gestures = p.getBoolean(Constants.K_GESTURES, Constants.DEF_GESTURES)
             cornerFreeform = p.getBoolean(Constants.K_CORNER_FREEFORM, Constants.DEF_CORNER_FREEFORM)
             gestureHandle = p.getBoolean(Constants.K_GESTURE_HANDLE, Constants.DEF_GESTURE_HANDLE)
@@ -207,7 +216,7 @@ object Cfg {
             Logx.once("cfgNull", "读配置失败: provider 返回 null（authority=${Constants.AUTHORITY}）")
             return
         }
-        val before = "$log|$immersive|$rememberBounds|$freeRatio|$assignRaw"
+        val before = "$log|$immersive|$rememberBounds|$freeRatio|$splitExtras|$assignRaw"
         runCatching {
             log = b.getBoolean(Constants.K_ENABLE_LOG, Constants.DEF_ENABLE_LOG)
             immersive = b.getBoolean(Constants.K_IMMERSIVE, Constants.DEF_IMMERSIVE)
@@ -215,6 +224,10 @@ object Cfg {
             rememberFold = b.getBoolean(Constants.K_REMEMBER_FOLD, Constants.DEF_REMEMBER_FOLD)
             ratioMenu = b.getBoolean(Constants.K_RATIO_MENU, Constants.DEF_RATIO_MENU)
             freeRatio = b.getBoolean(Constants.K_FREE_RATIO, Constants.DEF_FREE_RATIO)
+            splitUnlockDir = b.getBoolean(Constants.K_SPLIT_UNLOCK_DIR, Constants.DEF_SPLIT_UNLOCK_DIR)
+            multiSplitFree = b.getBoolean(Constants.K_MULTI_SPLIT_FREE, Constants.DEF_MULTI_SPLIT_FREE)
+            splitRatioKeep = b.getBoolean(Constants.K_SPLIT_RATIO_KEEP, Constants.DEF_SPLIT_RATIO_KEEP)
+            captionSplitBoth = b.getBoolean(Constants.K_CAPTION_SPLIT_BOTH, Constants.DEF_CAPTION_SPLIT_BOTH)
             gestures = b.getBoolean(Constants.K_GESTURES, Constants.DEF_GESTURES)
             cornerFreeform = b.getBoolean(Constants.K_CORNER_FREEFORM, Constants.DEF_CORNER_FREEFORM)
             gestureHandle = b.getBoolean(Constants.K_GESTURE_HANDLE, Constants.DEF_GESTURE_HANDLE)
@@ -228,16 +241,21 @@ object Cfg {
             parseAssign(b.getString(Constants.K_NBI_ASSIGN, Constants.DEF_NBI_ASSIGN) ?: Constants.DEF_NBI_ASSIGN)
             Logx.verbose = log
         }.onFailure { Logx.e("读配置失败", it) }
-        val after = "$log|$immersive|$rememberBounds|$freeRatio|$assignRaw"
+        val after = "$log|$immersive|$rememberBounds|$freeRatio|$splitExtras|$assignRaw"
         // 把悬浮门禁（开关/模式/名单）一并打出来：实测排查中，"名单为空 ⇒ 门禁恒 false ⇒ hook 空转"
         // 曾让人误判成"名单和开关都无效"。这条日志让配置是否送达被 hook 进程一眼可见。
         if (before != after) {
             Logx.always(
                 "配置更新: log=$log immersive=$immersive rememberBounds=$rememberBounds " +
-                        "无极调节=$freeRatio 导航栏归属=[$assignRaw]"
+                        "无极调节=$freeRatio 分屏[$splitExtras] 导航栏归属=[$assignRaw]"
             )
         }
     }
+
+    /** 分屏四项的开关快照（只用于日志与变化判定）。 */
+    private val splitExtras: String
+        get() = "解锁方向=$splitUnlockDir 多分屏无级=$multiSplitFree " +
+                "换向保比例=$splitRatioKeep 双向分屏=$captionSplitBoth"
 
     /** 兼容旧调用点。 */
     fun reloadThrottled(intervalMs: Long = 1500) = refreshAsync(intervalMs)

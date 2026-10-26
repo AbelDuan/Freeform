@@ -1,9 +1,9 @@
 id=os4_freeformx
 name=OS4FreeFromX
 author=AbelDuan
-description=HyperOS 4 分屏增强：手势导航条小白条（跟随手势 / 淡入淡出 / 触摸显隐 / 空闲沉浸）/ 分应用(含折叠态)小窗尺寸记忆 / 拖动调整 / 沉浸式底栏（隐藏三点与手势条背景、保留触摸）/ 小窗参数设置 / 通知栏下滑开小窗 / 魔法窗口 / 小窗无极调节（四角拖动自由宽高比）
+description=HyperOS 4 分屏增强：手势导航条小白条（跟随手势 / 淡入淡出 / 触摸显隐 / 空闲沉浸）/ 分应用(含折叠态)小窗尺寸记忆 / 拖动调整 / 沉浸式底栏（隐藏三点与手势条背景、保留触摸）/ 小窗参数设置 / 通知栏下滑开小窗 / 魔法窗口 / 小窗无极调节（四角拖动自由宽高比）/ 分屏方向解锁 / 多分屏无级 / 换向保比例 / 把手双向分屏/ 分屏方向解锁 / 多分屏无级 / 换向保比例 / 把手双向分屏
 minApiVersion=100
 targetApiVersion=102
 staticScope=true
-version=0.6.9
-versionCode=127
+version=0.6.10
+versionCode=128
