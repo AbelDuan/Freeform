@@ -140,9 +140,12 @@ object FoldSplitTrigger {
             }
             Logx.always("轻折加分屏: ShellTaskOrganizer 抓取钩子 $ok 个")
         }
-        // ★ 这行是排查"折了没反应"的唯一入口眼：开关到底读到没有、方向取的哪个值。
-        //   频率只有每次进程起来一次，配得上 always。
-        Logx.always("轻折加分屏: 已接电 —— 开关=${Cfg.foldSplit} 方向=${Cfg.foldSplitSide}（pos=${posFor(Cfg.foldSplitSide)}）")
+        // ★ 这两行是排查"折了没反应"的入口眼：挂载情况 + 方向取值。
+        //   ⚠ 这里**不读开关**：进程刚起来时 AppCtx 可能还是 package=android 的早期 Context，
+        //     走 provider 会被 `SecurityException: calling package android does not match caller's uid`
+        //     拒掉（AppCtx.kt 记过的老坑）。开关真值在 [fire] 里同步读 —— 那时一定拿得到。
+        Logx.always("轻折加分屏: 已接电 —— 方向=${Cfg.foldSplitSide}（pos=${posFor(Cfg.foldSplitSide)}）；" +
+                "开关真值见触发时日志（热开关）")
         scheduleSensor()
         return ok
     }
@@ -328,6 +331,9 @@ object FoldSplitTrigger {
     // ───────────────────────── 触发 ─────────────────────────
 
     private fun fire() {
+        // ★ 每次触发**同步**取一次真值：开关是热开关，用户随手改完立刻就能生效，
+        //   不该"这一折还按旧值处理"（一次轻折一条 IPC，成本可忽略）。
+        Cfg.refreshSync()
         if (!Cfg.foldSplit) {
             Logx.always("轻折加分屏: 开关为关 ⇒ 不执行（热开关，改完无需重启 SystemUI）")
             return
@@ -475,9 +481,14 @@ object FoldSplitTrigger {
 
     /**
      * 当前**聚焦且可见**的任务 id —— `splitPrimaryTask` 的 taskId 是外部算好传进来的，
-     * 系统三指滑时由 system_server 给出，我们只能从 `ShellTaskOrganizer.mTasks` 里自己挑。
+     * 系统三指滑时由 system_server 给出，我们只能自己找。
+     *
+     * ★ 主路用 `ActivityTaskManager.getTasks`（与 `Gestures.kt#topTaskViaAtm` 同源，本机已验证）：
+     *   `ShellTaskOrganizer.mTasks` 这条路在本机取不到值（真机实测 `拿不到聚焦任务`），
+     *   但仍留作兜底 —— 换 ROM 时它可能才是唯一能用的那条。
      */
     private fun focusedTaskId(): Int {
+        atmTaskId()?.let { if (it > 0) return it }
         val to = taskOrganizer ?: return -1
         val tasks = SoScSupport.field(to, "mTasks") ?: return -1
         val size = runCatching { tasks.javaClass.getMethod("size").invoke(tasks) as? Int }.getOrNull() ?: return -1
@@ -494,6 +505,34 @@ object FoldSplitTrigger {
         }
         return fallback
     }
+
+    /**
+     * 前台任务的 id：`ActivityTaskManager.getTasks` 返回真 `RunningTaskInfo`，
+     * SystemUI（system uid）有调用权限；跳过桌面 / launcher。
+     * @return null 表示这条路的签名都试过了也没取到（交给调用方兜底）。
+     */
+    private fun atmTaskId(): Int? = runCatching {
+        val atmCls = Class.forName("android.app.ActivityTaskManager")
+        val atm = atmCls.getMethod("getInstance").invoke(null) ?: return null
+        // 候选签名（不同固件略有差异，逐条试）
+        val tries = listOf(
+            arrayOf<Class<*>>(Integer.TYPE, java.lang.Boolean.TYPE, java.lang.Boolean.TYPE) to arrayOf<Any>(16, false, false),
+            arrayOf<Class<*>>(Integer.TYPE, Integer.TYPE, java.lang.Boolean.TYPE) to arrayOf<Any>(16, 0, false),
+            arrayOf<Class<*>>(Integer.TYPE, java.lang.Boolean.TYPE) to arrayOf<Any>(16, false),
+        )
+        for ((sig, args) in tries) {
+            val m = runCatching { atmCls.getMethod("getTasks", *sig) }.getOrNull() ?: continue
+            val tasks = runCatching { m.invoke(atm, *args) as? List<*> }.getOrNull() ?: continue
+            for (e in tasks) {
+                val t = e as? android.app.ActivityManager.RunningTaskInfo ?: continue
+                val pkg = (t.topActivity ?: t.baseActivity)?.packageName ?: continue
+                if (pkg == "com.miui.home" || pkg.endsWith(".launcher") || pkg == "android") continue
+                Logx.v("轻折加分屏: 前台任务 $pkg taskId=${t.taskId}")
+                return t.taskId
+            }
+        }
+        null
+    }.getOrNull()
 
     /** WMShell 主线程：controller 内部有记账状态，必须在它自己的线程上调用，否则会留下脏状态。 */
     private fun wmShellMainHandler(ctrl: Any): Handler? {

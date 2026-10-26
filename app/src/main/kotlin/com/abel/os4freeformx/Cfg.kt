@@ -194,6 +194,18 @@ object Cfg {
         runCatching { pool.execute { readFromProvider() } }
     }
 
+    /**
+     * **同步**刷一次配置（走同一条 provider 链路，只是不丢线程池）。
+     *
+     * 给「轻折加分屏」这类**低频但需要当次就拿到真值**的场景用：它跑在传感器线程、
+     * 一次轻折才调一次，几十毫秒的 IPC 完全付得起；而 [refreshAsync] 的结果要等下一次
+     * 调用才看得到，会出现"用户明明开了开关、这一折却按关处理"。
+     * ⛔ 别放在热路径（小窗打开 / 每帧回调）上。
+     */
+    fun refreshSync() {
+        runCatching { readFromProvider() }
+    }
+
     private val pool = java.util.concurrent.Executors.newSingleThreadExecutor { r ->
         Thread(r, "os4ffx-cfg").apply { isDaemon = true }
     }
@@ -220,7 +232,7 @@ object Cfg {
             Logx.once("cfgNull", "读配置失败: provider 返回 null（authority=${Constants.AUTHORITY}）")
             return
         }
-        val before = "$log|$immersive|$rememberBounds|$ratioMenu|$splitExtras|$assignRaw"
+        val before = "$log|$immersive|$rememberBounds|$ratioMenu|$splitExtras|$assignRaw|$foldSplit|$foldSplitSide"
         runCatching {
             log = b.getBoolean(Constants.K_ENABLE_LOG, Constants.DEF_ENABLE_LOG)
             immersive = b.getBoolean(Constants.K_IMMERSIVE, Constants.DEF_IMMERSIVE)
@@ -231,6 +243,9 @@ object Cfg {
             multiSplitFree = b.getBoolean(Constants.K_MULTI_SPLIT_FREE, Constants.DEF_MULTI_SPLIT_FREE)
             splitRatioKeep = b.getBoolean(Constants.K_SPLIT_RATIO_KEEP, Constants.DEF_SPLIT_RATIO_KEEP)
             captionSplitBoth = b.getBoolean(Constants.K_CAPTION_SPLIT_BOTH, Constants.DEF_CAPTION_SPLIT_BOTH)
+            foldSplit = b.getBoolean(Constants.K_FOLD_SPLIT, Constants.DEF_FOLD_SPLIT)
+            foldSplitSide = b.getString(Constants.K_FOLD_SPLIT_SIDE, Constants.DEF_FOLD_SPLIT_SIDE)
+                ?: Constants.DEF_FOLD_SPLIT_SIDE
             gestures = b.getBoolean(Constants.K_GESTURES, Constants.DEF_GESTURES)
             cornerFreeform = b.getBoolean(Constants.K_CORNER_FREEFORM, Constants.DEF_CORNER_FREEFORM)
             gestureHandle = b.getBoolean(Constants.K_GESTURE_HANDLE, Constants.DEF_GESTURE_HANDLE)
@@ -244,7 +259,7 @@ object Cfg {
             parseAssign(b.getString(Constants.K_NBI_ASSIGN, Constants.DEF_NBI_ASSIGN) ?: Constants.DEF_NBI_ASSIGN)
             Logx.verbose = log
         }.onFailure { Logx.e("读配置失败", it) }
-        val after = "$log|$immersive|$rememberBounds|$ratioMenu|$splitExtras|$assignRaw"
+        val after = "$log|$immersive|$rememberBounds|$ratioMenu|$splitExtras|$assignRaw|$foldSplit|$foldSplitSide"
         // 把悬浮门禁（开关/模式/名单）一并打出来：实测排查中，"名单为空 ⇒ 门禁恒 false ⇒ hook 空转"
         // 曾让人误判成"名单和开关都无效"。这条日志让配置是否送达被 hook 进程一眼可见。
         if (before != after) {
