@@ -1,5 +1,6 @@
 package com.abel.os4freeformx
 
+import android.content.res.Resources
 import android.graphics.Rect
 import android.os.SystemClock
 import io.github.libxposed.api.XposedInterface
@@ -85,6 +86,9 @@ object FreeRatio {
     private const val CLS_ANIM_TARGET =
         "com.android.wm.shell.multitasking.common.animation.MultiTaskingAnimTarget"
 
+    /** 松手落盘用的窗口事务（framework 类，SystemUI 里可直接拿到）。 */
+    private const val CLS_WCT = "android.window.WindowContainerTransaction"
+
     /** 参考实现那条链路；本机没有，保留兼容别的 ROM（不存在就只是少挂 4 个钩子）。 */
     private const val CLS_INFINITY_POS =
         "com.android.wm.shell.multitasking.miuiinfinitymode.positiner.MiuiInfinityModeRatioPositioner"
@@ -102,6 +106,44 @@ object FreeRatio {
     @Volatile private var pendingFreeH = 0
     @Volatile private var pendingAtMs = 0L
     @Volatile private var pendingThread: Thread? = null
+
+    /**
+     * 松手落盘用的自由尺寸（视觉坐标）。
+     *
+     * 拖动中改 `scaleY` 只能让**视觉**自由；抬手时
+     * `MiuiFreeformModeAnimation$3#onContinuousAnimationUp` 会走
+     * `wct.setBounds(token, destinationBounds)` 把系统的等比 rect 提交给 WindowManager，
+     * 于是尺寸又被拉回等比 —— 真机上表现为"能拉动，一松手就弹回原比例"。
+     *
+     * 这里单独记一份，由 `WindowContainerTransaction#setBounds` 消费，把落盘尺寸改对。
+     * 与 `pendingFreeH` 分开是因为后者会被 `setAnimParam` 每帧消费清空。
+     */
+    @Volatile private var landFreeH = 0
+    @Volatile private var landFreeW = 0
+    @Volatile private var landTaskW = 0
+    @Volatile private var landAtMs = 0L
+
+    /**
+     * 落盘时必须的换算系数（★ 0.6.17 修正的关键）。
+     *
+     * dexdump 证据：`handleResize` 里
+     * ```
+     * scale = result.width() / taskInfo.getBounds().width();  // 分母是 **task 宽度**
+     * setAnimParam(taskBounds, scale, scale, 0f);
+     * ```
+     * 而 `getWidth() = taskBounds.width()  * scaleX`、`getHeight() = taskBounds.height() * scaleY`。
+     * 抬手时 `applyResizeAnimation` 取 `getCurrentBounds()`（= **taskBounds 原样**，尺寸**不乘** scale）
+     * 去 `setBounds`，另把 `getScaleX()` 存进 `MiuiFreeFormInfoChange.setMiuiFreeformScale`。
+     *
+     * 也就是说**真正落盘的物理量是「task 高 + scale」，视觉高 = task 高 × scale**。
+     * 所以写回时必须 `task 高 = 视觉高 / scale`；0.6.16 直接把视觉高写进 task 高，
+     * 差了整整一个 scale 倍（本机 ≈1.14），表现为"松手后尺寸不对 / 仍按原比例"。
+     */
+    @Volatile private var landScaleX = 0f
+    /** 落盘时那一帧的 task 高度（诊断用：核对 rect.height 是否就是这个值）。 */
+    @Volatile private var landTaskH = 0
+    /** 诊断去重：记录已经打过日志的那一帧时间戳。 */
+    @Volatile private var landDiagAt = 0L
 
     fun install(m: MainHook, cl: ClassLoader) {
         val form = DeviceForm.current
@@ -124,6 +166,8 @@ object FreeRatio {
             .onFailure { Logx.e("无极调节: 安装 miuifreeform 链路失败", it) }
         runCatching { installAnimTarget(m, cl) }
             .onFailure { Logx.e("无极调节: 安装动画高度通道失败", it) }
+        runCatching { installLanding(m, cl) }
+            .onFailure { Logx.e("无极调节: 安装松手落盘通道失败", it) }
     }
 
     // ---------------- 主链路：miuifreeform ----------------
@@ -172,8 +216,20 @@ object FreeRatio {
             method.isAccessible = true
             m.hookExecutable(method, XposedInterface.Hooker { chain ->
                 val ret = chain.proceed()
-                // 热路径：只读 volatile；异常一律吞掉，绝不影响系统自身缩放
-                runCatching { freeHeight(chain, ret, iF2, iF4, iRect, iInfo) } ?: ret
+                // ⚠ 绝对不能写成 `runCatching { ... } ?: ret`：
+                //   runCatching 返回的是 kotlin.Result 对象，`?:` 判的是它是否为 null（永不为 null），
+                //   于是会把整个 Result 当成返回值交给 libxposed ⇒
+                //     ClassCastException: Return value's type from hook callback does not match
+                //       the hooked method
+                //   ⇒ SystemUI 在 wmshell.main 线程直接 FATAL（0.6.13 实测，一拖角就崩）。
+                // 必须 getOrNull() 取出真实值，并且再做一次类型白名单，任何异常都退回系统原值。
+                val patched = try {
+                    freeHeight(chain, ret, iF2, iF4, iRect, iInfo)
+                } catch (t: Throwable) {
+                    Logx.v("无极调节: 计算自由高度异常，退回原值: $t")
+                    null
+                }
+                if (patched is Rect) patched else ret
             })
         } catch (t: Throwable) {
             Logx.e("无极调节: hook calBoundsAfterMoving 失败", t)
@@ -222,28 +278,88 @@ object FreeRatio {
 
         val minH = (baseH / 4).coerceAtLeast(120)
         val free = Rect(out)
+        val h = when {
+            // 上边跟着手：底边固定
+            ctrl and 4 != 0 -> baseH - dy
+            // 下边跟着手：顶边固定
+            ctrl and 8 != 0 -> baseH + dy
+            // 纯左右手柄（只有 1/2 位）：高度本就该不变，不干预
+            else -> return null
+        }.toInt().coerceIn(minH, maxOf(minH, maxHeightPx))
+
         when {
-            ctrl and 4 != 0 -> {
-                // 上边跟着手：底边固定
-                val h = (baseH - dy).toInt().coerceAtLeast(minH)
-                free.top = free.bottom - h
-            }
-            ctrl and 8 != 0 -> {
-                // 下边跟着手：顶边固定
-                val h = (baseH + dy).toInt().coerceAtLeast(minH)
-                free.bottom = free.top + h
-            }
-            else -> return null   // 纯左右手柄：高度本就该不变
+            ctrl and 4 != 0 -> free.top = free.bottom - h
+            else -> free.bottom = free.top + h
         }
-        if (free.height() == out.height() && free.top == out.top) return null
+        // ⚠ 这里**不能**"高度没变就 return null"。
+        //   纯横向拖动（dy=0）时 h 恰好等于 baseH，正是要靠这次覆盖把高度钉回原值；
+        //   否则系统会拿新的宽度按原宽高比把高度一起放大 —— 那还是等比，只是换了个方向。
+        //   同理，只有 dy==0 且宽度也没变（手指没动）时后面 setAnimParam 的 sy 才会≈1，
+        //   开销可以忽略。
 
         // 位置这一步就定了（下面 offsetTo 用的是 result.left/top）；
         // 尺寸要等紧随其后的 setAnimParam 把 scaleY 换掉，这里先把目标高度挂出去。
         pendingFreeH = free.height()
         pendingAtMs = SystemClock.uptimeMillis()
         pendingThread = Thread.currentThread()
-        Logx.v("无极调节: 帧内目标 ctrl=$ctrl dy=$dy 等比高=${out.height()} → 自由高=${free.height()}")
+        // 同时记一份给"松手落盘"用（见 landFreeH 注释）
+        landFreeH = free.height()
+        landFreeW = free.width()
+        // 落盘的 rect 到底用视觉宽度还是任务宽度，不同 ROM 不一样（实测本机
+        // taskBounds=919 而 currentBounds=1049，差一个 leash scale），两种都记下来。
+        landTaskW = runCatching {
+            (info.javaClass.getMethod("getTaskBounds").invoke(info) as? Rect)?.width() ?: 0
+        }.getOrDefault(0)
+        landAtMs = pendingAtMs
+        logHotZoneOnce(info, base)
+        Logx.v(
+            "无极调节: 帧内目标 ctrl=$ctrl dy=$dy baseH=$baseH 等比高=${out.height()} → 自由高=$h"
+        )
         return free
+    }
+
+    @Volatile private var hotLogged = false
+
+    /**
+     * 一次性把「角柄热区」的真实尺寸打进日志（诊断用）。
+     *
+     * dex 证据（`MiuiFreeformModeTaskInfo#updateLeftResizeRegion`）：
+     * ```
+     * hot = Rect(0, 0, mResizeWidth + mHotSpaceWidthOffset, mResizeHeight + mHotSpaceBottomOffset)
+     * hot.offsetTo(bounds.left - mHotSpaceWidthOffset, bounds.bottom - mResizeHeight)
+     * ```
+     * 也就是说热区贴着 **task bounds** 的角，而不是视觉角 —— 视觉窗口按 scale 放大过，
+     * 两者差一截，自动化拖动时按视觉角点去点必然落空。把真实数值打出来就不用猜。
+     */
+    private fun logHotZoneOnce(info: Any, base: Rect) {
+        if (hotLogged) return
+        hotLogged = true
+        runCatching {
+            val c = info.javaClass
+            fun i(n: String): Int = runCatching {
+                c.getMethod("get${n.replaceFirstChar { it.uppercase() }}").invoke(info) as Int
+            }.getOrElse {
+                runCatching {
+                    c.getDeclaredField("m$n").also { it.isAccessible = true }.getInt(info)
+                }.getOrDefault(-1)
+            }
+            val rw = i("ResizeWidth")
+            val rh = i("ResizeHeight")
+            val ow = i("HotSpaceWidthOffset")
+            val oh = i("HotSpaceBottomOffset")
+            val tb = runCatching {
+                (c.getMethod("getTaskBounds").invoke(info) as? Rect)?.toShortString()
+            }.getOrNull()
+            Logx.always(
+                "无极调节: 角柄热区 resizeW=$rw resizeH=$rh offW=$ow offB=$oh " +
+                        "（热区 ${rw + ow}x${rh + oh}，贴 base 角 $base，task=$tb）"
+            )
+        }
+    }
+
+    /** 高度上限：屏幕高（防止往上/下拖出屏幕外，系统对 freeform 不一定钳制）。 */
+    private val maxHeightPx: Int by lazy {
+        runCatching { Resources.getSystem().displayMetrics.heightPixels }.getOrDefault(4000)
     }
 
     // ---------------- 关键通道：把 scaleY 换成自由高度 ----------------
@@ -296,6 +412,12 @@ object FreeRatio {
                 val bounds = chain.getArg(0) as? Rect
                 val oldH = bounds?.height() ?: 0
                 if (oldH <= 0) return@Hooker chain.proceed()
+                // ★ 落盘基准：这一帧的 scaleX（系统会原样存成 miuiFreeformScale）与 task 高度。
+                //   抬手时 `setBounds` 收到的是 taskBounds（尺寸**不乘** scale），
+                //   所以写回时要 `taskH = 视觉高 / landScaleX`（见 landScaleX 注释）。
+                landScaleX = (chain.getArg(1) as? Float) ?: 1f
+                landTaskH = oldH
+                landAtMs = SystemClock.uptimeMillis()
                 val sy = fh.toFloat() / oldH
                 if (sy.isNaN() || sy <= 0.05f || sy > 20f) return@Hooker chain.proceed()
 
@@ -318,6 +440,90 @@ object FreeRatio {
             false
         }
         Logx.always("无极调节: 动画高度通道已挂 ${if (ok) 1 else 0}/1（开关=${Cfg.freeRatio}）")
+    }
+
+    // ---------------- 松手落盘：把提交给 WindowManager 的尺寸改对 ----------------
+
+    /**
+     * 抬手时 `MiuiFreeformModeAnimation$3#onContinuousAnimationUp` 会走
+     * `WindowContainerTransaction#setBounds(token, destinationBounds)` 把系统算的**等比** rect
+     * 提交给 WindowManager —— 这一步会把刚才拖动中的自由高度整个覆盖掉。
+     *
+     * 这里拦一次 `setBounds`：用「宽度对得上 + 距最后一次 resize 帧不超过 2s」两个条件
+     * 锁定那一次落盘，只把 `bottom` 换成**换算到 task 空间**的自由高度，其余（位置、宽度、token）
+     * 原样保留。换算公式 `task 高 = 视觉高 / scaleX` 的推导见 `landScaleX` 字段注释。
+     */
+    private fun installLanding(m: MainHook, cl: ClassLoader) {
+        val cls = runCatching { Class.forName(CLS_WCT, false, cl) }.getOrNull()
+        if (cls == null) {
+            Logx.e("无极调节: 找不到 $CLS_WCT（松手后无法保持自由比例）")
+            return
+        }
+        val method = cls.declaredMethods.firstOrNull {
+            it.name == "setBounds" && it.parameterCount == 2 &&
+                    it.parameterTypes[1] == Rect::class.java
+        }
+        if (method == null) {
+            Logx.e(
+                "无极调节: setBounds 签名不符（实际 " +
+                        cls.declaredMethods.filter { it.name == "setBounds" }
+                            .joinToString("|") { md ->
+                                md.name + "(" + md.parameterTypes.joinToString(",") { it.simpleName } + ")"
+                            } + "）"
+            )
+            return
+        }
+        val ok = try {
+            method.isAccessible = true
+            m.hookExecutable(method, XposedInterface.Hooker { chain ->
+                val rect = chain.getArg(1) as? Rect
+                val fh = landFreeH
+                if (rect == null || fh <= 0 || !Cfg.freeRatio ||
+                    SystemClock.uptimeMillis() - landAtMs > 2000L
+                ) {
+                    return@Hooker chain.proceed()
+                }
+                // 宽度对得上才认为是"这次 resize 的落盘"：
+                // 视觉宽度与任务宽度都接受（两者差一个 leash scale，不同 ROM 取值不同）
+                val wMatch = kotlin.math.abs(rect.width() - landFreeW) <= 8 ||
+                        (landTaskW > 0 && kotlin.math.abs(rect.width() - landTaskW) <= 8)
+                if (!wMatch) {
+                    // 诊断：每次 resize 只打一条（用 always，否则开关 log=false 时无从排查）
+                    if (landDiagAt != landAtMs) {
+                        landDiagAt = landAtMs
+                        Logx.always(
+                            "无极调节: setBounds 未匹配 rect宽=${rect.width()} " +
+                                    "视觉=$landFreeW 任务=$landTaskW 高=${rect.height()}"
+                        )
+                    }
+                    return@Hooker chain.proceed()
+                }
+                // 一次落盘只改一次，避免影响后续无关的 setBounds
+                landFreeH = 0
+                // ★ 视觉高 → task 高：task 高 = 视觉高 / scale（见 landScaleX 注释）
+                val sx = landScaleX
+                val wantTaskH = when {
+                    sx > 0.05f && sx < 20f -> (fh / sx).toInt()
+                    // 拿不到 scale 时退回旧行为（尺寸会偏一个 scale 倍，但总比等比强）
+                    else -> fh
+                }
+                if (wantTaskH <= 0) return@Hooker chain.proceed()
+                val args = chain.args.toTypedArray()
+                val nb = Rect(rect)
+                nb.bottom = nb.top + wantTaskH
+                args[1] = nb
+                Logx.always(
+                    "无极调节: 松手落盘 视觉高 $fh → task 高 $wantTaskH" +
+                            "（scaleX=$sx，收到 rect 高 ${rect.height()} 宽 ${rect.width()}，" +
+                            "落盘后视觉高=${(wantTaskH * sx).toInt()}）"
+                )
+                chain.proceed(args)
+            })
+        } catch (t: Throwable) {
+            Logx.e("无极调节: hook setBounds 失败", t)
+            false
+        }
+        Logx.always("无极调节: 松手落盘通道已挂 ${if (ok) 1 else 0}/1（开关=${Cfg.freeRatio}）")
     }
 
     // ---------------- 平板：miuiinfinitymode（无极小窗） ----------------

@@ -8,6 +8,9 @@
 #
 # 用法： ./tools/fix-lsposed-module.sh
 set -euo pipefail
+# 一律指定序列号：本机常同时存在无线 tls transport（adb-xxxx._adb-tls-connect._tcp），
+# 裸 adb 会报 "more than one device/emulator"。ADB_SERIAL 为空时退回裸 adb。
+adb() { command adb ${ADB_SERIAL:+-s "$ADB_SERIAL"} "$@"; }
 PKG=com.abel.os4freeformx
 # 临时工作目录：默认用 mktemp（Linux / macOS / Git Bash 通用，不绑定任何一台机器的绝对路径）。
 # 需要固定位置时用环境变量覆盖： LSPDB_TMP=/tmp/lspdb ./tools/fix-lsposed-module.sh
