@@ -149,6 +149,13 @@ logcat -s NavImmersive                          # 隐藏：start choosing immers
     导致「点击边缘切换比例」失效；
   - 自造档位（35%/65%、任意比例）需要在 `SoScUtilsImpl.findSnapTarget` 处放行。
 
+> **单侧分屏的兜底（v0.7.4）**：竖屏下只把一个应用放进一侧、另一侧是桌面时，
+> 系统松手求吸附目标会得到 **null**，`SplitLayout#snapToTarget` 里直接读
+> `target.snapPosition` → SystemUI 崩（横屏两应用分屏不复现）。
+> `SplitSnapGuard.kt` 钩住这个方法，目标为 null 时改用官方
+> `mFixedSnapTarget` / `calculateNonDismissingSnapTarget(x)` 就地吸附；
+> 都取不到就跳过本次吸附。**正常路径零改动**。
+
 **启用系统自带的比例自定义**（部分档位依赖它）：
 
 ```bash
@@ -195,7 +202,7 @@ adb shell su -c 'killall com.android.systemui'
 
 ## 2. 安装
 
-1. 安装 `dist/OS4FreeFromX-v0.7.3.apk`；
+1. 安装 `dist/OS4FreeFromX-v0.7.4.apk`；
 2. 在 LSPosed 里启用模块，并勾选作用域：**系统框架** + **系统界面**；
 3. 按需执行 §1.2 的 `setprop`；
 4. 重启 SystemUI 载入新 dex：`adb shell su -c 'killall com.android.systemui'`；
