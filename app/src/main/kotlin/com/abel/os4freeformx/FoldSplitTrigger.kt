@@ -69,14 +69,10 @@ object FoldSplitTrigger {
 
     /**
      * 进入折叠判定的落差阈值（折下去多少度才认为用户"开始折了"）。
-     * **默认 20° = 原有手感**；可在设置页改灵敏度：灵敏 10° / 标准 20° / 迟钝 35°。
-     * 在传感器线程上读 [Cfg.foldSplitDepth]（volatile 字符串）+ when，无锁、无阻塞。
+     * 由设置页滑动条给出，**范围 10°~90°，默认 15°**。直接读 [Cfg.foldSplitDepth]
+     * （volatile Float，已在 App 侧把旧枚举迁移成数字），无锁、无阻塞。
      */
-    private fun d1(): Float = when (Cfg.foldSplitDepth) {
-        Constants.FOLD_SPLIT_DEPTH_SENSITIVE -> 10f   // 灵敏
-        Constants.FOLD_SPLIT_DEPTH_SLUGGISH -> 35f    // 迟钝
-        else -> 20f                                   // 标准（默认，原行为）
-    }
+    private fun d1(): Float = Cfg.foldSplitDepth
 
     /** 回弹：回到"基线 - D2"以内 ⇒ 认为折完松手了 */
     private const val D2 = 6f

@@ -2,7 +2,7 @@ package com.abel.os4freeformx
 
 /** 模块常量：包名、prefs 名、配置键、目标类名。 */
 object Constants {
-    const val VERSION = "0.7.7"
+    const val VERSION = "0.7.8"
     const val PREFS_CFG = "os4freeformx_cfg"
     const val PREFS_BOUNDS = "os4freeformx_bounds"
     const val AUTHORITY = "com.abel.os4freeformx.store"
@@ -36,7 +36,7 @@ object Constants {
     const val K_FOLD_SPLIT = "fold_split"
     /** 轻折触发时当前应用留在哪一侧。取值为 [FOLD_SPLIT_LEFT] / [FOLD_SPLIT_RIGHT]。 */
     const val K_FOLD_SPLIT_SIDE = "fold_split_side"
-    /** 轻折触发灵敏度（折下去多少度才判定为"开始折"）。取值见 [FOLD_SPLIT_DEPTH_SENSITIVE] 等。 */
+    /** 轻折触发灵敏度（折下去多少度才判定为"开始折"）。现已改为 10~90° 滑动条，存的是角度数字（Float）。 */
     const val K_FOLD_SPLIT_DEPTH = "fold_split_depth"
     // 注：原 K_RESIZE（"允许拖动调整尺寸"）是死开关：值存了、也读了，但全库没有任何代码用它，
     //     已移除（角柄缩放本来就是 MIUI 原生行为，模块不接管）。
@@ -96,11 +96,14 @@ object Constants {
     // 轻折加分屏**默认关**：这个功能会在用户毫无预期的时刻改动屏幕，属于"用户主动开"的那类。
     const val DEF_FOLD_SPLIT = false
     const val DEF_FOLD_SPLIT_SIDE = FOLD_SPLIT_LEFT
-    /** 轻折触发灵敏度档位：灵敏=折约 10° / 标准=折约 20°（默认）/ 迟钝=折约 35°。 */
+    /**
+     * 旧三档灵敏度（v0.7.7 及以前，现已改为 10~90° 滑动条）。仅用于把老配置迁移成数字角度。
+     */
     const val FOLD_SPLIT_DEPTH_SENSITIVE = "sensitive"
     const val FOLD_SPLIT_DEPTH_NORMAL = "normal"
     const val FOLD_SPLIT_DEPTH_SLUGGISH = "sluggish"
-    const val DEF_FOLD_SPLIT_DEPTH = FOLD_SPLIT_DEPTH_NORMAL
+    /** 轻折触发灵敏度默认值：折下去约 15° 才判定为"开始折"（比原"标准 20°"更易触发一点）。单位：度。 */
+    const val DEF_FOLD_SPLIT_DEPTH = 15
     const val DEF_GESTURES = true
     const val DEF_CORNER_FREEFORM = true
     const val DEF_GESTURE_HANDLE = true

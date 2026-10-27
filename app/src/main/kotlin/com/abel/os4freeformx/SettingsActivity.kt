@@ -183,13 +183,9 @@ class SettingsActivity : Activity() {
                 Constants.FOLD_SPLIT_RIGHT to "留在右侧（新一格开在左边）",
             ),
         ) { Cfg.foldSplitSide = it }
-        radioRow(
-            "轻折触发灵敏度（折下去多少度才触发分屏）", Constants.K_FOLD_SPLIT_DEPTH, Cfg.foldSplitDepth,
-            arrayOf(
-                Constants.FOLD_SPLIT_DEPTH_SENSITIVE to "灵敏（折约 10° 即触发）",
-                Constants.FOLD_SPLIT_DEPTH_NORMAL to "标准（折约 20° 触发，默认）",
-                Constants.FOLD_SPLIT_DEPTH_SLUGGISH to "迟钝（折约 35° 才触发）",
-            ),
+        sliderRow(
+            "轻折触发灵敏度（折下去多少度才触发分屏）", Constants.K_FOLD_SPLIT_DEPTH,
+            Cfg.foldSplitDepth, 10, 90, "°"
         ) { Cfg.foldSplitDepth = it }
 
         section("通知栏")
@@ -391,14 +387,14 @@ class SettingsActivity : Activity() {
         })
     }
 
-    private fun sliderRow(title: String, key: String, value: Float, min: Int, max: Int, onChange: (Float) -> Unit) {
+    private fun sliderRow(title: String, key: String, value: Float, min: Int, max: Int, unit: String = "dp", onChange: (Float) -> Unit) {
         val (mainTitle, note) = parseTitle(title)
         val row = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(0, dp(6), 0, dp(6))
         }
         val label = TextView(this).apply {
-            text = "$mainTitle：${value.toInt()}dp"
+            text = "$mainTitle：${value.toInt()}$unit"
             textSize = 13f
             setTextColor(Color.parseColor("#111114"))
         }
@@ -410,7 +406,7 @@ class SettingsActivity : Activity() {
             setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                 override fun onProgressChanged(s: SeekBar?, prog: Int, fromUser: Boolean) {
                     val v = (prog + min).toFloat()
-                    label.text = "$title：${v.toInt()}dp"
+                    label.text = "$mainTitle：${v.toInt()}$unit"
                     if (fromUser) {
                         AppPrefs.putFloat(this@SettingsActivity, key, v)
                         onChange(v)

@@ -25,7 +25,8 @@ object Cfg {
     // 轻折加分屏（折叠屏）
     @Volatile var foldSplit = Constants.DEF_FOLD_SPLIT
     @Volatile var foldSplitSide = Constants.DEF_FOLD_SPLIT_SIDE
-    @Volatile var foldSplitDepth = Constants.DEF_FOLD_SPLIT_DEPTH
+    /** 轻折触发灵敏度：进入判定需折下去的落差（度）。10~90 可调，默认 15°。 */
+    @Volatile var foldSplitDepth = Constants.DEF_FOLD_SPLIT_DEPTH.toFloat()
     @Volatile var gestures = Constants.DEF_GESTURES
     @Volatile var cornerFreeform = Constants.DEF_CORNER_FREEFORM
     @Volatile var gestureHandle = Constants.DEF_GESTURE_HANDLE
@@ -104,8 +105,27 @@ object Cfg {
 
     /** 模块 App 自身进程 */
     fun attachLocal(ctx: Context) {
+        migrateOldDepth(ctx)
         sp = ctx.getSharedPreferences(Constants.PREFS_CFG, Context.MODE_PRIVATE)
         reload()
+    }
+
+    /**
+     * 把 v0.7.7 及以前的三档灵敏度枚举（"sensitive"/"normal"/"sluggish"）迁移成数字角度，
+     * 写回成 Float。这样老用户升级后不会因类型不匹配掉回默认，也能继续用滑动条微调。
+     * 已经不是字符串（已是 Float 或键不存在）则不动。
+     */
+    private fun migrateOldDepth(ctx: Context) {
+        val p = ctx.getSharedPreferences(Constants.PREFS_CFG, Context.MODE_PRIVATE)
+        val raw = runCatching { p.all[Constants.K_FOLD_SPLIT_DEPTH] }.getOrNull()
+        if (raw !is String) return
+        val deg = when (raw) {
+            Constants.FOLD_SPLIT_DEPTH_SENSITIVE -> 10f
+            Constants.FOLD_SPLIT_DEPTH_SLUGGISH -> 35f
+            else -> Constants.DEF_FOLD_SPLIT_DEPTH.toFloat()   // normal 或未知 → 默认 15°
+        }
+        AppPrefs.putFloat(ctx, Constants.K_FOLD_SPLIT_DEPTH, deg)
+        Logx.once("depthMigrate", "轻折灵敏度旧值=$raw 已迁移为 ${deg.toInt()}°")
     }
 
     fun reload() {
@@ -125,8 +145,11 @@ object Cfg {
             foldSplit = p.getBoolean(Constants.K_FOLD_SPLIT, Constants.DEF_FOLD_SPLIT)
             foldSplitSide = p.getString(Constants.K_FOLD_SPLIT_SIDE, Constants.DEF_FOLD_SPLIT_SIDE)
                 ?: Constants.DEF_FOLD_SPLIT_SIDE
-            foldSplitDepth = p.getString(Constants.K_FOLD_SPLIT_DEPTH, Constants.DEF_FOLD_SPLIT_DEPTH)
-                ?: Constants.DEF_FOLD_SPLIT_DEPTH
+            // ⚠ 旧版把灵敏度存成字符串枚举（"normal" 等），本版改成 Float 角度。
+            // 老值若还在，getFloat 会抛 ClassCastException —— 用 runCatching 兜住，回退默认，绝不连累其它配置。
+            foldSplitDepth = runCatching {
+                p.getFloat(Constants.K_FOLD_SPLIT_DEPTH, Constants.DEF_FOLD_SPLIT_DEPTH.toFloat())
+            }.getOrNull() ?: Constants.DEF_FOLD_SPLIT_DEPTH.toFloat()
             gestures = p.getBoolean(Constants.K_GESTURES, Constants.DEF_GESTURES)
             cornerFreeform = p.getBoolean(Constants.K_CORNER_FREEFORM, Constants.DEF_CORNER_FREEFORM)
             gestureHandle = p.getBoolean(Constants.K_GESTURE_HANDLE, Constants.DEF_GESTURE_HANDLE)
@@ -249,8 +272,9 @@ object Cfg {
             foldSplit = b.getBoolean(Constants.K_FOLD_SPLIT, Constants.DEF_FOLD_SPLIT)
             foldSplitSide = b.getString(Constants.K_FOLD_SPLIT_SIDE, Constants.DEF_FOLD_SPLIT_SIDE)
                 ?: Constants.DEF_FOLD_SPLIT_SIDE
-            foldSplitDepth = b.getString(Constants.K_FOLD_SPLIT_DEPTH, Constants.DEF_FOLD_SPLIT_DEPTH)
-                ?: Constants.DEF_FOLD_SPLIT_DEPTH
+            foldSplitDepth = runCatching {
+                b.getFloat(Constants.K_FOLD_SPLIT_DEPTH, Constants.DEF_FOLD_SPLIT_DEPTH.toFloat())
+            }.getOrNull() ?: Constants.DEF_FOLD_SPLIT_DEPTH.toFloat()
             gestures = b.getBoolean(Constants.K_GESTURES, Constants.DEF_GESTURES)
             cornerFreeform = b.getBoolean(Constants.K_CORNER_FREEFORM, Constants.DEF_CORNER_FREEFORM)
             gestureHandle = b.getBoolean(Constants.K_GESTURE_HANDLE, Constants.DEF_GESTURE_HANDLE)
