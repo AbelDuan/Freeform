@@ -252,7 +252,7 @@ adb shell su -c 'killall com.android.systemui'
 
 ## 2. 安装
 
-1. 安装 `dist/OS4FreeFromX-v0.7.6.apk`；
+1. 安装 `dist/OS4FreeFromX-v0.7.7.apk`；
 2. 在 LSPosed 里启用模块，并勾选作用域：**系统框架** + **系统界面**；
 3. 按需执行 §1.2 的 `setprop`；
 4. 重启 SystemUI 载入新 dex：`adb shell su -c 'killall com.android.systemui'`；

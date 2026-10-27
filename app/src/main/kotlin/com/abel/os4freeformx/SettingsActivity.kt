@@ -258,12 +258,29 @@ class SettingsActivity : Activity() {
         setContentView(outer)
     }
 
+    /**
+     * 把标题拆成「主标题 + 括号备注」：括号内的说明文字不再跟主标题挤在一行，
+     * 而是作为灰色小字单独成行（见各 row 的 note 渲染）。无括号则返回原样、note=null。
+     */
+    private fun parseTitle(title: String): Pair<String, String?> {
+        val m = Regex("""^(.*?)\s*[（(]([^（）()]*)[）)]\s*$""").find(title.trim())
+        return if (m != null) m.groupValues[1].trim() to m.groupValues[2].trim()
+        else title.trim() to null
+    }
+
     private fun section(title: String) {
+        val (main, note) = parseTitle(title)
         body.addView(TextView(this).apply {
-            text = title
+            text = main
             textSize = 14f
             setTextColor(Color.parseColor("#3B6EF5"))
-            setPadding(0, dp(16), 0, dp(4))
+            setPadding(0, dp(16), 0, dp(2))
+        })
+        if (note != null) body.addView(TextView(this).apply {
+            text = note
+            textSize = 11f
+            setTextColor(Color.parseColor("#999999"))
+            setPadding(0, dp(2), 0, dp(4))
         })
     }
 
@@ -306,16 +323,27 @@ class SettingsActivity : Activity() {
     }
 
     private fun switchRow(title: String, key: String, checked: Boolean, onChange: (Boolean) -> Unit) {
-        body.addView(Switch(this).apply {
-            text = title
+        val (main, note) = parseTitle(title)
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(0, dp(4), 0, dp(4))
+        }
+        row.addView(Switch(this).apply {
+            text = main
             textSize = 14f
             isChecked = checked
-            setPadding(0, dp(4), 0, dp(4))
             setOnCheckedChangeListener { _, v ->
                 AppPrefs.putBoolean(this@SettingsActivity, key, v)
                 onChange(v)
             }
         })
+        if (note != null) row.addView(TextView(this).apply {
+            text = note
+            textSize = 11f
+            setTextColor(Color.parseColor("#999999"))
+            setPadding(0, dp(1), 0, dp(2))
+        })
+        body.addView(row)
     }
 
     /**
@@ -329,17 +357,27 @@ class SettingsActivity : Activity() {
         options: Array<Pair<String, String>>,
         onChange: (String) -> Unit,
     ) {
+        val (main, note) = parseTitle(title)
         body.addView(TextView(this).apply {
-            text = title
+            text = main
             textSize = 13f
             setTextColor(Color.parseColor("#111114"))
             setPadding(dp(4), dp(8), 0, dp(2))
         })
+        if (note != null) body.addView(TextView(this).apply {
+            text = note
+            textSize = 11f
+            setTextColor(Color.parseColor("#999999"))
+            setPadding(dp(4), 0, 0, dp(2))
+        })
         body.addView(RadioGroup(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(4), 0, 0, dp(2))
-            options.forEach { (v, label) ->
+            options.forEachIndexed { idx, (v, label) ->
                 addView(RadioButton(this@SettingsActivity).apply {
+                    // 关键：每个 RadioButton 必须有唯一 id，否则 RadioGroup 无法区分、
+                    // 切换时旧选项的实心点不会被清除（本机实测复现的 bug）。
+                    id = View.generateViewId()
                     text = label
                     textSize = 14f
                     isChecked = value == v
@@ -354,12 +392,13 @@ class SettingsActivity : Activity() {
     }
 
     private fun sliderRow(title: String, key: String, value: Float, min: Int, max: Int, onChange: (Float) -> Unit) {
+        val (mainTitle, note) = parseTitle(title)
         val row = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(0, dp(6), 0, dp(6))
         }
         val label = TextView(this).apply {
-            text = "$title：${value.toInt()}dp"
+            text = "$mainTitle：${value.toInt()}dp"
             textSize = 13f
             setTextColor(Color.parseColor("#111114"))
         }
@@ -383,6 +422,12 @@ class SettingsActivity : Activity() {
         }
         row.addView(label)
         row.addView(seek)
+        if (note != null) row.addView(TextView(this).apply {
+            text = note
+            textSize = 11f
+            setTextColor(Color.parseColor("#999999"))
+            setPadding(0, dp(1), 0, dp(2))
+        })
         body.addView(row)
     }
 
