@@ -208,7 +208,7 @@ adb shell su -c 'killall com.android.systemui'
 
 | 设置项 | 说明 |
 | --- | --- |
-| **轻折一下加分屏** | 总开关，**默认关** —— 它会在用户毫无预期的时刻改动屏幕，属于"用户主动开"的那类 |
+| **轻折一下加分屏** | 总开关，**自 v0.7.9 起默认开**（已写入用户实机配置，新装即生效）；折叠屏轻折一下进分屏已成主力习惯 |
 | **轻折展开方向** | 当前应用留在**左侧**（新格开在右）还是**右侧**（新格开在左），对应 `splitPrimaryTask(pos, taskId)` 的 `pos = 0 / 1` |
 | **轻折触发灵敏度** | 折下去多少度才判定为"开始折"：**10°~90° 滑动条，默认 15°**。数值越小越灵敏（易误触），越大越迟钝（需折更深） | 
 
@@ -252,7 +252,7 @@ adb shell su -c 'killall com.android.systemui'
 
 ## 2. 安装
 
-1. 安装 `dist/OS4FreeFromX-v0.7.8.apk`；
+1. 安装 `dist/OS4FreeFromX-v0.7.9.apk`；
 2. 在 LSPosed 里启用模块，并勾选作用域：**系统框架** + **系统界面**；
 3. 按需执行 §1.2 的 `setprop`；
 4. 重启 SystemUI 载入新 dex：`adb shell su -c 'killall com.android.systemui'`；

@@ -2,7 +2,7 @@ package com.abel.os4freeformx
 
 /** 模块常量：包名、prefs 名、配置键、目标类名。 */
 object Constants {
-    const val VERSION = "0.7.8"
+    const val VERSION = "0.7.9"
     const val PREFS_CFG = "os4freeformx_cfg"
     const val PREFS_BOUNDS = "os4freeformx_bounds"
     const val AUTHORITY = "com.abel.os4freeformx.store"
@@ -93,8 +93,8 @@ object Constants {
     const val DEF_CAPTION_SPLIT_BOTH = true
     const val FOLD_SPLIT_LEFT = "left"
     const val FOLD_SPLIT_RIGHT = "right"
-    // 轻折加分屏**默认关**：这个功能会在用户毫无预期的时刻改动屏幕，属于"用户主动开"的那类。
-    const val DEF_FOLD_SPLIT = false
+    // 轻折加分屏：自 v0.7.9 起**默认开**（= 用户当前配置；折叠屏轻折一下进分屏已成主力习惯，写入默认让新装即生效）。
+    const val DEF_FOLD_SPLIT = true
     const val DEF_FOLD_SPLIT_SIDE = FOLD_SPLIT_LEFT
     /**
      * 旧三档灵敏度（v0.7.7 及以前，现已改为 10~90° 滑动条）。仅用于把老配置迁移成数字角度。
@@ -111,7 +111,9 @@ object Constants {
     const val DEF_GESTURE_HANDLE_TOUCH = true
     const val DEF_GESTURE_HANDLE_IDLE = true
     const val DEF_GESTURE_HANDLE_AREA = 24f
-        const val DEF_NBI_ASSIGN = ""
+        // 导航栏归属默认名单（v0.7.9 起写入用户实机配置：京东/美团/淘宝等取色或隐藏导航栏）。
+        // 格式逐行 "包名=模式"：1=隐藏导航栏 2=导航栏取色。
+        const val DEF_NBI_ASSIGN = "com.jd.jxj=2\ncom.jingdong.app.mall=2\ncom.jzyd.coupon=1\ncom.mybank.android.phone=1\ncom.sankuai.meituan=2\ncom.taobao.taobao=1\ncom.xiaopeng.mycarinfo=2"
     // 魔法窗口：默认关闭（零行为变化，用户在设置里逐个应用打开）
     const val DEF_MAGIC_WINDOW = false
     const val DEF_MAGIC_RATIO_MAP = ""
