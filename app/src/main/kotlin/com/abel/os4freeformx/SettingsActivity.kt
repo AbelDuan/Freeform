@@ -183,6 +183,14 @@ class SettingsActivity : Activity() {
                 Constants.FOLD_SPLIT_RIGHT to "留在右侧（新一格开在左边）",
             ),
         ) { Cfg.foldSplitSide = it }
+        radioRow(
+            "轻折触发灵敏度（折下去多少度才触发分屏）", Constants.K_FOLD_SPLIT_DEPTH, Cfg.foldSplitDepth,
+            arrayOf(
+                Constants.FOLD_SPLIT_DEPTH_SENSITIVE to "灵敏（折约 10° 即触发）",
+                Constants.FOLD_SPLIT_DEPTH_NORMAL to "标准（折约 20° 触发，默认）",
+                Constants.FOLD_SPLIT_DEPTH_SLUGGISH to "迟钝（折约 35° 才触发）",
+            ),
+        ) { Cfg.foldSplitDepth = it }
 
         section("通知栏")
         switchRow(

@@ -36,6 +36,8 @@ object Constants {
     const val K_FOLD_SPLIT = "fold_split"
     /** 轻折触发时当前应用留在哪一侧。取值为 [FOLD_SPLIT_LEFT] / [FOLD_SPLIT_RIGHT]。 */
     const val K_FOLD_SPLIT_SIDE = "fold_split_side"
+    /** 轻折触发灵敏度（折下去多少度才判定为"开始折"）。取值见 [FOLD_SPLIT_DEPTH_SENSITIVE] 等。 */
+    const val K_FOLD_SPLIT_DEPTH = "fold_split_depth"
     // 注：原 K_RESIZE（"允许拖动调整尺寸"）是死开关：值存了、也读了，但全库没有任何代码用它，
     //     已移除（角柄缩放本来就是 MIUI 原生行为，模块不接管）。
     // 手势总开关已移除（用户 2026-10-02）：只保留「左右下角内滑→小窗」这一个手势，常开。
@@ -94,6 +96,11 @@ object Constants {
     // 轻折加分屏**默认关**：这个功能会在用户毫无预期的时刻改动屏幕，属于"用户主动开"的那类。
     const val DEF_FOLD_SPLIT = false
     const val DEF_FOLD_SPLIT_SIDE = FOLD_SPLIT_LEFT
+    /** 轻折触发灵敏度档位：灵敏=折约 10° / 标准=折约 20°（默认）/ 迟钝=折约 35°。 */
+    const val FOLD_SPLIT_DEPTH_SENSITIVE = "sensitive"
+    const val FOLD_SPLIT_DEPTH_NORMAL = "normal"
+    const val FOLD_SPLIT_DEPTH_SLUGGISH = "sluggish"
+    const val DEF_FOLD_SPLIT_DEPTH = FOLD_SPLIT_DEPTH_NORMAL
     const val DEF_GESTURES = true
     const val DEF_CORNER_FREEFORM = true
     const val DEF_GESTURE_HANDLE = true

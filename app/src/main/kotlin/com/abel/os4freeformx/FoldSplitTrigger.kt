@@ -67,8 +67,16 @@ object FoldSplitTrigger {
     /** 两次触发之间的最小间隔 */
     private const val COOLDOWN_MS = 1_500L
 
-    /** 进入：比展开基线低这么多度 ⇒ 认为用户开始折了 */
-    private const val D1 = 20f
+    /**
+     * 进入折叠判定的落差阈值（折下去多少度才认为用户"开始折了"）。
+     * **默认 20° = 原有手感**；可在设置页改灵敏度：灵敏 10° / 标准 20° / 迟钝 35°。
+     * 在传感器线程上读 [Cfg.foldSplitDepth]（volatile 字符串）+ when，无锁、无阻塞。
+     */
+    private fun d1(): Float = when (Cfg.foldSplitDepth) {
+        Constants.FOLD_SPLIT_DEPTH_SENSITIVE -> 10f   // 灵敏
+        Constants.FOLD_SPLIT_DEPTH_SLUGGISH -> 35f    // 迟钝
+        else -> 20f                                   // 标准（默认，原行为）
+    }
 
     /** 回弹：回到"基线 - D2"以内 ⇒ 认为折完松手了 */
     private const val D2 = 6f
@@ -214,7 +222,7 @@ object FoldSplitTrigger {
         val ok = runCatching {
             sm.registerListener(listener, sensor, SensorManager.SENSOR_DELAY_GAME, Handler(thread.looper))
         }.getOrDefault(false)
-        Logx.always("轻折加分屏: 折角传感器${if (ok) "已注册 ${sensor.name}" else "注册被拒"}")
+        Logx.always("轻折加分屏: 折角传感器=${sensor.name}(type=${sensor.type}) ${if (ok) "已注册" else "注册被拒"}")
         return ok
     }
 
@@ -275,7 +283,7 @@ object FoldSplitTrigger {
                 state = s
                 return
             }
-            if (a0 > OPEN_MIN && a0 - angle > D1) {
+            if (a0 > OPEN_MIN && a0 - angle > d1()) {
                 state = s.copy(
                     folding = true,
                     foldStartMs = if (s.dropStartMs >= 0L) s.dropStartMs else nowMs,
@@ -315,7 +323,7 @@ object FoldSplitTrigger {
             }
 
             // (d) 回弹②：自谷底明显回升（松手必回弹，不必等它回到展开位）
-            angle - minFold >= D1 -> {
+            angle - minFold >= d1() -> {
                 state = s.copy(folding = false)
                 lastTriggerMs = nowMs
                 Logx.always("轻折加分屏: 轻折回弹（自谷底回升 ${(angle - minFold).f1()}°）历时 ${nowMs - s0.foldStartMs}ms ⇒ 触发")
