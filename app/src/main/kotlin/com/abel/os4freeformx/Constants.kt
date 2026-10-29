@@ -2,7 +2,7 @@ package com.abel.os4freeformx
 
 /** 模块常量：包名、prefs 名、配置键、目标类名。 */
 object Constants {
-    const val VERSION = "0.8.0"
+    const val VERSION = "0.8.1"
     const val PREFS_CFG = "os4freeformx_cfg"
     const val PREFS_BOUNDS = "os4freeformx_bounds"
     const val AUTHORITY = "com.abel.os4freeformx.store"
@@ -206,6 +206,13 @@ object Constants {
     const val CLS_SPLIT_SCREEN_UTILS = "com.android.wm.shell.common.split.SplitScreenUtils"
     /** SoSc 分屏总服务：`supportTopBottomSplitFeature/Device()`、`switchSplitDirection()` 等 */
     const val CLS_SOSC_UTILS_IMPL = "com.android.wm.shell.sosc.SoScUtilsImpl"
+    /**
+     * 多任务「这块屏算不算折叠屏大屏」的总判据：`isFoldInnerScreen(Context)`（**静态**）。
+     * 只有内屏返回 true；它决定全屏应用有没有顶部 ··· 把手（`MiuiDecorationDot` 里
+     * `shouldShowCaptionForWindowingMode()` 的 `windowingMode == 1` 分支）。
+     * 见 CoverSplit.kt。
+     */
+    const val CLS_MULTITASKING_DEVICE_UTILS = "com.android.wm.shell.multitasking.common.MultiTaskingDeviceUtils"
     /** SoSc 分屏协调器：`switchSplitDirection(String)`、`updateDividerFixedState(boolean)` */
     const val CLS_SOSC_STAGE_COORD = "com.android.wm.shell.sosc.SoScStageCoordinator"
     /** 把手菜单未进分屏时的方向来源（`isLeftRightSplit()` 静态） */

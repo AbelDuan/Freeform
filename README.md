@@ -277,11 +277,40 @@ adb shell su -c 'killall com.android.systemui'
 
 > ⚠️ 本开关会同时把「解除分屏方向限制」四个闸门算作打开 —— 外屏起分屏本身就需要这些闸门，
 > 否则 `SplitLayout#updateDynamicLeftRightSplit()` 不会重算方向。
+
+### 1.9 外屏全屏应用的三点把手（v0.8.1，折叠屏专属）
+
+外屏（合上手机）用全屏应用时，**状态栏正中（摄像头挖孔处）会常驻一个 `···`**，点一下就是分屏菜单：
+`全屏 / 左 / 右 / 上 / 下 / 关闭`。内屏一行都不碰。
+
+**系统卡了三处**
+
+| # | 位置 | 系统原始逻辑 | 后果 |
+| --- | --- | --- | --- |
+| 1 | `MiuiDecorationDot#shouldShowCaptionForWindowingMode()` | `windowingMode == 1` 时只有 `isPadDevice() \|\| isFoldInnerScreen(ctx) \|\| 投屏` 才给顶部把手 | 外屏的全屏应用**根本不建把手**（不是隐藏，是没建） |
+| 2 | `MulWinSwitchDecorViewModel#touchedWindowHasCaption(int)` | 全屏任务且 `mIsStatusbarShowing == false` 时直接 `return false` | 把手就算画出来也**点不动** —— 真机日志：`captionTouchRegion=RectF(515,21,653,160) point=(586,154)` 命中，仍被 `refuse touch event when statusbar is hidden` 拒掉 |
+| 3 | `MiuiDecorationDot#updateCaptionGeometry(...)` | `mIsDotAvoidingCutout=true` 时 `dotY = captionHeight - dotRadius`、`mCaptionY = captionOffsetY + dotY - surfaceHeight/2` | 把手被**刻意压到挖孔下沿以下**（中心 y=143，而挖孔中心 y=63） |
+
+**做法**（都挂在「外屏也支持分屏」这个开关下）
+
+1. 把 `MultiTaskingDeviceUtils#isFoldInnerScreen(Context)` 在外屏强行视为真 ——
+   它是多窗口子系统里「这块屏算不算折叠屏大屏」的总判据，第 1 处与「分屏底部小白条位置」
+   （`MulWinSwitchSoScStateListener#updateSoScHomeParams`）一起跟着放开；
+2. `touchedWindowHasCaption` 只在外屏（`isFoldOutScreen(ctx)`）把 false 改成 true；
+3. 结果对象里把 `mCaptionY` 改成 `captionHeight/2 - surfaceHeight/2` ⇒ 把手中心落在状态栏垂直正中
+   （本机 126 ÷ 2 = 63，正好是挖孔 `Rect(557,0-611,126)` 的中心），`mSamplingOffsetY` 同步偏移；
+   用户明确要求「不避位摄像头，让挖孔挡住」。
+
+另外 `SoScUtilsImpl#supportSplitRatio1_9()` 也一并放开（内层是 `isFold() && !isFoldedState()`，
+外屏恒 false）⇒ 外屏与内屏用同一套比例档与吸附判定。
+
+> 真机验证（lhasa / 外屏 1168×1712 / 抖音、微信）：`···` 出现在状态栏正中并能点开菜单，
+> 菜单六个图标完整、不被裁切。分屏比例吸附与「分隔条上滑进最近任务」这两条尚未做真机回归。
 ---
 
 ## 2. 安装
 
-1. 安装 `dist/OS4FreeFromX-v0.8.0.apk`；
+1. 安装 `dist/OS4FreeFromX-v0.8.1.apk`；
 2. 在 LSPosed 里启用模块，并勾选作用域：**系统框架** + **系统界面**；
 3. 按需执行 §1.2 的 `setprop`；
 4. 重启 SystemUI 载入新 dex：`adb shell su -c 'killall com.android.systemui'`；
