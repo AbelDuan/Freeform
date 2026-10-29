@@ -1,9 +1,9 @@
 id=os4_freeformx
 name=OS4FreeFromX
 author=AbelDuan
-description=HyperOS 4 分屏增强：解除分屏方向限制 / 多分屏（3 个及以上）无级调节宽度 / 切换方向保持占比 / 把手菜单同时显示双向分屏 / 手势导航条小白条（跟随手势 · 淡入淡出 · 触摸显隐 · 空闲沉浸）/ 分应用（含折叠态）小窗尺寸记忆 / 沉浸式底栏 / 小窗比例菜单 / 通知栏下滑开小窗 / 魔法窗口
+description=HyperOS 4 分屏增强：解除分屏方向限制 / 多分屏（3 个及以上）无级调节宽度 / 切换方向保持占比 / 把手菜单同时显示双向分屏 / 外屏（合上手机）也支持分屏 / 手势导航条小白条（跟随手势 · 淡入淡出 · 触摸显隐 · 空闲沉浸）/ 分应用（含折叠态）小窗尺寸记忆 / 沉浸式底栏 / 小窗比例菜单 / 通知栏下滑开小窗 / 魔法窗口
 minApiVersion=100
 targetApiVersion=102
 staticScope=true
-version=0.7.9
-versionCode=152
+version=0.8.0
+versionCode=153

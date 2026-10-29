@@ -57,7 +57,7 @@ object SplitDirection {
             Logx.e("解除分屏方向限制: 一个都没挂上（本机 WMShell 类名可能变了，先别开这个开关）")
             return
         }
-        Logx.always("解除分屏方向限制: 已挂 $ok/4（开关=${Cfg.splitUnlockDir}）")
+        Logx.always("解除分屏方向限制: 已挂 $ok/4（开关=${Cfg.splitUnlockDir} 外屏分屏=${Cfg.coverSplit}）")
     }
 
     private fun hookTrue(
@@ -79,7 +79,9 @@ object SplitDirection {
                 // 这些是「能力询问」方法，不在拖动热路径上：顺带节流刷新一次配置，
                 // 让设置页改完开关后不用重启 SystemUI 就能生效（1~2 秒）。
                 Cfg.reloadThrottled()
-                if (Cfg.splitUnlockDir) true else chain.proceed()
+                // 外屏分屏也要这几个闸门：外屏起分屏同样要先「允许这个方向」，
+                // 且 SplitLayout#updateDynamicLeftRightSplit 只在 supportTopBottomSplitFeature() 为真时才重算。
+                if (Cfg.splitUnlockDir || Cfg.coverSplit) true else chain.proceed()
             })) 1 else 0
     }
 
@@ -89,7 +91,7 @@ object SplitDirection {
         var ok = 0
         ok += hookCompat(m, cl, SoScSupport.SPLIT_UTILS_IMPL)
         ok += hookCompat(m, cl, SoScSupport.MULWIN_SPLIT_UTILS)
-        Logx.always("分屏方向判定兼容层: 已挂 $ok/2（依附 解除限制=${Cfg.splitUnlockDir} 双向分屏=${Cfg.captionSplitBoth}）")
+        Logx.always("分屏方向判定兼容层: 已挂 $ok/2（依附 解除限制=${Cfg.splitUnlockDir} 双向分屏=${Cfg.captionSplitBoth} 外屏分屏=${Cfg.coverSplit}）")
     }
 
     private fun hookCompat(m: MainHook, cl: ClassLoader, className: String): Int {
@@ -103,7 +105,7 @@ object SplitDirection {
         }
         return if (m.hookExecutable(method, XposedInterface.Hooker { chain ->
                 // 热路径：两个 volatile 开关读一次即可；都关着就完全不干预
-                val want = if (Cfg.splitUnlockDir || Cfg.captionSplitBoth) {
+                val want = if (Cfg.splitUnlockDir || Cfg.captionSplitBoth || Cfg.coverSplit) {
                     runCatching { SoScSupport.effectiveLeftRightSplit(cl) }.getOrNull()
                 } else {
                     null

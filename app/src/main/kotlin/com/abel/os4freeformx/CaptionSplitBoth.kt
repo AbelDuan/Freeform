@@ -41,7 +41,6 @@ object CaptionSplitBoth {
     private const val ID_TB_BOTTOM = 0x0F0F1004
 
     private val SPLIT_IDS = intArrayOf(ID_LR_LEFT, ID_LR_RIGHT, ID_TB_TOP, ID_TB_BOTTOM)
-
     /** 官方把手菜单里分屏按钮的兜底 id（正常从 WMShell 的 R 类取）。 */
     private const val R_ID_SPLIT_LEFT_OR_TOP = 1879704280
     private const val R_ID_SPLIT_RIGHT_OR_BOTTOM = 1879704281
@@ -50,6 +49,16 @@ object CaptionSplitBoth {
     private const val RES_CONTENT_RIGHT = "drag_shadow_split_right_open"
     private const val RES_CONTENT_TOP = "drag_shadow_split_top_open"
     private const val RES_CONTENT_BOTTOM = "drag_shadow_split_bottom_open"
+
+    /**
+     * 是否要「两对方向都给」。
+     *
+     * - `captionSplitBoth`：内屏原本就有的开关；
+     * - `coverSplit`：外屏（合上手机）也要四个方向。外屏菜单本来被
+     *   `MiuiDecorationDot#isHideSplitButtons()` 整块砍掉，[CoverSplit] 放出来以后
+     *   官方只按当前方向建一对，这里必须同样补另一对，否则外屏依旧只有上下（或只有左右）。
+     */
+    private fun bothDirections(): Boolean = Cfg.captionSplitBoth || Cfg.coverSplit
 
     private var loader: ClassLoader? = null
     private var containerCls: Class<*>? = null
@@ -81,7 +90,7 @@ object CaptionSplitBoth {
             Logx.e("双向分屏: 一个都没挂上（本机把手菜单类名可能变了）")
             return
         }
-        Logx.always("把手菜单双向分屏: 已挂 $ok/3（开关=${Cfg.captionSplitBoth}）")
+        Logx.always("把手菜单双向分屏: 已挂 $ok/3（开关=${Cfg.captionSplitBoth} 外屏分屏=${Cfg.coverSplit}）")
     }
 
     // ---------------- 1) 官方建完一对按钮后补另一对 ----------------
@@ -95,7 +104,7 @@ object CaptionSplitBoth {
                 val r = chain.proceed()
                 // 菜单构建不在热路径上：顺带节流刷新配置，改完开关打开一次菜单即可生效
                 Cfg.reloadThrottled()
-                if (Cfg.captionSplitBoth) {
+                if (bothDirections()) {
                     runCatching { addOppositeSplitPair(chain) }
                         .onFailure { Logx.e("双向分屏: 补另一方向按钮失败", it) }
                 }
@@ -176,12 +185,12 @@ object CaptionSplitBoth {
         }
         return if (m.hookExecutable(method, XposedInterface.Hooker { chain ->
                 val args = chain.args.toMutableList()
-                if (Cfg.captionSplitBoth) {
+                if (bothDirections()) {
                     runCatching { widenMenuWindow(chain.thisObject, args) }
                         .onFailure { Logx.e("双向分屏: 补宽菜单失败", it) }
                 }
                 val r = chain.proceed(args.toTypedArray())
-                if (Cfg.captionSplitBoth) {
+                if (bothDirections()) {
                     runCatching { attachOwnListeners(chain.thisObject, args.getOrNull(0) as? ViewGroup) }
                         .onFailure { Logx.e("双向分屏: 挂按钮监听失败", it) }
                 }

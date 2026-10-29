@@ -248,11 +248,40 @@ adb shell su -c 'killall com.android.systemui'
 > 实现思路来自 HyperPlus v0.9.0-alpha（`FoldJudge.kt` / `SplitTrigger.kt`，AGPL-3.0），
 > 按其公开的行为规格重写；绑定的类名均在机上 dex 里逐个 grep 验证过。
 
+### 1.8 外屏也能分屏（v0.8.0 新增，折叠屏专属）
+
+合上手机用**外屏**时，··· 菜单里跟内屏一样给出 `全屏 / 左 / 右 / 上 / 下 / 小窗 / 关闭`，
+点哪个方向就进哪个方向；内屏行为完全不变。实现见 `CoverSplit.kt`。
+
+**系统卡了两处（都是机型特化的外屏逻辑，已在机 dex 里逐条核对）**
+
+| # | 位置 | 系统原始逻辑 | 后果 |
+| --- | --- | --- | --- |
+| 1 | `MiuiDecorationDot#isHideSplitButtons()` | `isDevice("lhasa") && MultiTaskingDeviceUtils.isFoldOutScreen(ctx)` | 外屏 `···` 菜单**一个分屏按钮都不建**（`init` 的第 7 个参数为 true 时直接跳过），连灰掉的“不支持”图标都没有 → 用户看到的就是“外屏没有分屏菜单” |
+| 2 | `SplitScreenUtils#isLeftRightSplit(allowLR, isLargeScreen, isLandscape)` | `allowLR && isLargeScreen ? SplitUtilsImpl.isLeftRightSplit() : isLandscape()` | 外屏 `smallestScreenWidthDp < 600` ⇒ `mIsLargeScreen=false` ⇒ **恒走第二行**：竖屏只能上下、横屏只能左右，菜单里选的方向被静默丢弃 |
+
+内屏 `smallestScreenWidthDp ≥ 600`（`1672px ÷ 2.75 ≈ 608dp`），两处都正常 —— 这就是“内外屏不一样”的全部原因。
+
+**做法**（只翻两个开关，不复制系统逻辑）
+
+1. `isHideSplitButtons()` 想返回 true 时改回 false ⇒ 菜单重新建出分屏按钮；
+   菜单宽度是同一路标志算的（`3 + (hide ? 0 : 2) + 多实例 + 投屏`），所以不用另补宽度；
+   再叠加 §1.6 的「补另一方向一对按钮」⇒ 四个方向齐活；
+2. 两个 `SplitScreenUtils#isLeftRightSplit` 静态入口（`sosc…(Z,Z,Z)` 与 `common…(Z,Z,Z,I)`）
+   在 `isLargeScreen == false` 时改为返回 `SoScSupport.effectiveLeftRightSplit()`
+   （`左右 = 横屏 == 动态方向标志`，与内屏同一条判定）；于是 `ensureDirection()` 翻转动态标志后
+   布局真的会跟着翻，“点左就进左”在外屏同样成立。
+
+> 只在外屏（`isLargeScreen == false`）且确认是折叠屏（`SoScUtilsImpl.isFold()`）时才接管，内屏路径一行不碰。
+> 开关「外屏也支持分屏」默认开，关掉立刻恢复系统原行为（热开关，不用重启 SystemUI）。
+
+> ⚠️ 本开关会同时把「解除分屏方向限制」四个闸门算作打开 —— 外屏起分屏本身就需要这些闸门，
+> 否则 `SplitLayout#updateDynamicLeftRightSplit()` 不会重算方向。
 ---
 
 ## 2. 安装
 
-1. 安装 `dist/OS4FreeFromX-v0.7.9.apk`；
+1. 安装 `dist/OS4FreeFromX-v0.8.0.apk`；
 2. 在 LSPosed 里启用模块，并勾选作用域：**系统框架** + **系统界面**；
 3. 按需执行 §1.2 的 `setprop`；
 4. 重启 SystemUI 载入新 dex：`adb shell su -c 'killall com.android.systemui'`；

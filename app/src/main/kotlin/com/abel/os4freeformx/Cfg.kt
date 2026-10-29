@@ -22,6 +22,8 @@ object Cfg {
     @Volatile var multiSplitFree = Constants.DEF_MULTI_SPLIT_FREE
     @Volatile var splitRatioKeep = Constants.DEF_SPLIT_RATIO_KEEP
     @Volatile var captionSplitBoth = Constants.DEF_CAPTION_SPLIT_BOTH
+    /** 外屏（合上手机后的那块屏）也支持分屏。实现见 CoverSplit.kt。 */
+    @Volatile var coverSplit = Constants.DEF_COVER_SPLIT
     // 轻折加分屏（折叠屏）
     @Volatile var foldSplit = Constants.DEF_FOLD_SPLIT
     @Volatile var foldSplitSide = Constants.DEF_FOLD_SPLIT_SIDE
@@ -142,6 +144,7 @@ object Cfg {
             multiSplitFree = p.getBoolean(Constants.K_MULTI_SPLIT_FREE, Constants.DEF_MULTI_SPLIT_FREE)
             splitRatioKeep = p.getBoolean(Constants.K_SPLIT_RATIO_KEEP, Constants.DEF_SPLIT_RATIO_KEEP)
             captionSplitBoth = p.getBoolean(Constants.K_CAPTION_SPLIT_BOTH, Constants.DEF_CAPTION_SPLIT_BOTH)
+            coverSplit = p.getBoolean(Constants.K_COVER_SPLIT, Constants.DEF_COVER_SPLIT)
             foldSplit = p.getBoolean(Constants.K_FOLD_SPLIT, Constants.DEF_FOLD_SPLIT)
             foldSplitSide = p.getString(Constants.K_FOLD_SPLIT_SIDE, Constants.DEF_FOLD_SPLIT_SIDE)
                 ?: Constants.DEF_FOLD_SPLIT_SIDE
@@ -269,6 +272,7 @@ object Cfg {
             multiSplitFree = b.getBoolean(Constants.K_MULTI_SPLIT_FREE, Constants.DEF_MULTI_SPLIT_FREE)
             splitRatioKeep = b.getBoolean(Constants.K_SPLIT_RATIO_KEEP, Constants.DEF_SPLIT_RATIO_KEEP)
             captionSplitBoth = b.getBoolean(Constants.K_CAPTION_SPLIT_BOTH, Constants.DEF_CAPTION_SPLIT_BOTH)
+            coverSplit = b.getBoolean(Constants.K_COVER_SPLIT, Constants.DEF_COVER_SPLIT)
             foldSplit = b.getBoolean(Constants.K_FOLD_SPLIT, Constants.DEF_FOLD_SPLIT)
             foldSplitSide = b.getString(Constants.K_FOLD_SPLIT_SIDE, Constants.DEF_FOLD_SPLIT_SIDE)
                 ?: Constants.DEF_FOLD_SPLIT_SIDE
@@ -302,7 +306,7 @@ object Cfg {
     /** 分屏四项的开关快照（只用于日志与变化判定）。 */
     private val splitExtras: String
         get() = "解锁方向=$splitUnlockDir 多分屏无级=$multiSplitFree " +
-                "换向保比例=$splitRatioKeep 双向分屏=$captionSplitBoth"
+                "换向保比例=$splitRatioKeep 双向分屏=$captionSplitBoth 外屏分屏=$coverSplit"
 
     /** 兼容旧调用点。 */
     fun reloadThrottled(intervalMs: Long = 1500) = refreshAsync(intervalMs)

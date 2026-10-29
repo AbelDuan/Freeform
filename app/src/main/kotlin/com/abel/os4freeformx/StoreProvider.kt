@@ -33,6 +33,7 @@ class StoreProvider : ContentProvider() {
                 putBoolean(Constants.K_MULTI_SPLIT_FREE, c?.getBoolean(Constants.K_MULTI_SPLIT_FREE, Constants.DEF_MULTI_SPLIT_FREE) ?: Constants.DEF_MULTI_SPLIT_FREE)
                 putBoolean(Constants.K_SPLIT_RATIO_KEEP, c?.getBoolean(Constants.K_SPLIT_RATIO_KEEP, Constants.DEF_SPLIT_RATIO_KEEP) ?: Constants.DEF_SPLIT_RATIO_KEEP)
                 putBoolean(Constants.K_CAPTION_SPLIT_BOTH, c?.getBoolean(Constants.K_CAPTION_SPLIT_BOTH, Constants.DEF_CAPTION_SPLIT_BOTH) ?: Constants.DEF_CAPTION_SPLIT_BOTH)
+                putBoolean(Constants.K_COVER_SPLIT, c?.getBoolean(Constants.K_COVER_SPLIT, Constants.DEF_COVER_SPLIT) ?: Constants.DEF_COVER_SPLIT)
                 putBoolean(Constants.K_FOLD_SPLIT, c?.getBoolean(Constants.K_FOLD_SPLIT, Constants.DEF_FOLD_SPLIT) ?: Constants.DEF_FOLD_SPLIT)
                 putString(Constants.K_FOLD_SPLIT_SIDE, c?.getString(Constants.K_FOLD_SPLIT_SIDE, Constants.DEF_FOLD_SPLIT_SIDE) ?: Constants.DEF_FOLD_SPLIT_SIDE)
                 putFloat(Constants.K_FOLD_SPLIT_DEPTH, c?.getFloat(Constants.K_FOLD_SPLIT_DEPTH, Constants.DEF_FOLD_SPLIT_DEPTH.toFloat()) ?: Constants.DEF_FOLD_SPLIT_DEPTH.toFloat())

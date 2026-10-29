@@ -2,7 +2,7 @@ package com.abel.os4freeformx
 
 /** 模块常量：包名、prefs 名、配置键、目标类名。 */
 object Constants {
-    const val VERSION = "0.7.9"
+    const val VERSION = "0.8.0"
     const val PREFS_CFG = "os4freeformx_cfg"
     const val PREFS_BOUNDS = "os4freeformx_bounds"
     const val AUTHORITY = "com.abel.os4freeformx.store"
@@ -32,6 +32,16 @@ object Constants {
     const val K_SPLIT_RATIO_KEEP = "split_ratio_keep"
     /** 把手（···）菜单同时显示左右与上下两对分屏按钮。实现见 CaptionSplitBoth.kt。 */
     const val K_CAPTION_SPLIT_BOTH = "caption_split_both"
+    /**
+     * 外屏（合上手机后的那块屏）也支持分屏。实现见 CoverSplit.kt。
+     *
+     * 系统在本机（`lhasa`）上有一条**机型特化的硬编码**：`MiuiDecorationDot#isHideSplitButtons()`
+     * 在「lhasa + 外屏」时恒返回 true ⇒ ··· 菜单里根本不建分屏按钮；
+     * 另外外屏 `smallestScreenWidthDp < 600`（`SplitLayout.mIsLargeScreen=false`），
+     * 方向判定会跳过「动态方向标志」直接取 `isLandscape()` ⇒ 竖屏只能上下、横屏只能左右。
+     * 打开本开关即放开这两处，外屏与内屏行为一致。
+     */
+    const val K_COVER_SPLIT = "cover_split"
     /** 轻折一下 → 分屏 +1（铰链角度判定触发）。实现见 FoldSplitTrigger.kt。 */
     const val K_FOLD_SPLIT = "fold_split"
     /** 轻折触发时当前应用留在哪一侧。取值为 [FOLD_SPLIT_LEFT] / [FOLD_SPLIT_RIGHT]。 */
@@ -91,6 +101,8 @@ object Constants {
     const val DEF_MULTI_SPLIT_FREE = true
     const val DEF_SPLIT_RATIO_KEEP = true
     const val DEF_CAPTION_SPLIT_BOTH = true
+    /** 外屏分屏默认开（与内屏对齐；关掉立刻恢复系统原行为，无需重启 SystemUI）。 */
+    const val DEF_COVER_SPLIT = true
     const val FOLD_SPLIT_LEFT = "left"
     const val FOLD_SPLIT_RIGHT = "right"
     // 轻折加分屏：自 v0.7.9 起**默认开**（= 用户当前配置；折叠屏轻折一下进分屏已成主力习惯，写入默认让新装即生效）。
@@ -179,6 +191,12 @@ object Constants {
     const val CLS_SOSC_SPLIT_LAYOUT = "com.android.wm.shell.sosc.common.split.SplitLayout"
     /** 折叠屏走的那套（SoSc）分屏吸附算法 */
     const val CLS_SOSC_DIVIDER_SNAP = "com.android.wm.shell.sosc.common.split.DividerSnapAlgorithm"
+    /**
+     * 折叠屏（SoSc）的方向判定静态工具：`isLeftRightSplit(allowLR, isLargeScreen, isLandscape)`。
+     * 外屏 `isLargeScreen=false` 时它会**跳过动态方向标志**直接返回 `isLandscape` ⇒ 方向被锁死。
+     * 见 CoverSplit.kt。
+     */
+    const val CLS_SOSC_SPLIT_SCREEN_UTILS = "com.android.wm.shell.sosc.common.split.SplitScreenUtils"
     // ── 分屏四项（移植自 HyperRefine，类名均与本机 _recon/out_jadx 逐条核对）──
     /** 分屏能力总闸：`allowLeftRightSplitInPortrait(Context)` / `isLeftRightSplit()` */
     const val CLS_SPLIT_UTILS_IMPL = "com.android.wm.shell.common.split.SplitUtilsImpl"

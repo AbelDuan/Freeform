@@ -127,6 +127,8 @@ object Hooks {
         runCatching { MultiSplitRatio.install(m, cl) }.onFailure { Logx.e("多分屏无级安装失败", it) }
         runCatching { SplitRatioKeep.install(m, cl) }.onFailure { Logx.e("换向保比例安装失败", it) }
         runCatching { CaptionSplitBoth.install(m, cl) }.onFailure { Logx.e("双向分屏安装失败", it) }
+        //   5) 外屏（合上手机）也支持分屏：解除 ··· 菜单的隐藏 + 解开 isLargeScreen 的方向锁
+        runCatching { CoverSplit.install(m, cl) }.onFailure { Logx.e("外屏分屏安装失败", it) }
         // 最后装：给 snapToTarget 兜住 null 目标（竖屏单侧分屏拖分隔条会崩 SystemUI）
         runCatching { SplitSnapGuard.install(m, cl) }.onFailure { Logx.e("分屏吸附守卫安装失败", it) }
         // ★★★ 轻折加分屏（2026-10-27，思路来自 HyperPlus v0.9.0-alpha，AGPL-3.0）：
