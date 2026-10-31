@@ -144,6 +144,12 @@ object Hooks {
         //   安装只负责"接电"（抓实例 + 注册折角传感器），开关读 Cfg ⇒ 热开关，改完立即生效。
         runCatching { FoldSplitTrigger.install(m, cl) }.onFailure { Logx.e("轻折加分屏安装失败", it) }
         installBoundsRecorder(m, cl)
+        // ★ 2026-10-31 用户决定：分屏比例记忆功能暂停，代码全部保留，只停掉入口。
+        //   需要恢复时把下面这行取消注释即可（开关默认值也一并改回 true）。
+        // ★ 2026-10-31 教训：吸附 hook（DividerSnapAlgorithm#snap）原本就写在
+        //   installSplitRatio() 里面，注释掉这个入口 = 连吸附一起停了，
+        //   表现就是"改了吸附规则却完全没有日志、完全不生效"。
+        //   现在恢复入口，比例记忆由开关 + 下面单独注释掉的恢复端负责停用。
         installSplitRatio(m, cl)
         // ★★ 手势功能已整体移除（用户 2026-10-02）。
         //    原因：角滑必须"参与/吞掉 MIUI 手势流的事件"才能屏蔽系统手势，
@@ -255,6 +261,11 @@ object Hooks {
                 m.hookMethod(cl, cls0, "snap", arrayOf(Integer.TYPE, java.lang.Boolean.TYPE),
                     XposedInterface.Hooker { chain ->
                         val pos = chain.getArg(0) as? Int
+                        val isFling = runCatching { chain.getArg(1) as? Boolean ?: false }.getOrDefault(false)
+                        val enterHit = snapEnterHits.incrementAndGet()
+                        if (enterHit <= 10) {
+                            Logx.always("分屏吸附入口: 第 ${enterHit} 次 pos=$pos isFling=$isFling")
+                        }
                         // ★ 单侧分屏（另一侧是桌面，SoSc minimized，SplitState=-1）绝不介入：
                         //   官方状态机不认我们的自造目标（id=101/102/103），反复拖会把 Shell
                         //   窗口状态搞坏（真机实证：v0.7.3 拖一次 NPE 崩 SystemUI；
@@ -264,7 +275,7 @@ object Hooks {
                                 "分屏吸附: minimized 单侧分屏，交还官方（pos=$pos）")
                             null
                         } else {
-                            pos?.let { splitRatioTarget(chain.thisObject, it) }
+                            pos?.let { splitRatioTarget(chain.thisObject, it, isFling) }
                         }
                         val result = ours ?: chain.proceed()
                         if (ours != null) {
@@ -305,7 +316,19 @@ object Hooks {
 
         // ★ 2026-10-31 用户要求：分屏比例记忆 —— 一边应用退出后再打开新应用，分割线回到上次位置。
         //   记录端在 snap hook（recordRatioFromSnap），恢复端见 installSplitRatioRestore。
-        installSplitRatioRestore(m, cl)
+        // ★ 2026-10-31 用户决定：分屏比例记忆暂停 —— 只停恢复端，
+        //   吸附 hook 保留。恢复时取消下面这行注释即可。
+        // installSplitRatioRestore(m, cl)
+
+        // ★ 吸附会话跟踪 / 比例写入点观测 / 甩动接管 必须独立于记忆功能挂载。
+        //   教训（v0.7.66）：吸附 hook 和这些子 hook 原本都写在记忆入口里，
+        //   一停用记忆就整片静默失效，改了规则却零日志零效果。
+        installSplitCoordTracker(m, cl)
+        installSplitRatioWriters(m, cl)
+        // ★ 2026-10-31 用户决定：甩动功能取消（代码保留，需要时取消注释）。
+        //   真机结论：甩动时系统传的 pos 在"松手位置"和"极端值(-24/2364)"之间跳动，
+        //   同一手势里无法稳定配对起手档位，做出来只会比系统默认更不可靠。
+        // installSplitFlingTakeover(m, cl)
 
         // 多分屏（3 个及以上应用，SoSc 的 activeStages >= 3）时，隐藏每个应用顶部的三点
         // 与底部手势/导航条 —— 与自由小窗同一套"只不绘制、保留触摸"的做法。
@@ -320,13 +343,14 @@ object Hooks {
                         XposedInterface.Hooker { chain ->
                             val r = chain.proceed()
                             runCatching { hideSoScDecor(chain.thisObject, chain) }
-                            // 恢复比例：onLayoutSizeChanged 真机不触发，改在分屏装饰 inflate 时异步做一次
+                            // 恢复比例：onLayoutSizeChanged 真机不触发，改在分屏装饰 inflate 时异步补几次。
+                            // 这是 updateSoScState 之外的**第二路**保险（两路都只做"差异 >2% 才动手"）。
                             if (meth.name == "inflate") {
                                 // inflate 那一刻两个 stage 往往还没就位（真机：取不到应用组合 → 跳过），
-                                // 所以隔几次重试；restoreSplitRatio 自身有 2 秒限频，不会打架。
+                                // 所以错开重试；restoreSplitRatio 自带限频与差异判断，不会和手势打架。
                                 listOf(600L, 1_500L, 3_000L).forEach { d ->
                                     Handler(Looper.getMainLooper()).postDelayed(
-                                        { /* 分屏不再恢复记忆 ✓ */ }, d
+                                        { runCatching { restoreSplitRatioFromSingleton() } }, d
                                     )
                                 }
                             }
@@ -385,31 +409,395 @@ object Hooks {
      * 恢复本身（[restoreSplitRatio]）是**异步 post** + 同一组合 2 秒限频 + 当前比例与记忆差异
      * >2% 才动作，所以不会和用户正在拖动的手势打架；单侧分屏（`mMinimized`）直接跳过。
      */
+    /** 分屏入口探针：找出「桌面/多任务的分屏组合按钮」启动时走的真实方法。 */
+    private val splitEntryHits = java.util.concurrent.atomic.AtomicInteger(0)
+
+    private fun installSplitEntryProbe(m: MainHook, cl: ClassLoader) {
+        val cls = runCatching { SoScSupport.findClass(cl, SoScSupport.STAGE_COORD) }.getOrNull()
+        if (cls == null) {
+            Logx.e("分屏入口探针: 找不到 StageCoordinator")
+            return
+        }
+        // ★ 只挂 startTasks：组合按钮（桌面/多任务的应用组合）走它，
+        //   普通分屏走 onSplitScreenEnter()。
+        //   绝不能把 isHiddenForDockExit / setLaunchAdjacentDisabled 这类高频方法也挂上 ——
+        //   v0.7.42 就是这样把 SystemUI 拖到卡死重启的（每次命中都写一条 LSPosed 日志）。
+        var n = 0
+        for (mm in cls.declaredMethods) {
+            if (mm.name != "startTasks") continue
+            runCatching {
+                m.hook(mm).intercept { chain ->
+                    val r = chain.proceed()
+                    splitEntryFromPairAt = android.os.SystemClock.elapsedRealtime()
+                    if (splitEntryHits.incrementAndGet() <= 5) {
+                        val sig = mm.parameterTypes.joinToString(",") { it.simpleName }
+                        Logx.e("分屏入口: 组合按钮 startTasks($sig) -> 允许沿用比例")
+                    }
+                    r
+                }
+                n++
+            }.onFailure { Logx.e("分屏入口探针挂 ${mm.name} 失败", it) }
+        }
+        Logx.e("分屏入口探针: 已挂 x$n（仅 startTasks）")
+    }
+
     private fun installSplitRatioRestore(m: MainHook, cl: ClassLoader) {
         runCatching {
             val cls = SoScSupport.findClass(cl, SoScSupport.STAGE_COORD) ?: run {
                 Logx.e("分屏比例记忆: 找不到 ${SoScSupport.STAGE_COORD}")
                 return
             }
-            val method = SoScSupport.methodOf(cls, "updateSoScState", 0) ?: run {
-                Logx.e("分屏比例记忆: 找不到 SoScStageCoordinator#updateSoScState/0")
+            // 真机实测（2026-10-31 11:26~11:28）：只挂 0 参的 `updateSoScState()` 时，
+            // 记录端正常落盘（42.2% / 52.6%），但恢复端**一条日志都没有** ——
+            // 说明系统实际走的是 `updateSoScState(boolean)` 这个重载，0 参那个没被调用。
+            // 两个都挂，谁命中算谁；命中计数前 3 次打日志，便于下次一眼看出钩子死活。
+            var hooked = 0
+            for (sig in 0..1) {
+                val method = SoScSupport.methodOf(cls, "updateSoScState", sig) ?: continue
+                val ok = runCatching {
+                    m.hookExecutable(method, XposedInterface.Hooker { chain ->
+                        val r = chain.proceed()
+                        runCatching {
+                            val coord = chain.thisObject
+                            lastCoordinator = coord
+                            val hit = splitRestoreHits.incrementAndGet()
+                            if (hit <= 3) {
+                                Logx.e("分屏比例记忆: updateSoScState/$sig 命中（第 $hit 次，开关=${Cfg.splitRatioMemory}）")
+                            }
+                            if (!Cfg.splitRatioMemory) return@runCatching
+                            // getSoScState()==2 才是"两个应用都在"的完整分屏（真机日志 mSoScState:2）。
+                            val state = runCatching { call(coord, "getSoScState") as? Int }.getOrNull() ?: -1
+                            val prev = lastSoScState
+                            lastSoScState = state
+                            // ★ 分屏彻底退出（state=-1）就清除最近比例：用户 m01212 明确
+                            //   「如果分屏都结束了，重新打开一个应用就不用再进分屏了，也不用记住比例」。
+                            if (state == -1 && prev != -1) {
+                                // ★ 延迟确认：打开新应用时 state 会短暂跳 -1 再回 2。
+                                //   真机日志出现过「清除最近比例」紧跟「分屏刚建立」，
+                                //   刚拖好的记忆被删掉，后续全是「没有全局最近值」。
+                                splitEndToken++
+                                val token0 = splitEndToken
+                                runCatching {
+                                    val h0 = shellHandler(coord)
+                                        ?: android.os.Handler(Looper.getMainLooper())
+                                    h0.postDelayed({
+                                        runCatching {
+                                            if (token0 != splitEndToken) return@postDelayed
+                                            val st1 = call(coord, "getSoScState") as? Int
+                                            if (st1 == -1) {
+                                                val ctx0 = AppCtx.get()
+                                                if (ctx0 != null) {
+                                                    val sc0 = Bounds.screenKey(ctx0)
+                                                    Bounds.forget(ctx0, KEY_LAST_SPLIT_RATIO, sc0)
+                                                    Logx.e("分屏比例记忆: 分屏已完全结束 -> 清除最近比例（$sc0）")
+                                                }
+                                            }
+                                        }
+                                    }, 1_500L)
+                                }
+                            }
+                            val minimizedDbg = field(coord, "mMinimized") as? Boolean == true
+                            val dbgHit = splitRestoreHits.get()
+                            if (dbgHit <= 25) {
+                                Logx.e("分屏状态: state=$state prev=$prev minimized=$minimizedDbg")
+                            }
+                            // ★ 只在「刚刚进入两应用分屏」的上升沿动作（state != 2 -> 2）。
+                            //   拖动把手期间 state 恒为 2，这里不会重复触发，也就不会和用户的手势打架。
+                            // 单边/桌面态：把分隔线拉回中线，否则关掉小边后桌面被大边挤住，图标显示不全。
+                            val minimizedNow = field(coord, "mMinimized") as? Boolean == true
+                            // ★ 关闭单边回到桌面：必须落回 5:5，否则桌面被挤住、图标显示不全
+                            //   （用户 m01355：「关闭单边应用回到桌面时，必须要恢复5:5的状态让桌面显示正常」）。
+                            //   这里延迟 350ms 再校正 —— 系统自己的收起动画先跑完，我们只负责收尾，
+                            //   避免 v0.7.37 之前那样把过渡打断成"啪一下"。
+                            // 真机日志：关闭单边时 state 有时是 1（minimized），有时直接是 0 或 -1
+                            // （14:47:25 就是 state=0 prev=2），用 ==1 判会漏掉一半情况。
+                            // 只要"曾经是两应用分屏(prev==2)且现在不是"，就要把中线拉回 5:5。
+                            if (prev == 2 && state != 2) {
+                                val l1 = runCatching { field(coord, "mSplitLayout") }.getOrNull()
+                                if (l1 != null) {
+                                    runCatching {
+                                        val h1 = shellHandler(l1) ?: android.os.Handler(Looper.getMainLooper())
+                                        h1.postDelayed({
+                                            runCatching {
+                                                val st2 = call(coord, "getSoScState") as? Int
+                                                if (st2 != 2) forceMiddle(l1, "关闭单边后校正中线")
+                                            }
+                                        }, 350L)
+                                    }
+                                }
+                            }
+                            if (state != 2 || prev == 2) return@runCatching
+                            // ★ 用户 m01283：任何**新打开**的分屏都回到 5:5，不套记忆。
+                            //   只有"分屏还没结束、只是补上另一边"(prev==1) 才算延续，才恢复比例。
+                            val nowMs = android.os.SystemClock.elapsedRealtime()
+                            val fromPair = nowMs - splitEntryFromPairAt < 8_000L
+                            // ★ 左右对称：关闭右边时 prev 是 0 而不是 1。
+                            //   只要距上一次"处于两应用分屏"不到 60 秒，就认为这次是延续，
+                            //   不是从桌面新开的一对应用。
+                            val continuation = lastSplitAtNow > 0L && nowMs - lastSplitAtNow < 60_000L
+                            lastSplitAtNow = nowMs
+                            if (prev != 1 && !fromPair && !continuation) {
+                                Logx.e("分屏比例记忆: 新分屏（$prev -> 2，延续=$continuation，组合=$fromPair）-> 保持 5:5，不恢复")
+                                return@runCatching
+                            }
+                            if (prev != 1 && fromPair) {
+                                Logx.e("分屏比例记忆: 组合按钮进入（$prev -> 2）-> 沿用上次比例")
+                            }
+                            // 单侧分屏（一边是桌面）不动 —— 那时"比例"没有意义，且改它会把 minimized 态搞乱。
+                            if (minimizedNow) return@runCatching
+                            Logx.e("分屏比例记忆: 分屏刚建立（state $prev -> 2），稍后恢复比例")
+                            splitJustBuiltAt = android.os.SystemClock.elapsedRealtime()
+                            ratioRestoredInWindow = false
+                            // updateSoScState 返回时两个 stage 里的 taskInfo 往往还没填好
+                            // （真机实证：此刻 splitPair 返回 null，恢复端只打出一次"取不到应用组合"），
+                            // 所以错开几次重试；restoreSplitRatio 自带差异判断，重复调用不会重复动把手。
+                            // 比例已经在 setDivideRatioForSoSc 的同一帧里写好了（见 installSplitRatioWriters），
+                            // 这里不再挂事后重试——那会在几百毫秒后又改一次，用户看到的就是"闪一下"。
+                        }
+                        r
+                    })
+                }.getOrElse { false }
+                if (ok) hooked++
+            }
+            if (hooked > 0) {
+                Logx.always("分屏比例记忆: 已挂 updateSoScState 恢复入口 x$hooked（开关=${Cfg.splitRatioMemory}）")
+            } else {
+                Logx.e("分屏比例记忆: updateSoScState 的 0 参/1 参重载都没挂上")
+            }
+        }.onFailure { Logx.e("分屏比例记忆: 挂 updateSoScState 失败", it) }
+        // 顺带把"系统自己怎么写比例"也挂上观测，答案用来决定到底该在哪条渠道上动手。
+
+    }
+
+    /**
+     * 观测：系统把分屏比例写成 5:5 时，到底走哪个方法。
+     *
+     * 用户 2026-10-31 的判断是对的 —— 与其在"建立之后"异步去扳分屏条（会被系统下一帧覆盖），
+     * 不如先看清系统自己是用哪条渠道设的 5:5，再在那条渠道上动手。
+     *
+     * 候选来自 v0.7.16 探针打印的真机方法清单：
+     * `setDivideRatioForSoSc` / `setDivideRatio` / `initDividerPosition` / `resetDividerPosition`。
+     * 这里只观测不改行为，前 20 次命中把**实参**打出来。
+     */
+    /**
+     * 甩动接管。
+     *
+     * 真机结论（2026-10-31 15:45）：`snap()` 里我们已经正确算出了「左16:9 --右甩--> 右16:9」，
+     * 但界面还是只到贴边 —— 因为**甩动动画不是 snap 驱动的**，而是
+     * `SplitLayout#flingDividerPosition(position, velocity, snapPosition, ...)`：
+     * 系统在调用它之前就把 snapPosition 定成了贴边，我们的 snap 返回值被它覆盖。
+     *
+     * 所以必须在这一层改 snapPosition。velocity 的符号就是甩动方向（>0 向右）。
+     */
+    private fun installSplitFlingTakeover(m: MainHook, cl: ClassLoader) {
+        runCatching {
+            val coordCls = SoScSupport.findClass(cl, SoScSupport.STAGE_COORD) ?: return@runCatching
+            val layoutCls = SoScSupport.methodOf(coordCls, "getSplitLayout", 0)?.returnType
+                ?: run { Logx.e("分屏甩动: 取不到 SplitLayout 类"); return@runCatching }
+            // 方法可能在父类上声明，逐级向上找，否则静默拿不到
+            val meth = generateSequence(layoutCls) { it.superclass }
+                .flatMap { it.declaredMethods.asSequence() }
+                .firstOrNull { it.name == "flingDividerPosition" && it.parameterTypes.size == 5 }
+                ?: run {
+                    val names = generateSequence(layoutCls) { it.superclass }
+                        .flatMap { it.declaredMethods.asSequence() }
+                        .filter { it.name.contains("fling") }
+                        .map { "${it.name}/${it.parameterTypes.size}" }
+                        .distinct().toList()
+                    Logx.e("分屏甩动: 找不到 flingDividerPosition/5（类=${layoutCls.name}，fling 方法=$names）")
+                    return@runCatching
+                }
+            m.hookExecutable(meth, XposedInterface.Hooker { chain ->
+                val layout = chain.thisObject
+                val position = chain.getArg(0) as? Int ?: -1
+                val velocity = chain.getArg(1) as? Int ?: 0
+                val snapPos = chain.getArg(2) as? Int ?: -1
+                val alg = runCatching { SoScSupport.call(layout, "getDividerSnapAlgorithm") }.getOrNull()
+                var newSnap: Int? = null
+                var how = ""
+                if (alg != null && position > 0) {
+                    val leftRight = field(alg, "mIsLeftRightSplit") as? Boolean ?: true
+                    val display = (if (leftRight) field(alg, "mDisplayWidth") else field(alg, "mDisplayHeight")) as? Int ?: 0
+                    val divider = (field(alg, "mDividerSize") as? Int) ?: 0
+                    val insets = field(alg, "mInsets") as? Rect
+                    val start = if (leftRight) insets?.left ?: 0 else insets?.top ?: 0
+                    val span = display - start - (if (leftRight) insets?.right ?: 0 else insets?.bottom ?: 0)
+                    if (span > 0) {
+                        val magnet = (span * 0.07f).toInt()
+                        val first = field(alg, "mFirstSplitTarget")?.let { field(it, "position") as? Int }
+                        val last = field(alg, "mLastSplitTarget")?.let { field(it, "position") as? Int }
+                        val small = Constants.SPLIT_SMALL_SIDE_PX
+                        val screenLong = runCatching {
+                            val dm = AppCtx.get()?.resources?.displayMetrics
+                            if (leftRight) dm?.widthPixels?.takeIf { it >= display }
+                            else dm?.heightPixels?.takeIf { it >= display }
+                        }.getOrNull() ?: display
+                        val pA = small
+                        val pB = screenLong - small - divider
+                        val right = velocity > 0
+                        val near = { v: Int, t: Int -> kotlin.math.abs(v - t) <= magnet }
+                        if (first != null && last != null) {
+                            when {
+                                near(position, first) && right -> { newSnap = last; how = "左贴边 --右甩--> 右贴边" }
+                                near(position, first) -> { newSnap = first; how = "左贴边 --左甩--> 左贴边" }
+                                near(position, last) && !right -> { newSnap = first; how = "右贴边 --左甩--> 左贴边" }
+                                near(position, last) -> { newSnap = last; how = "右贴边 --右甩--> 右贴边" }
+                                near(position, pA) && right -> { newSnap = pB; how = "左16:9 --右甩--> 右16:9" }
+                                near(position, pA) -> { newSnap = first; how = "左16:9 --左甩--> 左贴边" }
+                                near(position, pB) && !right -> { newSnap = pA; how = "右16:9 --左甩--> 左16:9" }
+                                near(position, pB) -> { newSnap = last; how = "右16:9 --右甩--> 右贴边" }
+                            }
+                        }
+                    }
+                }
+                if (newSnap != null && newSnap != snapPos) {
+                    val args = chain.getArgs().toTypedArray()
+                    if (args.size > 2) {
+                        args[2] = newSnap
+                        Logx.always(
+                            "分屏甩动接管: $how  position=$position velocity=$velocity" +
+                                " 系统snap=$snapPos -> $newSnap"
+                        )
+                        return@Hooker chain.proceed(args)
+                    }
+                }
+                chain.proceed()
+            })
+            Logx.e("分屏甩动: flingDividerPosition 接管已挂（velocity 符号=方向）")
+        }.onFailure { Logx.e("挂分屏甩动接管失败", it) }
+    }
+
+    private fun installSplitRatioWriters(m: MainHook, cl: ClassLoader) {
+        runCatching {
+            val coordCls = SoScSupport.findClass(cl, SoScSupport.STAGE_COORD) ?: return
+            val layoutCls = SoScSupport.methodOf(coordCls, "getSplitLayout", 0)?.returnType ?: run {
+                Logx.e("分屏比例写入点: 取不到 SplitLayout 类（getSplitLayout 的返回类型）")
                 return
             }
-            val ok = m.hookExecutable(method, XposedInterface.Hooker { chain ->
-                val r = chain.proceed()
-                runCatching {
-                    val coord = chain.thisObject
-                    lastCoordinator = coord
-                    if (!Cfg.splitRatioMemory) return@runCatching
-                    // 单侧分屏（一边是桌面）不动 —— 那时"比例"没有意义，且改它会把 minimized 态搞乱。
-                    if (field(coord, "mMinimized") as? Boolean == true) return@runCatching
-                    restoreSplitRatio(coord)
+            val wanted = setOf("setDivideRatioForSoSc", "setDivideRatio", "initDividerPosition", "resetDividerPosition")
+            var hooked = 0
+            layoutCls.declaredMethods.filter { it.name in wanted && !it.isSynthetic }.forEach { meth ->
+                val ok = runCatching {
+                    m.hookExecutable(meth, XposedInterface.Hooker { chain ->
+                        val r = chain.proceed()
+                        val hit = splitWriterHits.incrementAndGet()
+                        if (hit <= 20) {
+                            val args = (0 until meth.parameterTypes.size).joinToString(",") { i ->
+                                runCatching { chain.getArg(i)?.toString() ?: "null" }.getOrDefault("?")
+                            }
+                            val types = meth.parameterTypes.joinToString(",") { it.simpleName }
+                            Logx.e("分屏比例写入点: ${meth.name}($args) 类型=($types)")
+                        }
+                        // ★ 用户 m00775 的要求落在这里：系统就是用 setDivideRatioForSoSc 把
+                        //   比例写成 5:5 的（v0.7.17 真机日志实证它返回后比例就回默认）。
+                        //   post 一帧再覆盖：同步改写会和系统自己紧接着的布局步骤打架。
+                        // ★ 系统重置/初始化分隔线 = 这次分屏要重建了。
+                        //   实测（12:11:25）：重建过程中会走 snap，防抖 500ms 后正好把**重建后的
+                        //   默认位置**记成"用户定格"，把用户刚拖好的 74.9% 覆盖成 51.5%，
+                        //   于是恢复端永远恢复成 5:5。这里作废挂起记录并打时间戳，重建期间不记。
+                        if (meth.name == "resetDividerPosition" || meth.name == "initDividerPosition") {
+                            ratioRecordToken++
+                            splitJustBuiltAt = android.os.SystemClock.elapsedRealtime()
+                        }
+                        // ★ 只纠正 setDivideRatioForSoSc（重建时系统默认落位的渠道）。
+                        //   setDivideRatio(int) 的实参是 **snap id**（真机日志 setDivideRatio(102)
+                        //   就是 16:9 档），那是系统或用户主动选档；纠正它会把 16:9 改回记忆值，
+                        //   表现就是"占比小的那边界面超出屏幕、占比大的那边回到 50%"。
+                        // ★ 重建渠道本身也要打「刚重建」时间戳：真机 12:45:49 实测，
+                        //   系统走 setDivideRatioForSoSc(1,true) 把比例摆回 5:5，紧接着 500ms
+                        //   防抖就把这次摆动记成"用户定格 51.5%"，把用户拖的 41.1% 覆盖掉。
+                        //   reset/init 那两处挡不住它，只有在这里补才算闭环。
+                        if (meth.name == "setDivideRatioForSoSc") {
+                            ratioRecordToken++
+                            splitJustBuiltAt = android.os.SystemClock.elapsedRealtime()
+                            ratioRestoredInWindow = false
+                            // ★ 用户 m01566：与其"先 5:5 再补过渡"，不如**一上来就是记忆比例**，
+                            //   这样根本不存在需要遮掩的跳变。系统刚把比例摆成 5:5，
+                            //   我们在同一帧、同一个调用栈里立刻改成记忆值，
+                            //   合成器还没机会呈现 5:5 那一帧。
+                            if (Cfg.splitRatioMemory) {
+                                runCatching {
+                                    val splitLayout = chain.thisObject
+                                    if (splitLayout != null) forceMemoRatio(splitLayout, "重建同步", force = true)
+                                }
+                            }
+                            // ★ 这里**只做记账**，不写比例。
+                            //   此前"渠道纠正"抢先写成功并置 ratioRestoredInWindow=true，
+                            //   导致后续 updateSoScState 的恢复动画被判定"已定过"直接跳过
+                            //   —— 用户看到的就是"新打开应用后还是 5:5 没恢复"。
+                            //   唯一的写回点统一收敛到 restoreSplitRatio 的分帧动画。
+                        }
+                        r
+                    })
+                }.getOrElse { false }
+                if (ok) hooked++
+            }
+            Logx.e("分屏比例写入点: 已挂 x$hooked（${layoutCls.simpleName}）")
+            runCatching {
+                val sigs = layoutCls.declaredMethods.map {
+                    it.name + "(" + it.parameterTypes.joinToString(",") { pt -> pt.simpleName } + ")"
+                }.filter {
+                    it.contains("fling", true) || it.contains("anim", true) ||
+                        it.contains("apply", true) || it.contains("Surface", true)
                 }
-                r
-            })
-            if (ok) Logx.always("分屏比例记忆: 已挂 updateSoScState 恢复入口（开关=${Cfg.splitRatioMemory}）")
-            else Logx.e("分屏比例记忆: hookExecutable(updateSoScState) 返回 false")
-        }.onFailure { Logx.e("分屏比例记忆: 挂 updateSoScState 失败", it) }
+                Logx.e("SplitLayout 动画相关方法: " + sigs.joinToString(" | "))
+            }
+            runCatching { installSplitEntryProbe(m, cl) }
+                .onFailure { Logx.e("分屏入口探针安装失败", it) }
+        }.onFailure { Logx.e("分屏比例写入点: 挂载失败", it) }
+    }
+
+    /**
+     * WM Shell 在 Android 14+ 跑在**独立的 ShellMainThread** 上，不是 UI 主线程。
+     * `SplitLayout#setDividerPosition(pos, true)` 内部有 assertOnHandler，投到主线程会抛
+     * `IllegalStateException: must be called on Handler {…}`（2026-10-31 12:45:35 真机实证），
+     * 于是 applySurfaceChanges 永远跑不到，两侧 stage bounds 也就不跟着重排。
+     *
+     * 这里从对象上扒出它自己的 Handler（或 ShellExecutor 再 getHandler()），
+     * 后续所有写分隔线的动作都投到这个线程上。
+     */
+    private fun shellHandler(o: Any?): android.os.Handler? {
+        if (o == null) return null
+        var c: Class<*>? = o.javaClass
+        while (c != null && c != Any::class.java) {
+            for (f in c.declaredFields) {
+                if (!android.os.Handler::class.java.isAssignableFrom(f.type)) continue
+                runCatching {
+                    f.isAccessible = true
+                    val h = f.get(o) as? android.os.Handler
+                    if (h != null) return h
+                }
+            }
+            c = c.superclass
+        }
+        c = o.javaClass
+        while (c != null && c != Any::class.java) {
+            for (f in c.declaredFields) {
+                if (!f.type.name.contains("Executor")) continue
+                runCatching {
+                    f.isAccessible = true
+                    val ex = f.get(o) ?: return@runCatching
+                    val h = ex.javaClass.getMethod("getHandler").invoke(ex) as? android.os.Handler
+                    if (h != null) return h
+                }
+            }
+            c = c.superclass
+        }
+        return null
+    }
+
+    /** 按优先级把动作投到 ShellMainThread；都找不到才退回主线程。 */
+    private fun shellPost(vararg objs: Any?, block: () -> Unit) {
+        for (o in objs) {
+            val h = runCatching { shellHandler(o) }.getOrNull()
+            if (h != null) {
+                runCatching { Logx.e("分屏比例记忆: 写回投递到 ShellHandler（${objs.firstOrNull { it != null }?.javaClass?.simpleName}）") }
+                h.post(block)
+                return
+            }
+        }
+        Logx.e("分屏比例记忆: 没找到 ShellHandler，退回主线程（写回可能被 assertOnHandler 拒绝）")
+        Handler(Looper.getMainLooper()).post(block)
     }
 
     /**
@@ -417,12 +805,40 @@ object Hooks {
      * 判据：`SoScStageCoordinator#mMinimized`（真机日志实证：
      * `updateSoScState ... mMinimized:true -> true`，且此时 `SplitState is -1, expected 1`）。
      */
+    /**
+     * 只维护 [lastCoordinator] 的最小钩子。
+     *
+     * 为什么单独存在：分屏比例记忆停用后，原本在 `installSplitRatio` 里挂的
+     * `onLayoutSizeChanged` / `updateSoScState` 一起没了，`lastCoordinator` 恒为 null，
+     * 于是 `getSoScState() != 2` 的"单边交还系统"判断永远不成立 —— 表面看就是
+     * "吸附规则改了却完全不生效"。这里只赋值，不写分隔线、不打功能日志。
+     */
+    private fun installSplitCoordTracker(m: MainHook, cl: ClassLoader) {
+        runCatching {
+            val cls = SoScSupport.findClass(cl, SoScSupport.STAGE_COORD) ?: return@runCatching
+            var hooked = 0
+            for (sig in 0..1) {
+                val method = SoScSupport.methodOf(cls, "updateSoScState", sig) ?: continue
+                runCatching {
+                    m.hookExecutable(method, XposedInterface.Hooker { chain ->
+                        val r = chain.proceed()
+                        lastCoordinator = chain.thisObject
+                        splitActiveAt = android.os.SystemClock.elapsedRealtime()
+                        r
+                    })
+                    hooked++
+                }
+            }
+            Logx.e("分屏吸附: 会话跟踪已挂 x$hooked（单边/双应用判定依赖它）")
+        }.onFailure { Logx.e("挂分屏会话跟踪失败", it) }
+    }
+
     private fun soScMinimized(): Boolean = runCatching {
         val coord = lastCoordinator ?: return@runCatching false
         field(coord, "mMinimized") as? Boolean ?: false
     }.getOrDefault(false)
 
-    private fun splitRatioTarget(o: Any, pos: Int): Any? = runCatching {
+    private fun splitRatioTarget(o: Any, pos: Int, isFling: Boolean = false): Any? = runCatching {
         splitActiveAt = android.os.SystemClock.elapsedRealtime()
         val leftRight = field(o, "mIsLeftRightSplit") as? Boolean ?: true
         val display = (if (leftRight) field(o, "mDisplayWidth") else field(o, "mDisplayHeight")) as? Int
@@ -432,116 +848,102 @@ object Hooks {
         val start = if (leftRight) insets.left else insets.top
         val span = display - start - (if (leftRight) insets.right else insets.bottom)
         if (span <= 0) return null
-        // ★ 2026-10-24 用户要求：中间 5:5、16:9、最侧边这三档的吸附判定距离统一为 7%~10% 跨度。
-        //   取**总宽 8%（半宽 ±4%）**：16:9 档在 42.3% 跨度、中线在 50%，两者只差 7.7%；
-        //   若取 10%（±5%）两档区间会重叠 2.3%（45%~47.3% 判不准）；取 8% 时边界恰好相邻
-        //   （46.3% / 46%），且判断顺序把 16:9 放在中线前 ⇒ 重叠窄带归 16:9。
-        val magnet = (span * 0.04f).toInt()
-        val midMagnet = magnet                       // 中间 5:5 磁吸：半宽 4%
-        val edgeMagnet = magnet                      // 两侧 10% / 90% 台阶：半宽 4%
-        val target = { p: Int, id: Int -> buildSnapTarget(o, p, id) }
+        // 记下"用户拖到哪儿就松手了"。必须放在单边判断之前：
+        // 单边态会直接 return null，原先放在后面的写法导致 lastSnapPos 永远是 null，
+        // 甩动时只能拿到系统传进来的极端值（-24 / 2364），起点判不出来。
+        if (!isFling && pos > 0) lastSnapPos = pos
 
-        // 注意：firstObj/lastObj/midObj 是**官方 SnapTarget 对象**（要原样返回，带官方 snapPosition），
-        // first/last/mid 只是它们的位置数值。上一版误把数值 return 出去 → snap() 返回 Integer，
-        // 调用方要 SnapTarget → ClassCastException 闪退（真机：拖到 10% 必崩）。
+        // ① 2026-10-31 用户要求：单边分屏（一个应用 + 另一边是桌面）**完全交还系统**。
+        //    原因：官方状态机不认我们的自造目标（id=101/102/103），介入越多越容易把
+        //    Shell 窗口状态搞坏；单边态下用户要的就是原生行为。
+        val coord0 = lastCoordinator
+        if (coord0 != null) {
+            val st0 = runCatching { call(coord0, "getSoScState") as? Int ?: -1 }.getOrDefault(-1)
+            if (st0 != 2) {
+                Logx.once("sosc-single-gate", "分屏吸附: 单边分屏(state=$st0) 完全交还官方（pos=$pos）")
+                return null
+            }
+        }
+
+        // ② 吸附半径：2026-10-31 用户要求 ±4% → ±7%
+        val magnet = (span * 0.07f).toInt()
+
         val firstObj = field(o, "mFirstSplitTarget")
         val lastObj = field(o, "mLastSplitTarget")
         val midObj = field(o, "mMiddleTarget")
         val first = firstObj?.let { field(it, "position") as? Int }
         val last = lastObj?.let { field(it, "position") as? Int }
         val mid = midObj?.let { field(it, "position") as? Int }
+        val target = { p: Int, id: Int -> buildSnapTarget(o, p, id) }
 
-        // ① 两侧台阶：官方 10% / 90% 台阶位，判定半宽 ±4% 跨度（总宽 8%）。
-        //    ★ 2026-10-24 用户反馈「最靠右的系统吸附判定距离过于宽了」：
-        //      原来是 1%~25% 全吸 10%、75%~99% 全吸 90%（单档 24% 宽），
-        //      现在改成只认官方台阶位的 ±8% 总宽，其余位置全部自由无极调节。
-        val loEdge = start + (span * 0.01f).toInt()
-        val hiEdge = start + (span * 0.99f).toInt()
-        // 返回**官方自己的目标对象**（带官方 snapPosition），不要自造 id：
-        // 否则会绕过分屏状态机，官方"点击边缘切换比例"就失效（真机反馈）。
-        if (firstObj != null && first != null && kotlin.math.abs(pos - first) <= edgeMagnet) return firstObj
-        if (lastObj != null && last != null && kotlin.math.abs(pos - last) <= edgeMagnet) return lastObj
-
-        // ② 拉满 / 甩动：完全交还官方 —— 官方手势负责全屏、退出分屏等（1% 以内 / 99% 以外）
-        if (pos <= loEdge || pos >= hiEdge) return null
-
-        // ③ ★ 16:9 / 9:16 磁吸档（用户 2026-10-18 实测定稿，2026-10-24 恢复）
-        //
-        //   物理含义：小边 = 940px 时恰好是「16:9 视频旋转后的竖条」
-        //     （940 ÷ 1672 = 0.5622 ≈ 9 ÷ 16 = 0.5625，只差分割线取整），
-        //     左窗放横屏视频：左右满铺、上下无黑边 —— 用户原话「这是播放视频的时候非常方便的」。
-        //
-        //   `SnapTarget.position` 的语义（两次真机 dump 定死）= **小窗在分割轴上的像素尺寸**，
-        //   不是分割线中心、也不是屏幕绝对坐标 —— 所以下面算 p 时**不加 start**
-        //   （加了只在上下分屏暴露：start = insets.top = 140，实测小边偏大 140）。
-        //     小边在前 id=101：p = 940
-        //     小边在后 id=102：p = 屏长 - 940 - divider
-        //   屏长必须用**屏幕实际尺寸**：`display` 是扣过 insets 的值，拿它算镜像会偏大 140。
-        //
-        //   ★ 判定顺序放在中线之前：16:9 档在 42.3% 跨度、中线在 50%，两者只差 7.7%，
-        //     各取 ±4% 时边界相邻（46.3% / 46%），重叠的窄带优先给更"特殊"的 16:9。
-        val snapMagnet = magnet
-        val targetSmallSide = Constants.SPLIT_SMALL_SIDE_PX
-        // 16:9 档的两个候选位置（小边在前 101 / 小边在后 102）：
-        // position = 小窗在分割轴上的像素尺寸，与 SnapTarget.position 语义一致（不加 start）。
-        val ratioSlots = ArrayList<IntArray>(2)
-        if (span > targetSmallSide + divider) {
+        // 16:9 两档位置。SnapTarget.position 语义 = 小窗在分割轴上的像素尺寸，不加 start。
+        //   小边在前 id=101：p = 940
+        //   小边在后 id=102：p = 屏长 - 940 - divider
+        val small = Constants.SPLIT_SMALL_SIDE_PX
+        val hasSlots = span > small + divider
+        val pA = small
+        var pB = 0
+        if (hasSlots) {
             val screenLong = runCatching {
                 val dm = AppCtx.get()?.resources?.displayMetrics
                 if (leftRight) dm?.widthPixels?.takeIf { it >= display }
                 else dm?.heightPixels?.takeIf { it >= display }
             }.getOrNull() ?: display
-            val pA = targetSmallSide
-            val pB = screenLong - targetSmallSide - divider
-            val fA = (pA + divider / 2f) / span
-            val fB = (pB + divider / 2f) / span
-            for ((fraction, id) in listOf(fA to 101, fB to 102)) {
-                ratioSlots += intArrayOf((span * fraction).toInt() - divider / 2, id)
+            pB = screenLong - small - divider
+        }
+
+        // ③ 甩动：2026-10-31 用户决定取消。原实现见 git 历史（v0.7.63–v0.7.73）。
+        //    留着 isFling 形参只为将来恢复时不必改 hook 签名。
+
+        // ④ 两侧官方台阶 ±7%
+        if (firstObj != null && first != null && kotlin.math.abs(pos - first) <= magnet) return firstObj
+        if (lastObj != null && last != null && kotlin.math.abs(pos - last) <= magnet) return lastObj
+
+        // ⑤ 拉满 / 甩出屏幕：交还官方（全屏、退出分屏由官方手势负责）
+        val loEdge = start + (span * 0.01f).toInt()
+        val hiEdge = start + (span * 0.99f).toInt()
+        if (pos <= loEdge || pos >= hiEdge) return null
+        // ⑤b 2026-10-31 用户要求：**边缘台阶到屏幕边缘之间也禁止无极** ——
+        //     吸到 10% / 90% 之后继续往外拖，之前会在"台阶 ~ 1%"之间自由伸缩，
+        //     现在这段一律贴回台阶（1% 以内仍交还官方，负责全屏手势）。
+        if (firstObj != null && first != null && pos < first) return firstObj
+        if (lastObj != null && last != null && pos > last) return lastObj
+
+        // ⑥ 16:9 **外侧** ±7% 吸附。内侧不在这里判——内侧到 5:5 之间是"全区间就近"（⑦）。
+        if (hasSlots) {
+            if (pos < pA && kotlin.math.abs(pos - pA) <= magnet) {
+                Logx.always("分屏吸附: $pos -> 16:9 左档(外侧) position=$pA")
+                return target(pA, 101)
+            }
+            if (pos > pB && kotlin.math.abs(pos - pB) <= magnet) {
+                Logx.always("分屏吸附: $pos -> 16:9 右档(外侧) position=$pB")
+                return target(pB, 102)
             }
         }
 
-        // ③ 16:9 磁吸：只看 16:9 档自身 ±4% 跨度
-        for (slot in ratioSlots) {
-            val p = slot[0]
-            val id = slot[1]
-            if (kotlin.math.abs(pos - p) <= snapMagnet) {
-                // 用 always 而非 once：once 会把同一 id 的多次命中吞掉，排查吸附位置时看不到实际落点
-                Logx.always(
-                    "分屏吸附: $pos -> 16:9档 id=$id position=$p" +
-                        "（span=$span divider=$divider 小边=${targetSmallSide}px 半径=$snapMagnet）"
-                )
-                return target(p, id)
-            }
-        }
-
-        // ④ 中线 5:5 磁吸（返回官方目标对象，状态机才认得出这是 5:5）
-        if (midObj != null && mid != null && kotlin.math.abs(pos - mid) <= midMagnet) return midObj
-
-        // ⑤ ★ 2026-10-31 用户要求：**中线与 16:9 两档之间不再允许自由停留** ——
-        //    这两档相距较近（竖屏跨度下约 7.7%），中间若留无极缝隙，松手会停在一个
-        //    "既不是 5:5、也不是 16:9"的暧昧比例上。现在落在两档之间（各自磁吸半径之外）
-        //    的位置，一律就近吸附到 16:9 或 5:5 其中之一。
-        //    注意：16:9 ↔ 两侧官方台阶（10% / 90%）之间仍保留无极调节（⑥），不受影响。
-        if (midObj != null && mid != null) {
-            for (slot in ratioSlots) {
-                val p = slot[0]
-                val id = slot[1]
+        // ⑦ 2026-10-31 用户要求：**5:5 与 16:9 之间不留无极调节，只能选更近一侧**。
+        //    这两档相距约 7.7% 跨度，中间留缝隙会停在一个"既不是 5:5 也不是 16:9"的暧昧比例。
+        //    注意 16:9 ↔ 两侧官方台阶之间仍保留无极（⑥ 只做 ±7% 磁吸，其余落 ⑨）。
+        if (midObj != null && mid != null && hasSlots) {
+            for ((p, id) in listOf(pA to 101, pB to 102)) {
                 val lo = minOf(p, mid)
                 val hi = maxOf(p, mid)
                 if (pos > lo && pos < hi) {
-                    if (kotlin.math.abs(pos - p) <= kotlin.math.abs(pos - mid)) {
-                        Logx.always(
-                            "分屏吸附: $pos 位于中线($mid)/16:9($p) 之间 -> 就近吸 16:9 id=$id"
-                        )
-                        return target(p, id)
+                    return if (kotlin.math.abs(pos - p) <= kotlin.math.abs(pos - mid)) {
+                        Logx.always("分屏吸附: $pos 在 5:5($mid)/16:9($p) 之间 -> 就近吸 16:9 id=$id")
+                        target(p, id)
+                    } else {
+                        Logx.always("分屏吸附: $pos 在 5:5($mid)/16:9($p) 之间 -> 就近吸 5:5")
+                        midObj
                     }
-                    Logx.always("分屏吸附: $pos 位于中线($mid)/16:9($p) 之间 -> 就近吸 5:5")
-                    return midObj
                 }
             }
         }
 
-        // ⑥ 其余位置：松手即落点 → 任意比例（无极调节）
+        // ⑧ 5:5 自身 ±7%
+        if (midObj != null && mid != null && kotlin.math.abs(pos - mid) <= magnet) return midObj
+
+        // ⑨ 其余位置：松手即落点 → 任意比例（无极调节）
         target(pos, 103)
     }.onFailure { Logx.e("构造分屏吸附目标失败", it) }.getOrNull()
 
@@ -549,6 +951,8 @@ object Hooks {
     // ---------------- 多分屏（≥3 应用）栏隐藏 ----------------
 
     @Volatile private var lastCoordinator: Any? = null
+    private val snapEnterHits = java.util.concurrent.atomic.AtomicInteger(0)
+    @Volatile private var lastSnapPos: Int? = null
 
 
     /** 当前是否存在分屏（>=2 个 stage）。 */
@@ -615,6 +1019,74 @@ object Hooks {
     /** 上次尝试恢复该组合比例的时间（限频用）。 */
     private val splitRatioRestoredAt = ConcurrentHashMap<String, Long>()
 
+    /** 恢复入口的命中计数：只为排查"钩子到底有没有被调用"，前几次打日志。 */
+    private val splitRestoreHits = java.util.concurrent.atomic.AtomicInteger(0)
+
+    /** 系统写比例方法的命中计数（观测用，前 20 次打日志）。 */
+    private val splitWriterHits = java.util.concurrent.atomic.AtomicInteger(0)
+
+    /** 上一次 updateSoScState 后的 mSoScState，用于识别「刚刚进入两应用分屏」这一上升沿。 */
+    @Volatile private var lastSoScState = -1
+
+    /**
+     * 最近一次「刚重建分屏」的时刻（elapsedRealtime）。
+     *
+     * 真机实证（v0.7.17 日志）：分屏重建后 `mDividerPosition` **仍是重建前的旧值**，
+     * 所以「读现状比一下就知道要不要恢复」这条判断必然误判成"已经接近"，
+     * 一挡就永远不写回。改成：重建后的一小段窗口内**无条件**写回记忆值，
+     * 窗口外一律不动 —— 这样既恢复得到，又不会在用户拖把手时抢方向。
+     */
+    @Volatile private var splitJustBuiltAt = 0L
+
+    /**
+     * 最近一次处于两应用分屏（state==2）的时刻。
+     * 用来判断"这次进入分屏是不是紧接着上一次分屏的延续"。
+     * 真机日志：关闭**左边**应用时 state 走 2 → 1 → 2（prev==1），
+     * 关闭**右边**应用时走 2 → 0 → 2（prev==0）。只用 prev==1 判会把右半边漏掉。
+     */
+    @Volatile private var lastSplitAtNow = 0L
+
+    /** 渠道纠正的限频时刻（系统可能连调多次 setDivideRatioForSoSc）。 */
+    @Volatile private var ratioForceAt = 0L
+
+    /**
+     * 正在由本模块写分隔线的窗口。
+     *
+     * 血的教训（v0.7.19 真机）：我们写位置会触发系统再走一次 `DividerSnapAlgorithm#snap`，
+     * 记录端把**我们自己写出来的位置**当成了"用户拖动"记进记忆 —— 记进一个 2% 的贴边值，
+     * 下一轮恢复就往 2% 写，第一个应用只剩几十像素、第二个应用进不来、反复重建
+     * （用户看到"一个应用闪烁、打开第二个失败、第一个变全屏"）。
+     * 所以：写之前置位，写完后延迟一段时间再清（snap 回调是异步的），期间一律不记录。
+     */
+    @Volatile private var ratioRestoring = false
+
+    /**
+     * 本次重建周期是否已经"定过比例"。
+     *
+     * 真机日志（12:14:26~28）实证：重建后恢复入口每 600ms 就写一次（400/1000/2000/3500
+     * 四次重试 + inflate 三次 + snap 渠道），把用户刚拖到的位置一次次拉回记忆值，
+     * 表现就是"跳回 5:5 之后就不再恢复"——其实是我们自己一直在写。
+     * 所以一个重建周期只允许定一次：无论是我们恢复的，还是用户拖定的。
+     */
+    @Volatile private var ratioRestoredInWindow = false
+
+    /** 分屏结束确认令牌：state 短暂跳 -1 时不能被当成"真的退出了分屏"。 */
+    @Volatile private var splitEndToken = 0
+
+    /**
+     * 组合按钮（桌面 / 多任务的应用组合）启动时刻。
+     * 真机探针证实：组合按钮走 `SoScStageCoordinator#startTasks(...)`，
+     * 而普通"开两个应用组成分屏"走 `onSplitScreenEnter()` —— 这是唯一能区分两者的信号。
+     * 组合按钮拉起的分屏要沿用上次比例，所以给一个短时间窗把它和"新分屏"分开。
+     */
+    @Volatile private var splitEntryFromPairAt = 0L
+
+    /** 让记录端闭嘴一段时间（写位置的异步副作用跑完再放开）。 */
+    private fun markRestoring(ms: Long) {
+        ratioRestoring = true
+        Handler(Looper.getMainLooper()).postDelayed({ ratioRestoring = false }, ms)
+    }
+
     /** 反射写 Rect 字段（多分屏 root 边界铺满用）。 */
     private fun setRectField(o: Any, name: String, v: Rect) {
         runCatching {
@@ -674,95 +1146,448 @@ object Hooks {
         if (pkgs.size < 2) null else pkgs.sorted().joinToString("+")
     }.getOrNull()
 
+    /** 两边 stage 的包名（取不到的不计入）。 */
+    private fun stagePkgs(coord: Any): List<String> = runCatching {
+        listOf("mMainStage", "mSideStage").mapNotNull { name ->
+            val stage = field(coord, name) ?: return@mapNotNull null
+            val info = call(stage, "getRunningTaskInfo")
+                ?: field(stage, "mRootTaskInfo")
+                ?: call(stage, "getTopChildTaskInfo")
+            info?.let { taskPkg(it) }?.takeIf { it.isNotEmpty() }
+        }
+    }.getOrElse { emptyList() }
+
+    /**
+     * 是不是"一边是桌面"的组合。
+     *
+     * 用户 2026-10-31 实测两处异常都出在这里：
+     *  · 调整比例后单边任务关闭回到桌面 → 我们还把 divider 拉回记忆值，桌面选应用就错乱；
+     *  · 打开"桌面 + 组合任务"时，系统正在按档位摆位，我们硬改成记忆比例 → 窗口越界。
+     * 桌面不是"用户设定的应用组合"，此时比例应当交回系统（它会回中线）。
+     */
+    private fun hasLauncherSide(coord: Any): Boolean = stagePkgs(coord).any { p ->
+        p.contains("launcher", true) || p.endsWith(".home", true) || p == "com.miui.home"
+    }
+
     /** 记录当前分屏比例（拖动定档时调用）。 */
     /**
      * 从 snap 的最终落位记录该"应用组合"的分屏比例。
      * `setDividerPosition` 在拖动里不会被调用（真机 0 命中），所以记录必须挂在 snap 上。
      */
+    /** 防抖令牌：拖动过程中 snap 每帧都在调，只有停下来那一刻才写记忆。 */
+    private var ratioRecordToken = 0
+
+    /**
+     * 记录用户定格后的分屏比例。
+     *
+     * 用户 2026-10-31 定调：**无极也要记，但只记"完全定格后"的那一次，过程不记。**
+     * 拖动时系统每帧都会走一次 snap（这里就是 hook 点），所以不能落点即写 ——
+     * 加 500ms 防抖：期间只要有新的落点就作废重来，安静 500ms 才认为用户松手了。
+     *
+     * 另外两处换算仍然保留：
+     *  · 扣掉 `mDividerSize`：5:5 时 position=1169、span=2224，直接除是 52.6%（像"拖过"），
+     *    扣掉分隔条 57 后才是 1112/2224 = 50.0%（系统默认中线）。
+     *  · `ratioRestoring` 期间不记：我们自己写位置触发的 snap 不是用户操作
+     *    （v0.7.19 就是把自己的写入记成了 2%，把分屏挤坏）。
+     */
     private fun recordRatioFromSnap(algorithm: Any, target: Any?) {
         if (!Cfg.splitRatioMemory) return
         if (target == null) return
+        if (ratioRestoring) return
         // 单侧分屏（另一边是桌面 / minimized）时的落位不算"用户设定的分屏比例"
         if (soScMinimized()) return
+        // 分屏刚重建（系统 reset/init 过后 1.2 秒内）的落点不是用户拖的，别记 —— 记了就覆盖掉
+        // 用户上一次的真实定格值（12:11:25 实测：74.9% 被 51.5% 顶掉，用户看到"还是 5:5"）。
+        val sinceBuild = android.os.SystemClock.elapsedRealtime() - splitJustBuiltAt
+        if (sinceBuild < 2_500L) return
         val span = layoutSpan(algorithm) ?: return
         val p = field(target, "position") as? Int ?: return
-        val ratio = ((p - span.first).toFloat() / span.second).coerceIn(0f, 1f)
-        if (ratio < 0.02f || ratio > 0.98f) return
-        // 50% 是系统默认值（用户没动过把手时也会算出来）→ 不记录，否则会把 10%/90% 覆盖掉。
-        if (kotlin.math.abs(ratio - 0.5f) < 0.01f) return
+        val divider = (field(algorithm, "mDividerSize") as? Int) ?: 0
+        // ★ 只在两应用分屏时记录：分屏结束(-1)/单边(1)时系统摆位不是用户意图。
+        val cc0 = lastCoordinator
+        val stR = if (cc0 == null) -1 else (runCatching { call(cc0, "getSoScState") as? Int }.getOrNull() ?: -1)
+        if (stR != 2) return
+        val ratio = ((p - divider - span.first).toFloat() / span.second).coerceIn(0f, 1f)
+        // ★ 极端值不记：关闭一个应用时，系统会把另一侧收窄，divider 走到极边
+        //   （实测 12:18:48 记下 3.6%）。这不是用户拖的，记了就把记忆污染成"没有记忆"。
+        //   官方最小台阶在 10% 附近，所以 10% 以外一律视为系统摆位。
+        if (ratio < 0.10f || ratio > 0.90f) return
         val ctx = AppCtx.get() ?: return
-        val impl = runCatching {
-            cls("com.android.wm.shell.sosc.SoScUtilsImpl").getMethod("getInstance").invoke(null)
-        }.getOrNull() ?: return
-        val coord = field(impl, "mStageCoordinator") ?: return
-        val pair = splitPair(coord)
-        if (pair == null) {
-            Logx.once("split-pair-null", "分屏比例记忆: 取不到应用组合（跳过记录）")
-            return
-        }
         val screen = Bounds.screenKey(ctx)
         val permille = (ratio * 1000).toInt().coerceIn(0, 1000)
-        // ① 按「应用组合」记忆：同一对应用重新分屏时精确恢复。
-        val key = "split:$pair"
-        val old = Bounds.get(ctx, key, screen)
-        if (old == null || old.left != permille) {
-            Bounds.put(ctx, key, screen, Rect(permille, 0, permille + 1, 1))
-            Logx.e("分屏比例记忆: $pair -> ${permille / 10f}%（$screen）")
+        // 应用组合在"拖动当下"取（延迟写入时可能已经退出分屏，那时就取不到了）
+        val pair = runCatching {
+            val impl = cls("com.android.wm.shell.sosc.SoScUtilsImpl").getMethod("getInstance").invoke(null)
+            field(impl, "mStageCoordinator")?.let { splitPair(it) }
+        }.getOrNull()
+        val token = ++ratioRecordToken
+        Handler(Looper.getMainLooper()).postDelayed({
+            if (token != ratioRecordToken) return@postDelayed   // 期间又动了 → 只记最后一次
+            runCatching { commitRatio(ctx, screen, permille, pair) }
+        }, 500L)
+    }
+
+    /** 真正落盘一次"用户定格后的比例"。 */
+    private fun commitRatio(ctx: android.content.Context, screen: String, permille: Int, pair: String?) {
+        // ★ 防抖回调里必须**重新确认**这次定格仍然有效：500ms 之间可能已经进入新一轮重建，
+        //   那时这个落点就是系统摆位、不是用户拖动。真机 12:14:21 实证：重建后 1ms 落的点
+        //   在 500ms 后落盘，把 51.5% 记成"用户定格"，用户拖过的值再也进不来。
+        if (android.os.SystemClock.elapsedRealtime() - splitJustBuiltAt < 2_500L) return
+        if (ratioRestoring) return
+        // 用户已经把这个比例定住了 → 本次重建周期不再自动改（否则我们的写入会把它拉回去）。
+        ratioRestoredInWindow = true
+        if (pair != null) {
+            val key = "split:$pair"
+            val old = Bounds.get(ctx, key, screen)
+            if (old == null || old.left != permille) {
+                Bounds.put(ctx, key, screen, Rect(permille, 0, permille + 1, 1))
+                Logx.e("分屏比例记忆: $pair -> ${permille / 10f}%（$screen，定格）")
+            }
         }
-        // ② 再记一份「全局最近值」：用户 2026-10-31 的场景是「一边退出后再打开**新应用**」，
-        //    新组合在 ① 里没有记录，必须靠这条兜底沿用上次拖到的比例。
+        // 全局最近值：用户场景是"一边退出后再打开新应用"，新组合没有自己的记忆，靠这条沿用。
         val gOld = Bounds.get(ctx, KEY_LAST_SPLIT_RATIO, screen)
         if (gOld == null || gOld.left != permille) {
             Bounds.put(ctx, KEY_LAST_SPLIT_RATIO, screen, Rect(permille, 0, permille + 1, 1))
-            Logx.e("分屏比例记忆: 最近一次 -> ${permille / 10f}%（全局，$screen）")
+            Logx.e("分屏比例记忆: 最近一次 -> ${permille / 10f}%（全局，$screen，定格）")
         }
     }
 
+    /** 恢复路径探针：进程内最多 40 条，用来定位"到底卡在哪个 return"。 */
+    private val rsrProbes = java.util.concurrent.atomic.AtomicInteger(0)
+    private fun rsrProbe(why: String) {
+        if (rsrProbes.incrementAndGet() <= 60) Logx.e("分屏比例恢复探针: $why")
+    }
+
+    /** 两个 stage 的取包情况（只在取不到时打，判断是哪个 stage、哪一步断的）。 */
+    private fun splitPairDetail(coord: Any): String = runCatching {
+        listOf("mMainStage", "mSideStage").joinToString(" ") { name ->
+            val stage = field(coord, name)
+            if (stage == null) return@joinToString "$name=stage:null"
+            val info = call(stage, "getRunningTaskInfo")
+                ?: field(stage, "mRootTaskInfo")
+                ?: call(stage, "getTopChildTaskInfo")
+            if (info == null) "$name=task:null"
+            else "$name=${taskPkg(info) ?: "pkg:null(${info.javaClass.simpleName})"}"
+        }
+    }.getOrElse { "detail失败:$it" }
 
     /** 重建这组分屏时套回记忆里的比例（异步投递，避免重入把分隔条卡住）。 */
     private fun restoreSplitRatio(coord: Any) {
         if (!Cfg.splitRatioMemory) return
-        val ctx = AppCtx.get() ?: return
-        val pair = splitPair(coord) ?: run {
-            Logx.once("rsr-pair", "分屏比例恢复: 取不到应用组合（跳过）")
+        // 单侧分屏（一边是桌面）不动：那时"比例"没有意义，改它会把 minimized 态搅乱。
+        // 放在函数内而不是各入口，保证 inflate 那一路也吃到同样的保护。
+        if (field(coord, "mMinimized") as? Boolean == true) {
+            rsrProbe("跳过：mMinimized=true")
             return
         }
+        // ★ 关闭单边后 state 变成 1，但此前挂起的重试队列不会自己取消。
+        //   真机表现：刚回中线，3500ms 那次重试又把比例改回记忆值。
+        //   这里补上"必须两个应用都在"的硬门禁。
+        val stNow = runCatching { call(coord, "getSoScState") as? Int }.getOrNull() ?: -1
+        if (stNow != 2) {
+            rsrProbe("跳过：state=$stNow 非两应用分屏")
+            return
+        }
+        if (hasLauncherSide(coord)) {
+            rsrProbe("跳过：一边是桌面（比例交回系统）")
+            return
+        }
+        if (ratioRestoredInWindow) {
+            rsrProbe("跳过：本次重建已定过比例")
+            return
+        }
+        val ctx = AppCtx.get() ?: run { rsrProbe("跳过：AppCtx=null"); return }
+        val pair = splitPair(coord)
+        val pairKey = pair ?: "unknown"
+        if (pair == null) {
+            // 取不到组合不是"不能恢复"的理由：用户场景本来就是"换了个新应用"，
+            // 新组合没有自己的记忆，只能靠全局最近值 —— 所以只记录、继续。
+            rsrProbe("splitPair=null，继续走全局最近值 | ${splitPairDetail(coord)}")
+        }
         val screen = Bounds.screenKey(ctx)
-        val key = "split:$pair"
+        val key = "split:$pairKey"
         // 不能"每进程只恢复一次"（第二次进同一组分屏就不会恢复了，真机：又变回 5:5）。
-        // 改成限频：同一 key 2 秒内只尝试一次，且当前比例与记忆差异 >2% 才动。
+        // 限频 600ms：既挡住"恢复动作自身引发的连续回调"，又不会把用户松手后
+        // 紧接着的重组事件吃掉（2 秒窗口在真机上会把这类事件挡掉，之后再无触发机会）。
         val mark = "$key|$screen"
         val now = android.os.SystemClock.elapsedRealtime()
         val last = splitRatioRestoredAt[mark] ?: 0L
-        if (now - last < 2_000) return
+        if (now - last < 600) {
+            rsrProbe("跳过：600ms限频（距上次 ${now - last}ms）")
+            return
+        }
         splitRatioRestoredAt[mark] = now
-        // 优先用「这组应用自己的」记忆；没有就用「全局最近一次」——
-        // 用户场景是打开**新应用**组成新组合，新组合必然没有自己的记忆。
-        val pairMemo = Bounds.get(ctx, key, screen)
+        // ★ 先看"这一组应用自己的记忆"，再退到全局最近值。
+        //   为什么必须组合优先：组合按钮（桌面/多任务）重新打开的是**同一组应用**，
+        //   而分屏结束时全局最近值会被清掉（用户 m01212 要求"分屏彻底结束就不再记"）。
+        //   真机日志：多任务组合进来时打出「跳过：没有全局最近值」，比例就回 5:5 了。
+        //   组合记忆不清，所以组合按钮还能沿用自己上次的比例。
+        val pairMemo = if (pair != null) Bounds.get(ctx, key, screen) else null
         val memo = pairMemo ?: Bounds.get(ctx, KEY_LAST_SPLIT_RATIO, screen) ?: run {
-            Logx.once("rsr-memo", "分屏比例恢复: 记忆里没有 $key|$screen")
+            rsrProbe("跳过：没有可用记忆（组合=$pairKey，屏幕=$screen）")
             return
         }
-        val want: Float = memo.left / 1000f
+        val want: Float = (memo.left / 1000f).coerceIn(0.02f, 0.98f)
+        if (kotlin.math.abs(want - 0.5f) < 0.01f || want < 0.05f || want > 0.95f) {
+            rsrProbe("跳过：记忆值 ${(want * 100).toInt()}% 不可用（默认/极端）")
+            return
+        }
         val layout = field(coord, "mSplitLayout") ?: run {
-            Logx.once("rsr-layout", "分屏比例恢复: coord 上没有 mSplitLayout（字段名可能不同）")
+            rsrProbe("跳过：coord 上没有 mSplitLayout")
             return
         }
-        Handler(Looper.getMainLooper()).post {
+        shellPost(layout, lastCoordinator) {
             runCatching {
-                val now = dividerRatio(layout)
-                if (now != null && kotlin.math.abs(now - want) < 0.02f) {
-                    Logx.once("rsr-eq", "分屏比例恢复: 已经接近记忆值（$now ≈ $want），不动作")
+                // 现状比例：SplitLayout 自己**没有** mDisplayWidth/mInsets 这些字段（那是
+                // DividerSnapAlgorithm 上的），所以必须经 getDividerSnapAlgorithm() 拿到算法再算 span。
+                val alg = runCatching { call(layout, "getDividerSnapAlgorithm") }.getOrNull()
+                val span = (alg?.let { layoutSpan(it) }) ?: run {
+                    rsrProbe("跳过：span=null（getDividerSnapAlgorithm=${alg != null}）| SplitLayout 方法=${layoutMethods(layout)}")
                     return@runCatching
                 }
-                val span = layoutSpan(layout) ?: return@runCatching
-                val pos = span.first + (span.second * want).toInt()
-                layout.javaClass.getMethod("setDividerPosition", Integer.TYPE, java.lang.Boolean.TYPE)
-                    .invoke(layout, pos, true)
-                Logx.e("分屏比例记忆: 已恢复 $pair -> ${(want * 100).toInt()}%${if (pairMemo != null) "（本组合记忆）" else "（全局最近值）"}")
+                // ★ 不能用 mDividerPosition 判断「是否已经对了」—— 真机实证（v0.7.17 日志）：
+                //   重建分屏后它仍是**重建前的旧值**（0.526 = 上一轮记忆），拿它跟记忆比必然
+                //   判成"已经接近"→ 直接 return → 永远不写回（用户报"还是 5:5"就是这么来的）。
+                //   改成：只在「刚重建窗口」内动作，窗口内无条件写回；窗口外一律不动，
+                //   避免和用户拖把手抢方向。
+                val sinceBuild = android.os.SystemClock.elapsedRealtime() - splitJustBuiltAt
+                if (sinceBuild > 3_000L) {
+                    rsrProbe("跳过：不在重建窗口（距重建 ${sinceBuild}ms）")
+                    return@runCatching
+                }
+                // ① 首选 SoSc 原生比例 API（真机方法清单实证：SplitLayout 上有
+                //    setDivideRatioForSoSc / setDivideRatio，只是签名不是我以为的单参 Float.TYPE 版）。
+                markRestoring(1_200L)
+                val used = setRatioViaMethod(layout, want)
+                if (used != null) {
+                    runCatching { call(layout, "updateStateWithCurrentPosition") }
+                    ratioRestoredInWindow = true
+                    Logx.e("分屏比例记忆: 已恢复($used) $pairKey -> ${(want * 100).toInt()}%（全局最近值）")
+                    return@runCatching
+                }
+                // ② 回退：位置法（span 已由算法算出）。与记录端同一套换算：位置要加回分隔条宽度。
+                val divider = ((alg?.let { field(it, "mDividerSize") }) as? Int) ?: 0
+                val pos = span.first + (span.second * want).toInt() + divider
+                // ★ 只调 setDividerPosition 时，divider 动了但两侧 stage bounds 没跟着重排，
+                //   用户看到的就是"占比小的那边界面超出屏幕、占比大的那边还是 50%"
+                //   （2026-10-31 实测）。所以先用系统自己的入口 setDivideRatio(snapId) 走一次
+                //   完整重排，再把位置微调到记忆值。
+                // ★ 用户 m01365：希望"5:5 -> 记忆比例"的过渡和"关闭单边回 5:5"一致。
+                //   之前 v0.7.35 用 10 帧 × 16ms 会演变成"严重抖动"（每帧都让旧应用 resize 一次）；
+                //   单次写入又太生硬。折中：**4 帧 × 80ms ≈ 320ms**，节奏和系统收起动画接近，
+                //   帧数少到不会抖，又能看出中间过程。
+                // ★ 分两段做过渡，绕开两个坑：
+                //   1) flingDividerPosition 会把布局推进中间态 → 分隔条卡住不可操作，弃用；
+                //   2) 逐帧都传 true 会让两侧窗口每帧 resize 一次 → 抽搐闪烁。
+                //   所以：过渡期间每帧只动分隔条本身（false），最后一帧才让窗口就位（true）。
+                val setPos = runCatching {
+                    layout.javaClass.getMethod("setDividerPosition", Integer.TYPE, java.lang.Boolean.TYPE)
+                }.getOrNull()
+                if (setPos == null) {
+                    Logx.e("分屏比例记忆: 取不到 setDividerPosition，放弃过渡")
+                } else {
+                    // ★ flingDividerPosition 的真实前提是"DividerView 正在被手指拖动"：
+                    //   它内部会置上按住状态并由触摸流程负责复位。我们绕开触摸直接调用，
+                    //   结果就是"应用被拉到边缘 + 持续按住不放"（用户 m01556 实测）。
+                    //   这个接口不能这么用，回到单次写入——唯一不会破坏布局状态的方式。
+                    runCatching {
+                        val setPos = layout.javaClass.getMethod(
+                            "setDividerPosition", Integer.TYPE, java.lang.Boolean.TYPE
+                        )
+                        setPos.invoke(layout, pos, true)
+                        call(layout, "updateStateWithCurrentPosition")
+                    }.onFailure { Logx.e("分屏比例记忆: 写入失败", it) }
+                }
+                // 诊断：把 divider 与两侧 stage 的真实 bounds 一起打出来。
+                // 用户反馈「应用大小还是 5:5，但中线在记忆位置」= bounds 没跟随 divider，
+                // 这行日志能一次确认 setDividerPosition 到底有没有推动 bounds。
+                runCatching {
+                    val mainB = lastCoordinator?.let { field(it, "mMainStage") }
+                        ?.let { SoScSupport.call(it, "getBounds") }
+                    val sideB = lastCoordinator?.let { field(it, "mSideStage") }
+                        ?.let { SoScSupport.call(it, "getBounds") }
+                    Logx.e("分屏比例记忆: 写入后 pos=$pos main=$mainB side=$sideB")
+                }
+                ratioRestoredInWindow = true
+                Logx.e("分屏比例记忆: 已恢复(setDividerPosition) $pairKey -> ${(want * 100).toInt()}%（全局最近值）pos=$pos span=${span.first}+${span.second} divider=$divider")
             }.onFailure { Logx.e("恢复分屏比例失败", it) }
         }
     }
+
+    /** SplitLayout 上与分隔线相关的方法名（定位用，只在回退失败时打）。 */
+    private fun layoutMethods(layout: Any): String = runCatching {
+        layout.javaClass.methods.map { it.name }
+            .filter { it.contains("atio", true) || it.contains("ivider", true) || it.contains("osition", true) }
+            .distinct().sorted().joinToString(",")
+    }.getOrElse { "枚举失败:$it" }
+
+    /**
+     * 用 SplitLayout 自己的比例 API 写回。
+     *
+     * 真机方法清单（v0.7.16 探针打印）实证存在 `setDivideRatioForSoSc` 与 `setDivideRatio`，
+     * 但 v0.7.16 里 `getMethod("setDivideRatio", Float.TYPE)` 抛异常 —— 说明它们的签名
+     * 不是「单参 float」。这里改成遍历 `declaredMethods` 按名字匹配、只要求 1 个 float 形参，
+     * 兼容 float / Float 两种声明，命中即调用并返回方法名。
+     *
+     * `setDivideRatioForSoSc` 排前面：这是 SoSc 分屏自己的入口，最可能就是系统把比例
+     * 写成 5:5 的那条渠道。
+     */
+    private fun setRatioViaMethod(layout: Any, want: Float): String? = runCatching {
+        for (name in listOf("setDivideRatioForSoSc", "setDivideRatio")) {
+            val m = layout.javaClass.declaredMethods.firstOrNull {
+                it.name == name && it.parameterTypes.size == 1 &&
+                    (it.parameterTypes[0] == java.lang.Float.TYPE ||
+                        it.parameterTypes[0] == java.lang.Float::class.java)
+            } ?: continue
+            m.isAccessible = true
+            m.invoke(layout, want)
+            return name
+        }
+        null
+    }.getOrNull()
+
+    /**
+     * 在「系统自己设比例」的那条渠道上，把默认值直接改写成记忆值。
+     *
+     * 用户 m00775 要求「看看他是通过什么渠道恢复的 5:5，对这个渠道动手」。v0.7.17 的写入点
+     * 观测给出了答案：重建分屏时系统**只**调 `SplitLayout#setDivideRatioForSoSc(int, boolean)`
+     * （真机日志 `setDivideRatioForSoSc(1,true) 类型=(int,boolean)`）；`initDividerPosition` /
+     * `resetDividerPosition` 只出现在启动与方向切换，**不参与**这次回落。
+     * 所以在它的 hook 里 proceed 之后立刻改写 —— 打在渠道上，而不是事后追着补。
+     *
+     * 这里刻意**不比较现状**：重建后 `mDividerPosition` 还是旧值，比较必然误判（v0.7.17 的坑）。
+     * 改成只看「刚重建窗口」+ 500ms 限频，窗口内直接写。
+     */
+    /**
+     * 一边是桌面时把分隔线拉回中线。
+     *
+     * 用户 m01154：「占比小的那一侧关闭后，桌面会被另一边挡住一部分，图标显示不全」——
+     * 关掉小边后大边还保持记忆比例（例如 61%），桌面只剩 39%，图标自然被切。
+     * 这种态下比例没有"用户设定"可言，必须交回系统默认的 5:5。
+     */
+    private fun forceMiddle(layout: Any, why: String) {
+        // ★ 真机日志（15:03:16.649 -> 15:03:16.960）：恢复写入 41% 之后 300ms，
+        //   这次"回中线"把比例又拉回 5:5，用户看到的就是"比例没恢复"。
+        //   所以这里必须再确认一次：两应用分屏态不动、刚写过比例也不动。
+        runCatching {
+            val impl = cls("com.android.wm.shell.sosc.SoScUtilsImpl").getMethod("getInstance").invoke(null)
+            val c = field(impl, "mStageCoordinator")
+            val st = c?.let { call(it, "getSoScState") as? Int } ?: -1
+            if (st == 2) {
+                Logx.e("分屏比例记忆: 回中线跳过（state=2 已是两应用分屏）")
+                return
+            }
+        }
+        if (android.os.SystemClock.elapsedRealtime() - ratioForceAt < 1_500L) {
+            Logx.e("分屏比例记忆: 回中线跳过（刚写入过比例，避免覆盖）")
+            return
+        }
+        if (!Cfg.splitRatioMemory) return
+        val alg = runCatching { call(layout, "getDividerSnapAlgorithm") }.getOrNull() ?: run {
+            Logx.e("分屏比例记忆: 回中线跳过（$why）：取不到 DividerSnapAlgorithm")
+            return
+        }
+        val mid = runCatching { field(alg, "mMiddleTarget") }.getOrNull() ?: run {
+            Logx.e("分屏比例记忆: 回中线跳过（$why）：取不到 mMiddleTarget")
+            return
+        }
+        // ★ mMiddleTarget 上没有 id 字段（真实日志：`取不到 target.id` 连打三次），
+        //   但有 position —— 直接按位置写回，走和恢复同一条（已验证可用的）ShellHandler 路径。
+        val midPos = runCatching { field(mid, "position") as? Int }.getOrNull() ?: run {
+            Logx.e("分屏比例记忆: 回中线跳过（$why）：取不到 target.position")
+            return
+        }
+        runCatching {
+            layout.javaClass.getMethod("setDividerPosition", Integer.TYPE, java.lang.Boolean.TYPE)
+                .invoke(layout, midPos, true)
+            call(layout, "updateStateWithCurrentPosition")
+            Logx.e("分屏比例记忆: 回中线（$why, pos=$midPos）")
+        }.onFailure { Logx.e("分屏比例记忆: 回中线失败（$why）", it) }
+    }
+
+    private fun forceMemoRatio(layout: Any, via: String, force: Boolean = false) {
+        if (!Cfg.splitRatioMemory) return
+        if (soScMinimized()) return
+        val coord = runCatching {
+            val impl = cls("com.android.wm.shell.sosc.SoScUtilsImpl").getMethod("getInstance").invoke(null)
+            field(impl, "mStageCoordinator")
+        }.getOrNull()
+        if (coord != null && hasLauncherSide(coord)) {
+            rsrProbe("渠道纠正: 一边是桌面，不纠正")
+            return
+        }
+        // ★ 只有"两个应用都在"（getSoScState()==2）才谈得上恢复比例。
+        //   单边/桌面态（state=1）下纠正毫无意义，而且会立刻把刚拉回的中线again改回记忆值
+        //   —— 真机 13:03:06 / 13:03:10 / 13:03:14 实测三次都是这个套路。
+        val st = runCatching { call(coord, "getSoScState") as? Int }.getOrNull() ?: -1
+        // force=true 表示"系统正在重建分屏的同一帧里同步写入"，此时 state 可能还没翻到 2，
+        // 不能挡——挡住就又会先露出 5:5。
+        if (st != 2 && !force) {
+            rsrProbe("渠道纠正: state=$st 非两应用分屏，不纠正")
+            return
+        }
+        // 自己触发的连锁不能再进（否则 写→snap→再写 无限循环，用户看到的就是闪烁）。
+        if (ratioRestoring) return
+        // 同一次重建只纠正一次：关闭一边应用时系统会连着回调好几轮，
+        // 每轮都改一次 divider，用户看到的就是"抖动闪烁"。
+        if (ratioRestoredInWindow) return
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (!force && now - ratioForceAt < 500L) return
+        val ctx = AppCtx.get() ?: return
+        val screen = Bounds.screenKey(ctx)
+        val memo = Bounds.get(ctx, KEY_LAST_SPLIT_RATIO, screen) ?: return
+        val want = (memo.left / 1000f).coerceIn(0.02f, 0.98f)
+        // 历史遗留的「5:5 被记成 52.6%」要挡掉（用户指出 0.52 是中间条占位造成的）。
+        // 记录端修好后新值不会再进来，这里负责兼容旧数据，否则永远"恢复到中线"。
+        // 默认中线（47~53%）与贴边值（<10% / >90%）都不是"用户设定的比例"：
+        // 前者是系统默认，后者是 v0.7.19 记进来的异常值，一律不动（否则会把分屏挤坏）。
+        if (kotlin.math.abs(want - 0.5f) < 0.01f || want < 0.05f || want > 0.95f) {
+            rsrProbe("渠道纠正: 记忆值 ${(want * 100).toInt()}% 不可用（默认/极端），不动")
+            return
+        }
+        val alg = runCatching { call(layout, "getDividerSnapAlgorithm") }.getOrNull() ?: run {
+            rsrProbe("渠道纠正: 取不到 DividerSnapAlgorithm")
+            return
+        }
+        val span = layoutSpan(alg) ?: run { rsrProbe("渠道纠正: span=null"); return }
+        // 与记录端同一套换算：位置要加回分隔条宽度，否则写回去比用户拖的地方偏一条边。
+        val divider = (field(alg, "mDividerSize") as? Int) ?: 0
+        val pos = span.first + (span.second * want).toInt() + divider
+        ratioForceAt = now
+        markRestoring(1_200L)
+        runCatching {
+            // 与恢复端同一套：先走系统完整重排，再微调，避免 stage bounds 与 divider 脱节。
+            snapIdFor(alg, pos)?.let { id -> runCatching { SoScSupport.call(layout, "setDivideRatio", id) } }
+            val applied = runCatching {
+                layout.javaClass.getMethod("setDividerPosition", Integer.TYPE, java.lang.Boolean.TYPE)
+                    .invoke(layout, pos, true)
+            }
+            if (applied.isFailure) {
+                val e = applied.exceptionOrNull()
+                Logx.e("分屏比例记忆: 渠道写入(true) 失败 cause=${e?.cause} msg=${e?.cause?.message}")
+                runCatching {
+                    layout.javaClass.getMethod("setDividerPosition", Integer.TYPE, java.lang.Boolean.TYPE)
+                        .invoke(layout, pos, false)
+                    call(layout, "updateStateWithCurrentPosition")
+                }
+            } else {
+                runCatching { call(layout, "updateStateWithCurrentPosition") }
+            }
+            ratioRestoredInWindow = true
+            Logx.e("分屏比例记忆: 渠道纠正($via) -> ${(want * 100).toInt()}% pos=$pos（span=${span.first}+${span.second}，屏幕=$screen）")
+        }.onFailure { Logx.e("分屏比例记忆: 渠道纠正失败", it) }
+    }
+
+    /**
+     * 把一个像素位置换算成系统的 snap id（给 `SplitLayout#setDivideRatio(int)` 用）。
+     *
+     * 真机实证 `setDivideRatio(int)` 收的是 snap id（日志里 `setDivideRatio(102)` 正是
+     * 自定义 16:9 档的 id），走它才会连同两侧 stage bounds 一起重排。
+     */
+    private fun snapIdFor(alg: Any, pos: Int): Int? = runCatching {
+        val target = SoScSupport.call(alg, "calculateNonDismissingSnapTarget", pos)
+        target?.let { field(it, "id") as? Int }
+    }.getOrNull()
 
     /** 当前把手比例（0~1）。 */
     private fun dividerRatio(layout: Any): Float? {

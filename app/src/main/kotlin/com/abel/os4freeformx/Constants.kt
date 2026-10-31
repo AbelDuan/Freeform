@@ -2,7 +2,7 @@ package com.abel.os4freeformx
 
 /** 模块常量：包名、prefs 名、配置键、目标类名。 */
 object Constants {
-    const val VERSION = "0.7.11"
+    const val VERSION = "0.7.74"
     const val PREFS_CFG = "os4freeformx_cfg"
     const val PREFS_BOUNDS = "os4freeformx_bounds"
     const val AUTHORITY = "com.abel.os4freeformx.store"
@@ -95,7 +95,8 @@ object Constants {
     const val DEF_SPLIT_UNLOCK_DIR = true
     const val DEF_MULTI_SPLIT_FREE = true
     const val DEF_SPLIT_RATIO_KEEP = true
-    const val DEF_SPLIT_RATIO_MEMORY = true
+    // 功能暂停：默认关闭。恢复时改回 true，并取消 Hooks.kt 里 installSplitRatio 那行的注释。
+    const val DEF_SPLIT_RATIO_MEMORY = false
     const val DEF_CAPTION_SPLIT_BOTH = true
     const val FOLD_SPLIT_LEFT = "left"
     const val FOLD_SPLIT_RIGHT = "right"
