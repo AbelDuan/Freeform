@@ -2,7 +2,7 @@ package com.abel.os4freeformx
 
 /** 模块常量：包名、prefs 名、配置键、目标类名。 */
 object Constants {
-    const val VERSION = "0.7.74"
+    const val VERSION = "0.7.75"
     const val PREFS_CFG = "os4freeformx_cfg"
     const val PREFS_BOUNDS = "os4freeformx_bounds"
     const val AUTHORITY = "com.abel.os4freeformx.store"
@@ -34,7 +34,6 @@ object Constants {
      * 记住分屏比例：一边应用退出（或进多任务）后再打开新应用重新组成分屏时，
      * 分割线回到用户上次拖到的位置，而不是回落到系统默认 1:1。实现见 Hooks.recordRatioFromSnap / restoreSplitRatio。
      */
-    const val K_SPLIT_RATIO_MEMORY = "split_ratio_memory"
     /** 把手（···）菜单同时显示左右与上下两对分屏按钮。实现见 CaptionSplitBoth.kt。 */
     const val K_CAPTION_SPLIT_BOTH = "caption_split_both"
     /** 轻折一下 → 分屏 +1（铰链角度判定触发）。实现见 FoldSplitTrigger.kt。 */
@@ -96,7 +95,6 @@ object Constants {
     const val DEF_MULTI_SPLIT_FREE = true
     const val DEF_SPLIT_RATIO_KEEP = true
     // 功能暂停：默认关闭。恢复时改回 true，并取消 Hooks.kt 里 installSplitRatio 那行的注释。
-    const val DEF_SPLIT_RATIO_MEMORY = false
     const val DEF_CAPTION_SPLIT_BOTH = true
     const val FOLD_SPLIT_LEFT = "left"
     const val FOLD_SPLIT_RIGHT = "right"

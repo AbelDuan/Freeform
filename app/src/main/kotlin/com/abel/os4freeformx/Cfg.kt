@@ -21,7 +21,6 @@ object Cfg {
     @Volatile var splitUnlockDir = Constants.DEF_SPLIT_UNLOCK_DIR
     @Volatile var multiSplitFree = Constants.DEF_MULTI_SPLIT_FREE
     @Volatile var splitRatioKeep = Constants.DEF_SPLIT_RATIO_KEEP
-    @Volatile var splitRatioMemory = Constants.DEF_SPLIT_RATIO_MEMORY
     @Volatile var captionSplitBoth = Constants.DEF_CAPTION_SPLIT_BOTH
     // 轻折加分屏（折叠屏）
     @Volatile var foldSplit = Constants.DEF_FOLD_SPLIT
@@ -142,7 +141,6 @@ object Cfg {
             splitUnlockDir = p.getBoolean(Constants.K_SPLIT_UNLOCK_DIR, Constants.DEF_SPLIT_UNLOCK_DIR)
             multiSplitFree = p.getBoolean(Constants.K_MULTI_SPLIT_FREE, Constants.DEF_MULTI_SPLIT_FREE)
             splitRatioKeep = p.getBoolean(Constants.K_SPLIT_RATIO_KEEP, Constants.DEF_SPLIT_RATIO_KEEP)
-            splitRatioMemory = p.getBoolean(Constants.K_SPLIT_RATIO_MEMORY, Constants.DEF_SPLIT_RATIO_MEMORY)
             captionSplitBoth = p.getBoolean(Constants.K_CAPTION_SPLIT_BOTH, Constants.DEF_CAPTION_SPLIT_BOTH)
             foldSplit = p.getBoolean(Constants.K_FOLD_SPLIT, Constants.DEF_FOLD_SPLIT)
             foldSplitSide = p.getString(Constants.K_FOLD_SPLIT_SIDE, Constants.DEF_FOLD_SPLIT_SIDE)
@@ -270,7 +268,6 @@ object Cfg {
             splitUnlockDir = b.getBoolean(Constants.K_SPLIT_UNLOCK_DIR, Constants.DEF_SPLIT_UNLOCK_DIR)
             multiSplitFree = b.getBoolean(Constants.K_MULTI_SPLIT_FREE, Constants.DEF_MULTI_SPLIT_FREE)
             splitRatioKeep = b.getBoolean(Constants.K_SPLIT_RATIO_KEEP, Constants.DEF_SPLIT_RATIO_KEEP)
-            splitRatioMemory = b.getBoolean(Constants.K_SPLIT_RATIO_MEMORY, Constants.DEF_SPLIT_RATIO_MEMORY)
             captionSplitBoth = b.getBoolean(Constants.K_CAPTION_SPLIT_BOTH, Constants.DEF_CAPTION_SPLIT_BOTH)
             foldSplit = b.getBoolean(Constants.K_FOLD_SPLIT, Constants.DEF_FOLD_SPLIT)
             foldSplitSide = b.getString(Constants.K_FOLD_SPLIT_SIDE, Constants.DEF_FOLD_SPLIT_SIDE)
@@ -305,7 +302,7 @@ object Cfg {
     /** 分屏四项的开关快照（只用于日志与变化判定）。 */
     private val splitExtras: String
         get() = "解锁方向=$splitUnlockDir 多分屏无级=$multiSplitFree " +
-                "换向保比例=$splitRatioKeep 记忆分屏比例=$splitRatioMemory 双向分屏=$captionSplitBoth"
+                "换向保比例=$splitRatioKeep 双向分屏=$captionSplitBoth"
 
     /** 兼容旧调用点。 */
     fun reloadThrottled(intervalMs: Long = 1500) = refreshAsync(intervalMs)
