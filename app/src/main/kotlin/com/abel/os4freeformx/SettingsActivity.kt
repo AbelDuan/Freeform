@@ -169,6 +169,7 @@ class SettingsActivity : Activity() {
         section("分屏")
         switchRow("解除分屏方向限制（竖屏也能左右、横屏也能上下）", Constants.K_SPLIT_UNLOCK_DIR, Cfg.splitUnlockDir) { Cfg.splitUnlockDir = it }
         switchRow("切换方向保持比例（左右 ↔ 上下时每个应用占比不变）", Constants.K_SPLIT_RATIO_KEEP, Cfg.splitRatioKeep) { Cfg.splitRatioKeep = it }
+        switchRow("记住分屏比例（一边应用退出后再打开新应用，分割线回到上次拖到的位置）", Constants.K_SPLIT_RATIO_MEMORY, Cfg.splitRatioMemory) { Cfg.splitRatioMemory = it }
         switchRow("把手菜单同时显示双向分屏（··· 里同时给左右与上下两对按钮）", Constants.K_CAPTION_SPLIT_BOTH, Cfg.captionSplitBoth) { Cfg.captionSplitBoth = it }
         switchRow("多分屏无级调节宽度（3 个及以上分屏，拖分割线可任意宽度）", Constants.K_MULTI_SPLIT_FREE, Cfg.multiSplitFree) { Cfg.multiSplitFree = it }
         // 轻折加分屏（折叠屏专属）：默认关 —— 它会在用户毫无预期的时刻改动屏幕，得用户主动开

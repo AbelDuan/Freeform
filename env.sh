@@ -5,10 +5,13 @@
 export HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
 # JDK：容器里装的是 openjdk-21（jvm-target 17 由 kotlinc 指定）
+# 2026-10-31 容器重建后 /usr/lib/jvm 消失，本机 JDK 位于 /opt/jdk-17.0.13+11，补一条探测。
 if [ -d /usr/lib/jvm/java-21-openjdk-arm64 ]; then
   export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-arm64
 elif [ -d /usr/lib/jvm/java-17-openjdk-arm64 ]; then
   export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-arm64
+elif [ -d /opt/jdk-17.0.13+11 ]; then
+  export JAVA_HOME=/opt/jdk-17.0.13+11
 else
   export JAVA_HOME=$(dirname "$(dirname "$(readlink -f "$(command -v javac)")")")
 fi
@@ -18,7 +21,10 @@ export BT=$SDK/build-tools/34.0.0
 export ANDROID_JAR=$HERE/tools/sdk/platforms/android-36/android.jar
 
 export KOTLINC=$HERE/tools/kotlinc/bin/kotlinc
-export KOTLIN_STDLIB=$HERE/tools/kotlinc/lib/kotlin-stdlib.jar
+# 2026-10-31 容器重建后 Maven 版 stdlib 带版本号（kotlin-stdlib-2.1.0.jar），
+# 不再有无版本号的 kotlin-stdlib.jar；这里按实际文件探测，找不到就让构建显式报错。
+KOTLIN_STDLIB_FOUND=$(ls "$HERE"/tools/kotlinc/lib/kotlin-stdlib*.jar 2>/dev/null | head -1)
+export KOTLIN_STDLIB=${KOTLIN_STDLIB_FOUND:-$HERE/tools/kotlinc/lib/kotlin-stdlib.jar}
 
 export AAPT2=$HERE/tools/android-tools/aapt2
 export ZIPALIGN=$HERE/tools/android-tools/zipalign
