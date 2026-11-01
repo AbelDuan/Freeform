@@ -1,0 +1,6 @@
+id=os4rusttouch
+name=OS4 Rust 桌面手势判定放宽
+version=v1.0.0
+versionCode=1
+author=AbelDuan
+description=调整澎湃OS4桌面「按住底部手势条拖到左上/右上」触发分屏/小窗的判定区域。支持可调：最小=官方行为，最大=上滑屏幕15%。配置用系统属性 persist.os4rusttouch.*，改完即时生效。
