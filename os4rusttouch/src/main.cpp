@@ -88,28 +88,38 @@ static uint32_t my_match(void* self, uint32_t flag, float fx, float fy) {
 // ---------- 挂载判定 hook ----------
 static std::atomic<bool> g_installed{false};
 
-static uintptr_t base_of(struct link_map* lm) { return lm ? (uintptr_t)lm->l_addr : 0; }
+// 一次性取模块基址（dl_iterate_phdr 遍历，非轮询）
+struct BaseProbe { uintptr_t base; bool found; };
 
-static void install_match_hook(void* handle) {
-    if (!handle) return;
+static int phdr_cb(struct dl_phdr_info* info, size_t, void* data) {
+    if (!info->dlpi_name || !*info->dlpi_name) return 0;
+    if (strstr(info->dlpi_name, "libapp_launcher.so")) {
+        BaseProbe* bp = (BaseProbe*)data;
+        bp->base  = (uintptr_t)info->dlpi_addr;
+        bp->found = true;
+        return 1;   // 停止遍历
+    }
+    return 0;
+}
+
+static void install_match_hook(void*) {
     if (g_installed.exchange(true)) return;
 
-    struct link_map* lm = nullptr;
-    if (dlinfo(handle, RTLD_DI_LINKMAP, &lm) != 0 || !lm) {
-        LOGE("dlinfo 失败: %s", dlerror());
+    BaseProbe bp{0, false};
+    dl_iterate_phdr(phdr_cb, &bp);
+    if (!bp.found) {
+        LOGE("未在已加载映像中找到 libapp_launcher.so");
         g_installed.store(false);
         return;
     }
-    uintptr_t base = base_of(lm);
-    void* target = (void*)(base + OFF_MATCH_REGION_CHECK);
-    LOGI("libapp_launcher.so base=0x%lx target=0x%lx", (unsigned long)base, (unsigned long)target);
+    void* target = (void*)(bp.base + OFF_MATCH_REGION_CHECK);
+    LOGI("libapp_launcher.so base=0x%lx target=0x%lx",
+         (unsigned long)bp.base, (unsigned long)target);
 
-    // 取密度与屏幕高度
-    char v[PROP_VALUE_MAX] = {0};
     int dens = prop_int("ro.sf.lcd_density", 0);
     if (dens > 0) g_density = dens;
-    char hbuf[PROP_VALUE_MAX] = {0};
-    if (__system_property_get("persist.os4rusttouch.screen_h", hbuf) > 0) g_screen_h = atoi(hbuf);
+    int sh = prop_int("persist.os4rusttouch.screen_h", 0);
+    if (sh > 0) g_screen_h = sh;
     LOGI("density=%d screen_h=%d", g_density, g_screen_h);
 
     void* orig = nullptr;
