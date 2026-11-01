@@ -200,3 +200,24 @@ private:
 };
 
 REGISTER_ZYGISK_MODULE(Os4RustTouch)
+
+// ---------- LSPosed native_init 入口 ----------
+// 由模块 APK 内 META-INF/xposed/native_init.list 声明后，LSPosed 在目标进程里 dlopen 本库，
+// 动态链接器随即执行下面的构造函数。
+// 触发条件只用 libapp_launcher.so：它只存在于澎湃桌面进程，天然唯一，不必判断进程名。
+__attribute__((constructor)) static void os4_native_init() {
+    LOGI("native_init: 已注入进程，开始安装加载感知");
+    load_config();
+    install_dlopen_hook();
+
+    // 与 dlopen 事件是同一件事的两个真实时序分支：
+    // 若本库晚于 libapp_launcher.so 被加载，hook 已错过加载事件，此时它必然已在映射表中。
+    BaseProbe bp{0, false};
+    dl_iterate_phdr(phdr_cb, &bp);
+    if (bp.found) {
+        LOGI("native_init: libapp_launcher.so 已映射，直接安装判定 hook");
+        install_match_hook(nullptr);
+    } else {
+        LOGI("native_init: libapp_launcher.so 尚未加载，等待 dlopen 事件");
+    }
+}
