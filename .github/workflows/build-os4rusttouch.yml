@@ -1,0 +1,40 @@
+name: build-os4rusttouch
+on:
+  push:
+    paths: ['os4rusttouch/**', '.github/workflows/build-os4rusttouch.yml']
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 配置 NDK
+        run: |
+          NDK=android-ndk-r27c
+          curl -sSLo /tmp/ndk.zip "https://dl.google.com/android/repository/${NDK}-linux.zip"
+          unzip -q /tmp/ndk.zip -d "$HOME"
+          echo "NDK=$HOME/$NDK" >> "$GITHUB_ENV"
+      - name: 编译 arm64 so
+        run: |
+          set -e
+          cd os4rusttouch/src
+          CXX="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang++"
+          "$CXX" -shared -fPIC -O2 -std=c++17 -fno-exceptions -fno-rtti \
+            -o libos4rusttouch.so main.cpp And64InlineHook.cpp \
+            -llog -ldl -static-libstdc++ -Wl,--gc-sections -Wl,-z,max-page-size=16384
+          ls -l libos4rusttouch.so
+          file libos4rusttouch.so || true
+      - name: 打包模块
+        run: |
+          mkdir -p out/zygisk
+          cp os4rusttouch/src/libos4rusttouch.so out/zygisk/arm64-v8a.so
+          cp os4rusttouch/module.prop out/
+          cp os4rusttouch/customize.sh out/
+          chmod 755 out/customize.sh
+          (cd out && zip -r ../os4rusttouch.zip . )
+      - uses: actions/upload-artifact@v4
+        with:
+          name: os4rusttouch-module
+          path: |
+            out
+            os4rusttouch.zip
