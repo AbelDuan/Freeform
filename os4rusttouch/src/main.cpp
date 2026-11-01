@@ -221,3 +221,13 @@ __attribute__((constructor)) static void os4_native_init() {
         LOGI("native_init: libapp_launcher.so 尚未加载，等待 dlopen 事件");
     }
 }
+
+// ---------- LSPosed native_init 导出符号 ----------
+// LSPosed 的 do_dlopen hook 在库加载后执行 dlsym(handle, "native_init")，
+// 取不到就直接放弃（见 LSPosed core/src/main/jni/src/native_api.cpp:112-117）。
+// 所以这里必须有一个【导出】的 native_init 符号；真正的初始化在构造函数里已完成，
+// 本函数只需存在并返回 nullptr（nullptr = 不注册 onModuleLoaded 回调）。
+extern "C" __attribute__((visibility("default"))) void *native_init(const void *entries) {
+    LOGI("native_init: LSPosed 已回调（entries=%p）", entries);
+    return nullptr;
+}
