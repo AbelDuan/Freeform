@@ -389,10 +389,32 @@ object FoldSplitTrigger {
     private fun doSplit(ctrl: Any) {
         val pos = posFor(Cfg.foldSplitSide)
         val n = stageCount()
-        Logx.always("轻折加分屏: stage=$n ⇒ ${if (n >= 2) "追加一格" else "splitPrimaryTask(pos=$pos)"}")
-        if (n >= 2) {
-            append(ctrl)
-            return
+        // 两种模式共存（2026-11 新增）：默认仍是「每折加一格」，可选「进双分屏后每次折都交换」。
+        if (Cfg.foldSplitMode == Constants.FOLD_SPLIT_MODE_SWAP) {
+            if (n >= 3) {
+                // 交换模式只接管「单屏 → 双屏」和「双屏互换」；三分屏及以上仍按原逻辑继续加格。
+                Logx.always("轻折加分屏[交换]: stage=$n ⇒ 超过双屏，追加一格")
+                append(ctrl)
+                return
+            }
+            if (n == 2) {
+                Logx.always("轻折加分屏[交换]: stage=2 ⇒ 交换左右两格")
+                swap()
+                return
+            }
+            Logx.always("轻折加分屏[交换]: stage=$n ⇒ splitPrimaryTask(pos=$pos)（进左右双分屏）")
+            // 「左右双分屏」是这一模式的既定语义：进分屏前把布局方向对齐到左右
+            // （竖屏握持时系统默认会是上下，不对齐就变成上下分屏了）。
+            classLoader?.let { cl ->
+                val aligned = SoScSupport.ensureDirection(cl, true)
+                Logx.always("轻折加分屏[交换]: 进入前对齐左右方向 成功=$aligned")
+            }
+        } else {
+            Logx.always("轻折加分屏: stage=$n ⇒ ${if (n >= 2) "追加一格" else "splitPrimaryTask(pos=$pos)"}")
+            if (n >= 2) {
+                append(ctrl)
+                return
+            }
         }
         val taskId = focusedTaskId()
         if (taskId <= 0) {
@@ -403,6 +425,35 @@ object FoldSplitTrigger {
             SoScSupport.call(ctrl, "splitPrimaryTask", pos, taskId) as? Boolean
         }.onFailure { Logx.e("轻折加分屏: splitPrimaryTask 异常（已吞）", it) }.getOrNull()
         Logx.always("轻折加分屏: splitPrimaryTask(pos=$pos, taskId=$taskId) ⇒ $r")
+    }
+
+    /**
+     * 交换两格位置（「交换」模式、且当前正好是双分屏时调用）。
+     *
+     * 走**官方交换按钮**那条路：`SoScUtilsImpl.switchSplitPosition()`（无参）。
+     * 反汇编 `MiuiSplitMenuView.lambda$onFinishInflate$1` 确认，分屏中间小白条上的交换按钮
+     * 点击后就是调它；它内部再调 `SoScStageCoordinator.switchSplitPosition(String)`
+     * （传 `"Click Menu"`），由那个重载完成整套 surface 交换动画 + 事务提交。
+     *
+     * 之前用的是 `SoScSplitScreenController.swapSplitTasks(WindowContainerTransaction)`，
+     * 那条路走的是另一个重载 `switchSplitPosition(WindowContainerTransaction)`，
+     * 交换能生效但没有动画 —— 与官方按钮不是同一条实现。
+     */
+    private fun swap() {
+        val cl = classLoader
+        if (cl == null) {
+            Logx.always("轻折加分屏[交换]: 拿不到 ClassLoader ⇒ 放弃交换")
+            return
+        }
+        val utils = SoScSupport.soScUtils(cl)
+        if (utils == null) {
+            Logx.always("轻折加分屏[交换]: 拿不到 SoScUtilsImpl 单例 ⇒ 放弃交换")
+            return
+        }
+        val r = runCatching { SoScSupport.call(utils, "switchSplitPosition") }
+            .onFailure { Logx.e("轻折加分屏[交换]: switchSplitPosition 异常（已吞）", it) }
+            .getOrNull()
+        Logx.always("轻折加分屏[交换]: SoScUtils.switchSplitPosition() ⇒ $r")
     }
 
     /** 追加一格：把分屏 **root** 的 RunningTaskInfo 装进 Bundle —— 与官方 shell 命令逐字一致。 */

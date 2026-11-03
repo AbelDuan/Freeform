@@ -37,3 +37,4 @@ small_*.png
 frame*.txt
 .shots/
 tools/sdk/
+__pycache__/

@@ -177,6 +177,13 @@ class SettingsActivity : Activity() {
             Constants.K_FOLD_SPLIT, Cfg.foldSplit,
         ) { Cfg.foldSplit = it }
         radioRow(
+            "轻折触发方式", Constants.K_FOLD_SPLIT_MODE, Cfg.foldSplitMode,
+            arrayOf(
+                Constants.FOLD_SPLIT_MODE_APPEND to "每折一次加一格（全屏 → 双分屏 → 三分屏…）",
+                Constants.FOLD_SPLIT_MODE_SWAP to "折一次进左右双分屏，再折交换左右（始终两格）",
+            ),
+        ) { Cfg.foldSplitMode = it }
+        radioRow(
             "轻折展开方向（当前应用留在哪一侧）", Constants.K_FOLD_SPLIT_SIDE, Cfg.foldSplitSide,
             arrayOf(
                 Constants.FOLD_SPLIT_LEFT to "留在左侧（新一格开在右边）",

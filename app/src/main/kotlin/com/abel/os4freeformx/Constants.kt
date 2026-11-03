@@ -50,6 +50,13 @@ object Constants {
     const val K_FOLD_SPLIT_SIDE = "fold_split_side"
     /** 轻折触发灵敏度（折下去多少度才判定为"开始折"）。现已改为 10~90° 滑动条，存的是角度数字（Float）。 */
     const val K_FOLD_SPLIT_DEPTH = "fold_split_depth"
+    /**
+     * 轻折触发后的行为。取值为 [FOLD_SPLIT_MODE_APPEND] / [FOLD_SPLIT_MODE_SWAP]。
+     *
+     * - [FOLD_SPLIT_MODE_APPEND]（原有逻辑）：每折一次加一格 —— 全屏 → 双分屏 → 三分屏 → …
+     * - [FOLD_SPLIT_MODE_SWAP]（新增逻辑）：第一次折进左右双分屏，之后每次折都交换左右两格的位置。
+     */
+    const val K_FOLD_SPLIT_MODE = "fold_split_mode"
     // 注：原 K_RESIZE（"允许拖动调整尺寸"）是死开关：值存了、也读了，但全库没有任何代码用它，
     //     已移除（角柄缩放本来就是 MIUI 原生行为，模块不接管）。
     // 手势总开关已移除（用户 2026-10-02）：只保留「左右下角内滑→小窗」这一个手势，常开。
@@ -106,9 +113,15 @@ object Constants {
     const val DEF_CAPTION_SPLIT_BOTH = true
     const val FOLD_SPLIT_LEFT = "left"
     const val FOLD_SPLIT_RIGHT = "right"
+    /** 每折一次加一格（原有逻辑）。 */
+    const val FOLD_SPLIT_MODE_APPEND = "append"
+    /** 第一次折进双分屏，之后每次折交换左右两格（新增逻辑）。 */
+    const val FOLD_SPLIT_MODE_SWAP = "swap"
     // 轻折加分屏：自 v0.7.9 起**默认开**（= 用户当前配置；折叠屏轻折一下进分屏已成主力习惯，写入默认让新装即生效）。
     const val DEF_FOLD_SPLIT = true
     const val DEF_FOLD_SPLIT_SIDE = FOLD_SPLIT_LEFT
+    /** 默认沿用原有行为，老用户升级后手感不变。 */
+    const val DEF_FOLD_SPLIT_MODE = FOLD_SPLIT_MODE_APPEND
     /**
      * 旧三档灵敏度（v0.7.7 及以前，现已改为 10~90° 滑动条）。仅用于把老配置迁移成数字角度。
      */

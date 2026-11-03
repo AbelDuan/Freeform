@@ -27,6 +27,8 @@ object Cfg {
     @Volatile var foldSplitSide = Constants.DEF_FOLD_SPLIT_SIDE
     /** 轻折触发灵敏度：进入判定需折下去的落差（度）。10~90 可调，默认 15°。 */
     @Volatile var foldSplitDepth = Constants.DEF_FOLD_SPLIT_DEPTH.toFloat()
+    /** 轻折触发后的行为：每折加一格（append）还是进双分屏后交换（swap）。 */
+    @Volatile var foldSplitMode = Constants.DEF_FOLD_SPLIT_MODE
     @Volatile var gestures = Constants.DEF_GESTURES
     @Volatile var cornerFreeform = Constants.DEF_CORNER_FREEFORM
     @Volatile var gestureHandle = Constants.DEF_GESTURE_HANDLE
@@ -150,6 +152,8 @@ object Cfg {
             foldSplitDepth = runCatching {
                 p.getFloat(Constants.K_FOLD_SPLIT_DEPTH, Constants.DEF_FOLD_SPLIT_DEPTH.toFloat())
             }.getOrNull() ?: Constants.DEF_FOLD_SPLIT_DEPTH.toFloat()
+            foldSplitMode = p.getString(Constants.K_FOLD_SPLIT_MODE, Constants.DEF_FOLD_SPLIT_MODE)
+                ?: Constants.DEF_FOLD_SPLIT_MODE
             gestures = p.getBoolean(Constants.K_GESTURES, Constants.DEF_GESTURES)
             cornerFreeform = p.getBoolean(Constants.K_CORNER_FREEFORM, Constants.DEF_CORNER_FREEFORM)
             gestureHandle = p.getBoolean(Constants.K_GESTURE_HANDLE, Constants.DEF_GESTURE_HANDLE)
@@ -258,7 +262,7 @@ object Cfg {
             Logx.once("cfgNull", "读配置失败: provider 返回 null（authority=${Constants.AUTHORITY}）")
             return
         }
-        val before = "$log|$immersive|$rememberBounds|$ratioMenu|$splitExtras|$assignRaw|$foldSplit|$foldSplitSide|$foldSplitDepth"
+        val before = "$log|$immersive|$rememberBounds|$ratioMenu|$splitExtras|$assignRaw|$foldSplit|$foldSplitSide|$foldSplitDepth|$foldSplitMode"
         runCatching {
             log = b.getBoolean(Constants.K_ENABLE_LOG, Constants.DEF_ENABLE_LOG)
             immersive = b.getBoolean(Constants.K_IMMERSIVE, Constants.DEF_IMMERSIVE)
@@ -275,6 +279,8 @@ object Cfg {
             foldSplitDepth = runCatching {
                 b.getFloat(Constants.K_FOLD_SPLIT_DEPTH, Constants.DEF_FOLD_SPLIT_DEPTH.toFloat())
             }.getOrNull() ?: Constants.DEF_FOLD_SPLIT_DEPTH.toFloat()
+            foldSplitMode = b.getString(Constants.K_FOLD_SPLIT_MODE, Constants.DEF_FOLD_SPLIT_MODE)
+                ?: Constants.DEF_FOLD_SPLIT_MODE
             gestures = b.getBoolean(Constants.K_GESTURES, Constants.DEF_GESTURES)
             cornerFreeform = b.getBoolean(Constants.K_CORNER_FREEFORM, Constants.DEF_CORNER_FREEFORM)
             gestureHandle = b.getBoolean(Constants.K_GESTURE_HANDLE, Constants.DEF_GESTURE_HANDLE)
@@ -288,7 +294,7 @@ object Cfg {
             parseAssign(b.getString(Constants.K_NBI_ASSIGN, Constants.DEF_NBI_ASSIGN) ?: Constants.DEF_NBI_ASSIGN)
             Logx.verbose = log
         }.onFailure { Logx.e("读配置失败", it) }
-        val after = "$log|$immersive|$rememberBounds|$ratioMenu|$splitExtras|$assignRaw|$foldSplit|$foldSplitSide|$foldSplitDepth"
+        val after = "$log|$immersive|$rememberBounds|$ratioMenu|$splitExtras|$assignRaw|$foldSplit|$foldSplitSide|$foldSplitDepth|$foldSplitMode"
         // 把悬浮门禁（开关/模式/名单）一并打出来：实测排查中，"名单为空 ⇒ 门禁恒 false ⇒ hook 空转"
         // 曾让人误判成"名单和开关都无效"。这条日志让配置是否送达被 hook 进程一眼可见。
         if (before != after) {

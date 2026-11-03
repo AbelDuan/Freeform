@@ -36,6 +36,7 @@ class StoreProvider : ContentProvider() {
                 putBoolean(Constants.K_FOLD_SPLIT, c?.getBoolean(Constants.K_FOLD_SPLIT, Constants.DEF_FOLD_SPLIT) ?: Constants.DEF_FOLD_SPLIT)
                 putString(Constants.K_FOLD_SPLIT_SIDE, c?.getString(Constants.K_FOLD_SPLIT_SIDE, Constants.DEF_FOLD_SPLIT_SIDE) ?: Constants.DEF_FOLD_SPLIT_SIDE)
                 putFloat(Constants.K_FOLD_SPLIT_DEPTH, c?.getFloat(Constants.K_FOLD_SPLIT_DEPTH, Constants.DEF_FOLD_SPLIT_DEPTH.toFloat()) ?: Constants.DEF_FOLD_SPLIT_DEPTH.toFloat())
+                putString(Constants.K_FOLD_SPLIT_MODE, c?.getString(Constants.K_FOLD_SPLIT_MODE, Constants.DEF_FOLD_SPLIT_MODE) ?: Constants.DEF_FOLD_SPLIT_MODE)
                 putBoolean(Constants.K_GESTURE_HANDLE, c?.getBoolean(Constants.K_GESTURE_HANDLE, Constants.DEF_GESTURE_HANDLE) ?: Constants.DEF_GESTURE_HANDLE)
                 putBoolean(Constants.K_GESTURE_HANDLE_FOLLOW, c?.getBoolean(Constants.K_GESTURE_HANDLE_FOLLOW, Constants.DEF_GESTURE_HANDLE_FOLLOW) ?: Constants.DEF_GESTURE_HANDLE_FOLLOW)
                 putBoolean(Constants.K_GESTURE_HANDLE_TOUCH, c?.getBoolean(Constants.K_GESTURE_HANDLE_TOUCH, Constants.DEF_GESTURE_HANDLE_TOUCH) ?: Constants.DEF_GESTURE_HANDLE_TOUCH)
