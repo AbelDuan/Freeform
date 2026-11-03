@@ -136,7 +136,8 @@ object SplitTrace {
                 sb.append(')')
                 sb.toString()
             }.getOrElse { "TRACE $tag#${mm.name}(<args err: $it>)" }
-            Log.i(T, line)
+            // 逐次调用日志：SOsc 的 StageRoot 类方法命中频繁，走 v（受「记录详细日志」开关控制）
+            Logx.v(line)
             chain.proceed()
         })
         return if (ok) 1 else 0

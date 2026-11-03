@@ -11,6 +11,10 @@ LIBXP=$HERE/app/libs/libxposed-api-102.jar
 KS=${KS:-$HERE/keystore/os4freeformx.jks}   # 必须放在 build/ 之外：build 每轮会被清空，否则签名每轮都变
 VER=$(sed -n 's/^version=//p' "$SRC/resources/META-INF/xposed/module.prop")
 VCODE=$(sed -n 's/^versionCode=//p' "$SRC/resources/META-INF/xposed/module.prop")
+# 每次构建递增 versionCode：pm install -r 只有版本号变化才会分配新的 codePath，
+# 而 lspd 按路径缓存 dex —— 路径不变就一直加载旧字节码（本机实测踩坑）。
+VCODE=$((VCODE + 1))
+sed -i "s/^versionCode=.*/versionCode=$VCODE/" "$SRC/resources/META-INF/xposed/module.prop"
 
 # 容器没有 zip（/usr/local/bin 会被 app 更新/重建清掉）→ 自愈：从仓库里的 shim 装一份
 if ! command -v zip >/dev/null 2>&1 && [ -f "$HERE/tools/zip-shim.py" ]; then
@@ -52,6 +56,34 @@ cp -f "$OUT/base.apk" "$OUT/app-unsigned.apk"
 cp -f "$STDLIB_DEX" "$OUT/dex/classes2.dex"
 ( cd "$OUT/dex" && zip -q -X "$OUT/app-unsigned.apk" classes.dex classes2.dex )
 ( cd "$SRC/resources" && zip -q -X -r "$OUT/app-unsigned.apk" META-INF )
+
+# 可选 native 库（LSPosed native_init.list 声明的 so；APK 规范要求位于 lib/<abi>/ 下）
+NATIVE_LIBS=${NATIVE_LIBS:-$HERE/app/libs}
+if [ -d "$NATIVE_LIBS/arm64-v8a" ] && [ -n "$(ls -A "$NATIVE_LIBS/arm64-v8a" 2>/dev/null)" ]; then
+    echo "  附加 native 库："
+    python3 - "$NATIVE_LIBS" "$OUT/app-unsigned.apk" <<'PY'
+import os, sys, zipfile
+root, apk = sys.argv[1], sys.argv[2]
+abi = "arm64-v8a"
+d = os.path.join(root, abi)
+# .so 必须以 STORED（不压缩）写入：安装时 PackageManager 要按页对齐直接映射，
+# 压缩过的 .so 会报 INSTALL_FAILED_INVALID_APK: Failed to extract native libraries
+with zipfile.ZipFile(apk, "a", zipfile.ZIP_STORED) as z:
+    for f in sorted(os.listdir(d)):
+        if not f.endswith(".so"):
+            continue
+        arc = "lib/%s/%s" % (abi, f)
+        src = os.path.join(d, f)
+        zi = zipfile.ZipInfo.from_file(src, arc)
+        zi.compress_type = zipfile.ZIP_STORED
+        with open(src, "rb") as fh, z.open(zi, "w") as out:
+            out.write(fh.read())
+        print("    " + arc)
+PY
+else
+    echo "  （无 native 库需要打包）"
+fi
+
 "$ZIPALIGN" -f -p 4 "$OUT/app-unsigned.apk" "$OUT/app-aligned.apk"
 
 echo "== 6/6 签名 =="

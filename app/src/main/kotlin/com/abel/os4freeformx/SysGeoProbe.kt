@@ -76,7 +76,7 @@ object SysGeoProbe {
                                     .joinToString(" <- ") {
                                         "${it.className.substringAfterLast('.')}.${it.methodName}"
                                     }
-                                Logx.always("几何[$sig]: args=($a) -> ${if (isVoid) "void" else res} caller: $st")
+                                Logx.v("几何[$sig]: args=($a) -> ${if (isVoid) "void" else res} caller: $st")
                             }
                             res
                         })) {

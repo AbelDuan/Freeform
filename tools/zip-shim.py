@@ -24,6 +24,7 @@ with zipfile.ZipFile(out, mode, zipfile.ZIP_DEFLATED) as z:
                     p = os.path.join(root, f)
                     z.write(p, os.path.relpath(os.path.abspath(p), base))
         else:
-            z.write(s, os.path.basename(s))
+            # 保留调用处给的相对路径（如 lib/arm64-v8a/xxx.so），只取 basename 会丢目录层
+            z.write(s, os.path.relpath(os.path.abspath(s), os.getcwd()))
 if not quiet:
     print("zip: wrote", out, file=sys.stderr)

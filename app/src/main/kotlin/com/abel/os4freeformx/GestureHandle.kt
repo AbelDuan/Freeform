@@ -472,6 +472,12 @@ object GestureHandle {
             val listener = Proxy.newProxyInstance(loader, arrayOf(listenerType)) { _, method, args ->
                 if (method?.name == "onInputEvent" && args != null && args.size == 1 && args[0] is MotionEvent) {
                     try {
+                        // 「上滑→左上分屏 / 右上小窗」判定（只旁观，不消费）
+                        SplitGesture.onTouch(args[0] as MotionEvent)
+                    } catch (t: Throwable) {
+                        Logx.e("分屏手势: 判定异常", t)
+                    }
+                    try {
                         observeTouch(null, args[0] as MotionEvent)
                     } catch (t: Throwable) {
                         Logx.e("小白条: 被动输入监听不可用", t)

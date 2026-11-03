@@ -5,11 +5,23 @@ import io.github.libxposed.api.XposedModule
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
- * 轻量日志：always 走 Xposed 日志（LSPosed 界面可看），verbose 走 logcat。
- * 热路径禁止调用 verbose（见 ponytail 注释）。
+ * 轻量日志，两条通道分开限流（2026-11-03）。
+ *
+ * - `always`：里程碑日志。Xposed 面板 + logcat 双写，**两条通道各自有上限**。
+ *   历史问题：logcat 侧曾无条件写，热路径日志会无限增长，把
+ *   `/data/adb/lspd/log/verbose_*.log` 刷到几 MB（实测单模块占 78%）。
+ * - `v`：详细日志，仅 logcat，受设置项「记录详细日志」（`Cfg.log`，默认关）控制。
+ *   探针、逐事件（MotionEvent / 每次方法调用）之类的高频日志一律走这里。
+ * - `once`：同一 key 全进程只记一条，适合"只想知道发生过一次"的场景。
  */
 object Logx {
-    private val xposedLines = AtomicInteger(0)
+    /** Xposed 面板上限（LSPosed 界面按行渲染，过大会卡）。 */
+    private const val MAX_XPOSED_LINES = 4000
+
+    /** logcat 上限：verbose 日志是 logcat 镜像，不限流会把 lspd 日志刷到几 MB。 */
+    private const val MAX_LOGCAT_LINES = 8000
+
+    private val lines = AtomicInteger(0)
     @Volatile private var mod: XposedModule? = null
     @Volatile var verbose: Boolean = Constants.DEF_ENABLE_LOG
 
@@ -18,15 +30,19 @@ object Logx {
     }
 
     fun always(msg: String) {
-        val n = xposedLines.incrementAndGet()
-        val line = if (n <= 400) msg else if (n == 401) "…日志超限，后续仅 logcat" else null
-        if (line != null) {
-            runCatching { mod?.log(Log.INFO, Constants.TAG, line) }
+        val n = lines.incrementAndGet()
+        when {
+            n <= MAX_XPOSED_LINES -> runCatching { mod?.log(Log.INFO, Constants.TAG, msg) }
+            n == MAX_XPOSED_LINES + 1 -> runCatching {
+                mod?.log(Log.INFO, Constants.TAG, "…Xposed 日志达 $MAX_XPOSED_LINES 条上限，后续仅剩 logcat")
+            }
         }
-        // logcat 侧**无条件**写：Xposed 日志有 400 条上限（防刷屏），但那个上限曾让
-        // "没执行" 和 "执行了但日志被丢" 无法区分（本次排查为此误判两次）。
-        // always 只用于里程碑，不是热路径（热路径用 v/once），logcat 自身有环形缓冲。
-        runCatching { Log.i(Constants.TAG, msg) }
+        when {
+            n <= MAX_LOGCAT_LINES -> runCatching { Log.i(Constants.TAG, msg) }
+            n == MAX_LOGCAT_LINES + 1 -> runCatching {
+                Log.i(Constants.TAG, "…logcat 日志达 $MAX_LOGCAT_LINES 条上限，本进程后续静默（重启进程恢复）")
+            }
+        }
     }
 
     fun v(msg: String) {

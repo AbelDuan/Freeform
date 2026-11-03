@@ -11,6 +11,14 @@ object Constants {
 
     const val PKG_SYSTEM = "system"
     const val PKG_SYSTEMUI = "com.android.systemui"
+    const val PKG_MIUI_HOME = "com.miui.home"
+
+    /**
+     * LSPosed native_init 目标库名（不带 lib 前缀和 .so 后缀）。
+     * LSPosed 的做法是 hook do_dlopen：只有当目标进程真的 dlopen 了这个 so，
+     * 才会 dlsym 它的 `native_init` 并回调。所以 MainHook 必须主动 loadLibrary 触发。
+     */
+    const val NATIVE_LIB = "os4rusttouch"
 
     // ---- 配置键 ----
     const val K_ENABLE_LOG = "enable_log"

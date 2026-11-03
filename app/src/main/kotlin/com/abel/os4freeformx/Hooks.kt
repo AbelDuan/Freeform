@@ -126,6 +126,7 @@ object Hooks {
         runCatching { installRotationGeometryHook(m, cl) }.onFailure { Logx.e("旋转几何钩子失败", it) }
         installImmersive(m, cl)
         installRatioMenu(m, cl)
+        runCatching { SplitTest.install(cl) }.onFailure { Logx.e("分屏测试入口失败", it) }
 
         // ★★★ 分屏四项（2026-10-26 移植自 HyperRefine，AGPL-3.0，各自独立文件）
         //   1) 解除分屏方向限制（+ 方向判定兼容层）—— 折叠屏横屏也能上下分屏、竖屏也能左右
@@ -173,6 +174,10 @@ object Hooks {
 
         // 诊断探针：抓"双分屏 → 三分屏"真实手势调用的入口（方法名 + 参数）
         runCatching { SplitTrace.install(m, cl) }.onFailure { Logx.e("SplitTrace 安装失败", it) }
+        // 诊断探针：定位「拖手势条到左上/右上」判定到底在哪个类（只打日志，不改行为）
+        runCatching { SoscProbe.install(m, cl) }.onFailure { Logx.e("SoscProbe 安装失败", it) }
+        // 诊断：分屏时状态栏内容为何不可见（只打"被隐藏"的子视图，量很小）
+        runCatching { installSbTreeDump() }.onFailure { Logx.e("状态栏树诊断失败", it) }
         // 诊断探针：枚举 MIUI 小窗"尺寸/动画"链路的类与方法（旋转后比例从哪来 —— 只为定位，不改行为）
         runCatching { installSizeChainProbe(cl) }.onFailure { Logx.e("尺寸链探针安装失败", it) }
         // ★ 主修复：在 MIUI 算 (bounds, scale) 的地方换成记忆值
@@ -215,6 +220,42 @@ object Hooks {
     }
 
     /** 小白条（手势导航条）：跟随手势 / 淡入淡出 / 触摸显隐 / 空闲自动隐藏。 */
+    private fun installSbTreeDump() {
+        val h = android.os.Handler(android.os.Looper.getMainLooper())
+        h.postDelayed(object : Runnable {
+            var n = 0
+            override fun run() {
+                n++
+                if (n <= 4) runCatching { dumpSbTree() }
+                h.postDelayed(this, 4000)
+            }
+        }, 3000)
+    }
+
+    private fun dumpSbTree() {
+        val wmgCls = Class.forName("android.view.WindowManagerGlobal")
+        val wmg = wmgCls.getMethod("getInstance").invoke(null)
+        val f = wmgCls.getDeclaredField("mViews").apply { isAccessible = true }
+        val list = f.get(wmg) as? List<*> ?: return
+        for (v in list) {
+            if (v !is android.view.View) continue
+            if (!v.javaClass.name.contains("StatusBar", true)) continue
+            Logx.v("SB树根: ${v.javaClass.name} vis=${v.visibility} alpha=${v.alpha} w=${v.width} h=${v.height}")
+            dumpSbChildren(v, 0)
+        }
+    }
+
+    private fun dumpSbChildren(v: android.view.View, depth: Int) {
+        if (depth >= 4 || v !is android.view.ViewGroup) return
+        for (i in 0 until v.childCount) {
+            val c = v.getChildAt(i)
+            if (depth == 0 || c.visibility != android.view.View.VISIBLE || c.alpha < 0.01f) {
+                Logx.v("  ".repeat(depth + 1) + "${c.javaClass.simpleName} vis=${c.visibility} alpha=${c.alpha} ty=${c.translationY} w=${c.width} h=${c.height}")
+            }
+            dumpSbChildren(c, depth + 1)
+        }
+    }
+
     private fun installGestureHandle(m: MainHook, cl: ClassLoader) {
         runCatching {
             GestureHandle.install(m, cl)
@@ -802,7 +843,7 @@ object Hooks {
                         val res = chain.proceed()
                         runCatching {
                             val a = (0 until argc).joinToString(",") { chain.getArg(it).toString() }
-                            Logx.always("路径探针[$sig]: args=($a) -> $res")
+                            Logx.v("路径探针[$sig]: args=($a) -> $res")
                         }
                         res
                     })) {
@@ -872,7 +913,7 @@ object Hooks {
                             val a = (0 until argc2).joinToString(",") { chain.getArg(it).toString() }
                             val st = Throwable().stackTrace.drop(2).take(6)
                                 .joinToString(" <- ") { "${it.className.substringAfterLast('.')}.${it.methodName}" }
-                            Logx.always("形变探针[$sig]: args=($a) -> $res  caller: $st")
+                            Logx.v("形变探针[$sig]: args=($a) -> $res  caller: $st")
                         }
                         res
                     })) {
@@ -888,7 +929,7 @@ object Hooks {
                     val res = chain.proceed()
                     runCatching {
                         val a = (0 until argc).joinToString(",") { chain.getArg(it).toString() }
-                        Logx.always("系统探针[$sig]: args=($a) -> $res")
+                        Logx.v("系统探针[$sig]: args=($a) -> $res")
                     }
                     // ★★ 修复杆（2026-10-06）：旋转时 MIUI 会重排小窗、把比例切回它的默认。
                     //   `MiuiFreeFormActivityStack` 有 `isSkipAutoLayout/setSkipAutoLayout` ——

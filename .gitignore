@@ -36,3 +36,4 @@ t17_*.txt
 small_*.png
 frame*.txt
 .shots/
+tools/sdk/
