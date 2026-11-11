@@ -67,6 +67,9 @@ object FoldSplitTrigger {
     /** 两次触发之间的最小间隔 */
     private const val COOLDOWN_MS = 1_500L
 
+    /** SoSc 分屏的两个 stage 字段名（`SoScStageCoordinator` 上）。 */
+    private val SOSC_STAGE_FIELDS = arrayOf("mMainStage", "mSideStage")
+
     /**
      * 进入折叠判定的落差阈值（折下去多少度才认为用户"开始折了"）。
      * 由设置页滑动条给出，**范围 10°~90°，默认 15°**。直接读 [Cfg.foldSplitDepth]
@@ -450,10 +453,59 @@ object FoldSplitTrigger {
             Logx.always("轻折加分屏[交换]: 拿不到 SoScUtilsImpl 单例 ⇒ 放弃交换")
             return
         }
+
+        // ★★ 2026-11-11 定稿：单边分屏（另一格是桌面 / 空）**屏蔽交换**。
+        //
+        // 原理（真机实测 + 反汇编确认）：这种形态下桌面根本不在分屏 stage 里，
+        // 只是被裁在底层的普通全屏窗口（mSideStage=null，桌面 task visible=false）。
+        // 桌面不支持作为分屏的一格（活动类型 home，系统不允许进 SoSc stage），所以：
+        //   · 调系统 switchSplitPosition → 只换两个 stage，空的那格没东西可换，
+        //     应用换边但桌面图标不重排，图标被应用窗口遮住（用户报的问题）；
+        //   · 强行把 home 塞进 stage → 系统拒/状态错乱（实测分屏消失或窗口错乱）。
+        // 结论：这个形态下**没有正确的交换语义**，直接不做任何事，
+        //       既不会把图标遮住，也不会把分屏弄坏。
+        val stageCount = occupiedStageCount(cl)
+        if (stageCount != null && stageCount < 2) {
+            Logx.always(
+                "轻折加分屏[交换]: 当前只有 $stageCount 格有任务（单边分屏 / 另一格是桌面）" +
+                " ⇒ 桌面不支持分屏格，屏蔽交换（不动作）"
+            )
+            return
+        }
+        Logx.always("轻折加分屏[交换]: ${stageCount?.let { "双应用分屏（$it 格）" } ?: "格数未知"} ⇒ 交换")
         val r = runCatching { SoScSupport.call(utils, "switchSplitPosition") }
             .onFailure { Logx.e("轻折加分屏[交换]: switchSplitPosition 异常（已吞）", it) }
             .getOrNull()
         Logx.always("轻折加分屏[交换]: SoScUtils.switchSplitPosition() ⇒ $r")
+    }
+
+    /**
+     * 当前分屏里有任务的 stage 数量；拿不到 coordinator 时返回 null（表示"未知"，不是"单边"）。
+     *
+     * 单边分屏时系统会留一个**没有子任务的 stage**（实测 `mSideStage=null` 或 childCount=0），
+     * 那个位置露出来的是底层被裁的桌面 —— 它不在 stage 里，所以不能参与交换。
+     */
+    private fun occupiedStageCount(cl: ClassLoader): Int? {
+        val coord = SoScSupport.stageCoordinator(cl) ?: return null
+        var n = 0
+        for (name in SOSC_STAGE_FIELDS) {
+            val stage = SoScSupport.field(coord, name) ?: continue
+            val childCount = runCatching {
+                SoScSupport.call(stage, "getChildCount") as? Int
+            }.getOrNull() ?: 0
+            val pkg = packageOfTaskInfo(SoScSupport.field(stage, "mRootTaskInfo"))
+            Logx.v("轻折加分屏[交换]: $name pkg=$pkg childCount=$childCount")
+            if (pkg != null || childCount > 0) n++
+        }
+        return n
+    }
+
+    private fun packageOfTaskInfo(info: Any?): String? {
+        if (info == null) return null
+        val act = SoScSupport.field(info, "topActivity") ?: SoScSupport.field(info, "baseActivity")
+        return runCatching {
+            act?.javaClass?.getMethod("getPackageName")?.invoke(act) as? String
+        }.getOrNull()
     }
 
     /** 追加一格：把分屏 **root** 的 RunningTaskInfo 装进 Bundle —— 与官方 shell 命令逐字一致。 */
