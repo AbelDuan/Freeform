@@ -38,17 +38,6 @@ class MainHook : XposedModule() {
             Cfg.reload()
             when (pkg) {
                 Constants.PKG_SYSTEM -> Hooks.installSystemServer(this, param.defaultClassLoader)
-                Constants.PKG_MIUI_HOME -> {
-                    // 桌面是 Flutter+Rust 实现，分屏/小窗判定在 libapp_launcher.so 的
-                    // GestureTouchableRegion::match_region_check 里，Java 层够不到，必须走 native inline hook。
-                    //
-                    // LSPosed 的 native_init.list 不是"主动加载"：它 hook 了 do_dlopen，
-                    // 只有目标进程真的 dlopen 了名单里的 so，才会 dlsym 它的 native_init 并回调。
-                    // 所以必须在这里主动 loadLibrary，触发那次 dlopen。
-                    runCatching { System.loadLibrary(Constants.NATIVE_LIB) }
-                        .onSuccess { Logx.always("loadLibrary(${Constants.NATIVE_LIB}) 成功，已交给 LSPosed native_init") }
-                        .onFailure { Logx.e("loadLibrary(${Constants.NATIVE_LIB}) 失败", it) }
-                }
                 Constants.PKG_SYSTEMUI -> {
                     // PackageLoadedParam 在 libxposed API 102 只提供 defaultClassLoader，
                     // 没有 classLoader（编译期已验证），这里必须用 defaultClassLoader。
