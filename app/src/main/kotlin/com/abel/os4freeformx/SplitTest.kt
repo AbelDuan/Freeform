@@ -119,31 +119,6 @@ object SplitTest {
         c.getMethod("getInt", String::class.java, Int::class.javaPrimitiveType)
             .invoke(null, key, def) as Int
     }.getOrDefault(def)
-
-    /** 取当前最近任务里的第一个 RunningTaskInfo（全量对象，含包名）。 */
-    private fun frontTaskInfoObject(): Any? = runCatching {
-        val atmCls = Class.forName("android.app.ActivityTaskManager", false, loader())
-        val atm = atmCls.getMethod("getService").invoke(null)
-        val getTasks = atm.javaClass.methods.firstOrNull {
-            it.name == "getTasks" && it.parameterTypes.isNotEmpty() &&
-                it.parameterTypes[0] == Int::class.javaPrimitiveType
-        } ?: return@runCatching null
-        val params = getTasks.parameterTypes
-        val args = arrayOfNulls<Any?>(params.size)
-        args[0] = 1
-        for (k in 1 until params.size) {
-            args[k] = when (params[k]) {
-                Boolean::class.javaPrimitiveType -> false
-                Int::class.javaPrimitiveType -> 0
-                else -> null
-            }
-        }
-        (getTasks.invoke(atm, *args) as? List<*>)?.firstOrNull()
-    }.getOrElse {
-        Logx.e("$TAG: 取任务失败", it)
-        null
-    }
-
     /**
      * 取"应该被分屏的任务"：最近任务列表里第一个不是桌面的 App。
      * 松手时前台通常已经切回桌面（上滑手势的副作用），所以要往后找一个真实 App。

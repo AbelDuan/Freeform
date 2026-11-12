@@ -17,7 +17,6 @@ object AppPrefs {
         de(ctx)?.edit()?.putString(key, value)?.apply()
     }
 
-
     private fun ce(ctx: Context): SharedPreferences =
         ctx.getSharedPreferences(Constants.PREFS_CFG, Context.MODE_PRIVATE)
 

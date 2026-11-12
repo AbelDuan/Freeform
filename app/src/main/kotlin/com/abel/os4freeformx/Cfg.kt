@@ -29,8 +29,6 @@ object Cfg {
     @Volatile var foldSplitDepth = Constants.DEF_FOLD_SPLIT_DEPTH.toFloat()
     /** 轻折触发后的行为：每折加一格（append）还是进双分屏后交换（swap）。 */
     @Volatile var foldSplitMode = Constants.DEF_FOLD_SPLIT_MODE
-    @Volatile var gestures = Constants.DEF_GESTURES
-    @Volatile var cornerFreeform = Constants.DEF_CORNER_FREEFORM
     @Volatile var gestureHandle = Constants.DEF_GESTURE_HANDLE
     @Volatile var gestureHandleFollow = Constants.DEF_GESTURE_HANDLE_FOLLOW
     @Volatile var gestureHandleTouch = Constants.DEF_GESTURE_HANDLE_TOUCH
@@ -154,8 +152,6 @@ object Cfg {
             }.getOrNull() ?: Constants.DEF_FOLD_SPLIT_DEPTH.toFloat()
             foldSplitMode = p.getString(Constants.K_FOLD_SPLIT_MODE, Constants.DEF_FOLD_SPLIT_MODE)
                 ?: Constants.DEF_FOLD_SPLIT_MODE
-            gestures = p.getBoolean(Constants.K_GESTURES, Constants.DEF_GESTURES)
-            cornerFreeform = p.getBoolean(Constants.K_CORNER_FREEFORM, Constants.DEF_CORNER_FREEFORM)
             gestureHandle = p.getBoolean(Constants.K_GESTURE_HANDLE, Constants.DEF_GESTURE_HANDLE)
             gestureHandleFollow = p.getBoolean(Constants.K_GESTURE_HANDLE_FOLLOW, Constants.DEF_GESTURE_HANDLE_FOLLOW)
             gestureHandleTouch = p.getBoolean(Constants.K_GESTURE_HANDLE_TOUCH, Constants.DEF_GESTURE_HANDLE_TOUCH)
@@ -281,8 +277,6 @@ object Cfg {
             }.getOrNull() ?: Constants.DEF_FOLD_SPLIT_DEPTH.toFloat()
             foldSplitMode = b.getString(Constants.K_FOLD_SPLIT_MODE, Constants.DEF_FOLD_SPLIT_MODE)
                 ?: Constants.DEF_FOLD_SPLIT_MODE
-            gestures = b.getBoolean(Constants.K_GESTURES, Constants.DEF_GESTURES)
-            cornerFreeform = b.getBoolean(Constants.K_CORNER_FREEFORM, Constants.DEF_CORNER_FREEFORM)
             gestureHandle = b.getBoolean(Constants.K_GESTURE_HANDLE, Constants.DEF_GESTURE_HANDLE)
             gestureHandleFollow = b.getBoolean(Constants.K_GESTURE_HANDLE_FOLLOW, Constants.DEF_GESTURE_HANDLE_FOLLOW)
             gestureHandleTouch = b.getBoolean(Constants.K_GESTURE_HANDLE_TOUCH, Constants.DEF_GESTURE_HANDLE_TOUCH)

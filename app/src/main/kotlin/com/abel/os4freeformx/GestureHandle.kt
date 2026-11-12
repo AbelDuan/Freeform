@@ -563,7 +563,6 @@ object GestureHandle {
         }
     }
 
-
     private fun clearMotion() {
         if (!Cfg.gestureHandleTouch) activeTouchHandle = null
         activeSwipeRevealed = false

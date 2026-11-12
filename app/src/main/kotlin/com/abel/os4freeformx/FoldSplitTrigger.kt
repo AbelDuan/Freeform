@@ -64,8 +64,18 @@ object FoldSplitTrigger {
     /** 只把 > 这个值的角度当作"展开态"样本（本机实测：全展≈179、半开 89~92、合上 2~3）。 */
     private const val OPEN_MIN = 150f
 
-    /** 两次触发之间的最小间隔 */
-    private const val COOLDOWN_MS = 1_500L
+    /**
+     * 两次触发之间的最小防抖间隔。
+     *
+     * 用户 2026-11-12 要求：「交换完成后折叠就要能马上再次交换」。
+     * 原来 1500ms 的冷却会让"交换完立刻再折"被直接丢掉，手感像卡住。
+     *
+     * 只留 300ms 纯粹防抖 —— 真正防止"同一次折叠被判两次"的是状态机里的两道硬条件：
+     *   · `a0 > OPEN_MIN`：必须从展开态（>150°）折下来；
+     *   · `dropStartMs` / `START_DROP`：必须真的往下走了才算新的一次折叠。
+     * 所以把冷却压到 300ms 不会引入重复触发。
+     */
+    private const val COOLDOWN_MS = 300L
 
     /** SoSc 分屏的两个 stage 字段名（`SoScStageCoordinator` 上）。 */
     private val SOSC_STAGE_FIELDS = arrayOf("mMainStage", "mSideStage")

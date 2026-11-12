@@ -30,16 +30,9 @@ object Hooks {
      */
     private const val KEY_LAST_SPLIT_RATIO = "split:last"
 
-
-
-
-
-
     fun installSystemServer(m: MainHook, cl: ClassLoader) {
         Logx.always("installSystemServer: remember=${Cfg.rememberBounds}")
         installLaunchBounds(m, cl)
-        runCatching { installSystemFreeformProbe(m, cl) }.onFailure { Logx.e("系统侧探针失败", it) }
-
         // ★ 注：小窗「无极调节」（FreeRatio.kt）已在 v0.7.0 整体移除，system_server 侧不留任何相关 hook。
 
         // ★★★ 2026-10-15 移植自 HyperCeiler 的三项小窗增强（AGPL-3.0，见 FreeformExtra.kt）。
@@ -79,11 +72,6 @@ object Hooks {
         // ★ v0.4.61：几何探针（198 个钩子）**默认关闭** —— 它已经把该拿的信息给到了
         //   （ROM 真实方法名、freeform 栈字段、数量上限签名、几何存储位置），
         //   继续常开只会用大量日志淹没真正的信号。需要时把下面的开关打开即可。
-        if (Constants.DBG_GEO_PROBE) {
-            runCatching { SysGeoProbe.install(m, cl) }
-                .onFailure { Logx.e("几何探针安装失败", it) }
-        }
-
         // ★★★ v0.4.59：**方向修复的正解** —— 用 HyperOS 4 **自带**的「强制横屏名单」机制。
         //   smali 反汇编（MiuiFreeFormActivityStack.smali:229-231）证明 ROM 自己会读
         //   `MiuiMultiWindowAdapter.getForceLandscapeApplication()` 并据此置横屏。
@@ -122,7 +110,6 @@ object Hooks {
         Cfg.reload()
         Logx.always("installSystemUi: immersive=${Cfg.immersive} remember=${Cfg.rememberBounds}")
         installLaunchBounds(m, cl)
-        runCatching { installWctProbe(m, cl) }.onFailure { Logx.e("WCT 探针失败", it) }
         runCatching { installRotationGeometryHook(m, cl) }.onFailure { Logx.e("旋转几何钩子失败", it) }
         installImmersive(m, cl)
         installRatioMenu(m, cl)
@@ -173,16 +160,11 @@ object Hooks {
             .onFailure { Logx.e("强制横屏(SystemUI)安装失败", it) }
 
         // 诊断探针：抓"双分屏 → 三分屏"真实手势调用的入口（方法名 + 参数）
-        runCatching { SplitTrace.install(m, cl) }.onFailure { Logx.e("SplitTrace 安装失败", it) }
         // 诊断探针：定位「拖手势条到左上/右上」判定到底在哪个类（只打日志，不改行为）
-        runCatching { SoscProbe.install(m, cl) }.onFailure { Logx.e("SoscProbe 安装失败", it) }
         // 诊断：分屏时状态栏内容为何不可见（只打"被隐藏"的子视图，量很小）
-        runCatching { installSbTreeDump() }.onFailure { Logx.e("状态栏树诊断失败", it) }
         // 诊断探针：枚举 MIUI 小窗"尺寸/动画"链路的类与方法（旋转后比例从哪来 —— 只为定位，不改行为）
-        runCatching { installSizeChainProbe(cl) }.onFailure { Logx.e("尺寸链探针安装失败", it) }
         // ★ 主修复：在 MIUI 算 (bounds, scale) 的地方换成记忆值
         runCatching { installSizeLevelHook(m, cl) }.onFailure { Logx.e("尺寸档位挂钩安装失败", it) }
-        runCatching { installSizePathProbe(m, cl) }.onFailure { Logx.e("路径探针安装失败", it) }
     }
 
     /**
@@ -219,59 +201,11 @@ object Hooks {
         Logx.always("通知栏下滑开小窗: ${if (ok) "已挂载" else "挂载失败（类/方法不存在？）"}")
     }
 
-    /** 小白条（手势导航条）：跟随手势 / 淡入淡出 / 触摸显隐 / 空闲自动隐藏。 */
-    private fun installSbTreeDump() {
-        val h = android.os.Handler(android.os.Looper.getMainLooper())
-        h.postDelayed(object : Runnable {
-            var n = 0
-            override fun run() {
-                n++
-                if (n <= 4) runCatching { dumpSbTree() }
-                h.postDelayed(this, 4000)
-            }
-        }, 3000)
-    }
-
-    private fun dumpSbTree() {
-        val wmgCls = Class.forName("android.view.WindowManagerGlobal")
-        val wmg = wmgCls.getMethod("getInstance").invoke(null)
-        val f = wmgCls.getDeclaredField("mViews").apply { isAccessible = true }
-        val list = f.get(wmg) as? List<*> ?: return
-        for (v in list) {
-            if (v !is android.view.View) continue
-            if (!v.javaClass.name.contains("StatusBar", true)) continue
-            Logx.v("SB树根: ${v.javaClass.name} vis=${v.visibility} alpha=${v.alpha} w=${v.width} h=${v.height}")
-            dumpSbChildren(v, 0)
-        }
-    }
-
-    private fun dumpSbChildren(v: android.view.View, depth: Int) {
-        if (depth >= 4 || v !is android.view.ViewGroup) return
-        for (i in 0 until v.childCount) {
-            val c = v.getChildAt(i)
-            if (depth == 0 || c.visibility != android.view.View.VISIBLE || c.alpha < 0.01f) {
-                Logx.v("  ".repeat(depth + 1) + "${c.javaClass.simpleName} vis=${c.visibility} alpha=${c.alpha} ty=${c.translationY} w=${c.width} h=${c.height}")
-            }
-            dumpSbChildren(c, depth + 1)
-        }
-    }
-
     private fun installGestureHandle(m: MainHook, cl: ClassLoader) {
         runCatching {
             GestureHandle.install(m, cl)
             Logx.always("installGestureHandle: 已挂载（总开关=${Cfg.gestureHandle}）")
         }.onFailure { Logx.e("installGestureHandle 失败", it) }
-    }
-
-    /** 手势总入口（幂等：安装期挂全局输入，动作见 [Gestures]）。 */
-    private fun installGestures(m: MainHook, cl: ClassLoader) {
-        runCatching {
-            if (!Cfg.gestures) {
-                Logx.always("installGestures: 手势总开关关闭，跳过")
-                return@runCatching
-            }
-            Gestures.install(m, cl)
-        }.onFailure { Logx.e("installGestures 失败", it) }
     }
 
     // ---------------- 分屏比例（HyperOS 4：DividerSnapAlgorithm 的吸附目标） ----------------
@@ -332,7 +266,6 @@ object Hooks {
                     if (id != null && id in 101..106) upstream else chain.proceed()
                 })
         }.onFailure { Logx.e("挂 SoScUtilsImpl.findSnapTarget 失败", it) }
-
 
         runCatching {
             m.hookMethod(cl, "com.android.wm.shell.sosc.SoScStageCoordinator", "onLayoutSizeChanged",
@@ -558,22 +491,11 @@ object Hooks {
         target(pos, 103)
     }.onFailure { Logx.e("构造分屏吸附目标失败", it) }.getOrNull()
 
-
     // ---------------- 多分屏（≥3 应用）栏隐藏 ----------------
 
     @Volatile private var lastCoordinator: Any? = null
     private val snapEnterHits = java.util.concurrent.atomic.AtomicInteger(0)
     @Volatile private var lastSnapPos: Int? = null
-
-
-    /** 当前是否存在分屏（>=2 个 stage）。 */
-    private fun splitActive(): Boolean = runCatching {
-        val coord = lastCoordinator ?: return false
-        val op = field(coord, "mStageOrderOperator") ?: return false
-        val active = op.javaClass.getMethod("getActiveStages").invoke(op) as? List<*>
-        (active?.size ?: 0) >= 2
-    }.getOrDefault(false)
-
     /** 当前是否处于"3 个及以上应用"的多分屏（两分屏保持官方外观）。 */
     private fun multiSplitActive(): Boolean = runCatching {
         val coord = lastCoordinator ?: return false
@@ -624,7 +546,6 @@ object Hooks {
             }
         }.onFailure { Logx.once("ms-decor", "隐藏分屏装饰失败: $it") }
     }
-
 
     /** 反射写 Rect 字段（多分屏 root 边界铺满用）。 */
     private fun setRectField(o: Any, name: String, v: Rect) {
@@ -685,45 +606,6 @@ object Hooks {
     }.getOrNull()
 
     // ---------------- 2.2 打开小窗时套用记住的 bounds ----------------
-
-
-    /**
-     * 诊断（2026-10-06）：枚举 MIUI 小窗「尺寸 / 动画」链路的类与方法。
-     *
-     * 背景：旋转走 relayout，模块挂的 15 个**建窗**重载（`getFreeformRect`/`getCustomFreeformRect`）
-     * 根本不被调用；而旋转时是 `MiuiFreeformModeAnimation` 在做那对
-     * `setBounds` + `setMiuiFreeformInfoChange`（NOTES §40.3 记录的正是它）—— 它每次都按 MIUI
-     * 自己的尺寸重算一遍，所以任何"事后推 bounds/scale"都会被它覆盖。
-     * 目标：找到"算这一对值"的确切方法，在那里**把答案换成我们的记忆矩形**（§40.4 首选）。
-     * 本函数只枚举、不挂钩，不改任何行为。
-     */
-    private fun installSizeChainProbe(cl: ClassLoader) {
-        listOf(
-            "com.android.wm.shell.multitasking.miuifreeform.MiuiFreeformModeAnimation",
-            "com.android.wm.shell.multitasking.common.MultiTaskingSizeLevel",
-            "com.android.wm.shell.multitasking.common.MultiTaskingSizeLevel\$LevelInfo",
-            "com.android.wm.shell.multitasking.common.taskmanager.MiuiFreeformModeTaskInfo",
-            "com.android.wm.shell.multitasking.common.MultiTaskingCommonUtils",
-            "com.android.wm.shell.multitasking.miuifreeform.MiuiFreeformModeUtils",
-            "com.android.wm.shell.multitasking.common.MultiTaskingPackageUtils"
-        ).forEach { cn ->
-            val c = runCatching { Class.forName(cn, false, cl) }.getOrNull()
-            if (c == null) {
-                Logx.always("尺寸链: 类不存在 $cn")
-                return@forEach
-            }
-            Logx.always("尺寸链: $cn 方法数=${c.declaredMethods.size}")
-            c.declaredMethods
-                .filter { mm -> Regex("Bounds|Scale|Rotation|Anim|Size|Level").containsMatchIn(mm.name) }
-                .take(60).forEach { mm ->
-                Logx.always(
-                    "   ${mm.name}${mm.parameterTypes.joinToString(",", "(", ")") { it.simpleName }} " +
-                        "-> ${mm.returnType.simpleName}"
-                )
-            }
-        }
-    }
-
 
     /**
      * ★★★ 2026-10-06 主修复：**在 MIUI 自己算「目标 bounds + scale」的地方把答案换成记忆值**。
@@ -813,176 +695,6 @@ object Hooks {
         Logx.always("尺寸档位: 共挂 $n 个")
     }
 
-
-    /**
-     * 诊断（2026-10-06 续）：对"尺寸档位/旋转"链路的其余候选做 **log-only** 探针，
-     * 目的 = 抓出旋转时**真正执行**的那一步（`getDestBoundsAndScale` 实测未被调用）。
-     * 只记日志，不改任何返回值。
-     */
-    private fun installSizePathProbe(m: MainHook, cl: ClassLoader) {
-        val targets = listOf(
-            "com.android.wm.shell.multitasking.common.MultiTaskingSizeLevel" to
-                listOf("getSuitableLevelByBounds", "calBoundsForAutoResize", "scaleBounds", "adjustPosition"),
-            "com.android.wm.shell.multitasking.common.MultiTaskingCommonUtils" to
-                listOf("scaleBounds"),
-            "com.android.wm.shell.multitasking.common.taskmanager.MiuiFreeformModeTaskInfo" to
-                listOf("beginRotation", "abortRotation"),
-            "com.android.wm.shell.multitasking.miuifreeform.MiuiFreeformModeUtils" to
-                listOf("scaleDownIfNeeded", "getFreeformBounds", "getDefaultFreeformBounds")
-        )
-        var n = 0
-        targets.forEach { (cn, names) ->
-            val c = runCatching { Class.forName(cn, false, cl) }.getOrNull() ?: run {
-                Logx.always("路径探针: 类不存在 $cn")
-                return@forEach
-            }
-            c.declaredMethods.filter { it.name in names }.forEach { mm ->
-                val sig = mm.name + mm.parameterTypes.joinToString(",", "(", ")") { it.simpleName }
-                val argc = mm.parameterTypes.size
-                if (m.hookExecutable(mm, XposedInterface.Hooker { chain ->
-                        val res = chain.proceed()
-                        runCatching {
-                            val a = (0 until argc).joinToString(",") { chain.getArg(it).toString() }
-                            Logx.v("路径探针[$sig]: args=($a) -> $res")
-                        }
-                        res
-                    })) {
-                    n++
-                    Logx.always("路径探针: hook 成功 ${cn.substringAfterLast('.')}#$sig")
-                }
-            }
-        }
-        Logx.always("路径探针: 共挂 $n 个")
-    }
-
-
-    /**
-     * 诊断（2026-10-06）：**system_server 侧**的小窗状态类方法清单。
-     *
-     * 真机取证链：SystemUI 侧挂了 10 个候选（MultiTaskingSizeLevel / MultiTaskingCommonUtils /
-     * MiuiFreeformModeTaskInfo / MiuiFreeformModeUtils）**旋转时一个都没触发** ⇒ 尺寸不在这里定。
-     * 而在 `miui-services.jar` 里找到了 `com.android.server.wm.MiuiFreeFormActivityStack` ——
-     * **WM 核心侧的小窗任务状态**，任务的真实 bounds 极可能由它决定。
-     * ⚠️ system 作用域的钩子只在开机注入，本探针的日志要**框架级重启**后才看得到。
-     */
-    private fun installSystemFreeformProbe(m: MainHook, cl: ClassLoader) {
-        val cls = runCatching {
-            Class.forName("com.android.server.wm.MiuiFreeFormActivityStack", false, cl)
-        }.getOrNull() ?: run {
-            Logx.e("系统侧探针: 找不到 MiuiFreeFormActivityStack")
-            return
-        }
-        // ★ 全部方法名压成**一行**：Xposed 日志有 400 行上限，逐行会像上次那样被截掉。
-        val names = cls.declaredMethods.map { it.name }.distinct().sorted()
-        Logx.always("系统侧探针: 方法数=${cls.declaredMethods.size} 全部方法名=${names.joinToString(",")}")
-        // ★ 对候选方法挂 **log-only** 钩子：安装发生在开机，但触发在运行期 ⇒ logcat 一定抓得到
-        // ★ 用**实测拿到的方法名**（上一轮按猜测的名字挂，结果「共挂 0 个」）
-        val targets = listOf(
-            "isSkipAutoLayout", "setSkipAutoLayout", "resolveTaskOrientation",
-            "getFreeFormScale", "setFreeformScale", "setCornerPosition",
-            "getEnterMiniFreeformRect", "setEnterMiniFreeformRect",
-            "getPreExitFreeformScale", "setMiuiFreeformPreExitScale"
-        )
-        var n = 0
-        // ★★ 2026-10-06 用户要求："确认为什么旋转会形变，去 hook 这个地方"。
-        //   离线从 miui-services.jar 挖到的元凶候选：
-        //     autoLayoutFreeFormStackIfNeed（需要就自动重排小窗）、removeFreeformParamsForAutoLayout、
-        //     restoreFreeformWindowBounds、getMiuiFreeformBounds、clipFreeformBounds
-        //   它们不在 MiuiFreeFormActivityStack（45 个方法里没有）⇒ 在其它 MiuiFreeForm* 类里，
-        //   所以这里跨多个候选类按**名字**挂，并打出**调用栈**（谁在旋转时触发的，一目了然）。
-        val autoNames = listOf(
-            "autoLayoutFreeFormStackIfNeed", "removeFreeformParamsForAutoLayout",
-            "restoreFreeformWindowBounds", "getMiuiFreeformBounds", "clipFreeformBounds",
-            "getMiuiFreeformScale", "getFreeFormScale"
-        )
-        listOf(
-            "com.android.server.wm.MiuiFreeFormGestureController",
-            "com.android.server.wm.MiuiFreeFormActivityStackStub",
-            "com.android.server.wm.MiuiFreeFormCameraStrategy",
-            "com.android.server.wm.MiuiFreeFormManagerNotifier",
-            "com.android.server.wm.MiuiFreeFormKeyCombinationHelper"
-        ).forEach { cn2 ->
-            val c2 = runCatching { Class.forName(cn2, false, cl) }.getOrNull() ?: return@forEach
-            c2.declaredMethods.filter { it.name in autoNames }.forEach { mm ->
-                val sig = cn2.substringAfterLast('.') + "#" + mm.name +
-                    mm.parameterTypes.joinToString(",", "(", ")") { it.simpleName }
-                val argc2 = mm.parameterTypes.size
-                if (m.hookExecutable(mm, XposedInterface.Hooker { chain ->
-                        val res = chain.proceed()
-                        runCatching {
-                            val a = (0 until argc2).joinToString(",") { chain.getArg(it).toString() }
-                            val st = Throwable().stackTrace.drop(2).take(6)
-                                .joinToString(" <- ") { "${it.className.substringAfterLast('.')}.${it.methodName}" }
-                            Logx.v("形变探针[$sig]: args=($a) -> $res  caller: $st")
-                        }
-                        res
-                    })) {
-                    n++
-                    Logx.always("形变探针: hook 成功 $sig")
-                }
-            }
-        }
-        cls.declaredMethods.filter { it.name in targets }.forEach { mm ->
-            val sig = mm.name + mm.parameterTypes.joinToString(",", "(", ")") { it.simpleName }
-            val argc = mm.parameterTypes.size
-            if (m.hookExecutable(mm, XposedInterface.Hooker { chain ->
-                    val res = chain.proceed()
-                    runCatching {
-                        val a = (0 until argc).joinToString(",") { chain.getArg(it).toString() }
-                        Logx.v("系统探针[$sig]: args=($a) -> $res")
-                    }
-                    // ★★ 修复杆（2026-10-06）：旋转时 MIUI 会重排小窗、把比例切回它的默认。
-                    //   `MiuiFreeFormActivityStack` 有 `isSkipAutoLayout/setSkipAutoLayout` ——
-                    //   **有记忆就让 MIUI 跳过它自己的自动布局**，我们的尺寸/比例才不会被重排掉。
-                    //   只在 `resolveTaskOrientation`（旋转专用入口）上做，避免影响其它流程。
-                    if (mm.name == "resolveTaskOrientation") {
-                        runCatching {
-                            // ★★★ v0.5.5 **修掉 NPE 打断 MIUI 横屏初始化**（真机崩溃取证）：
-                            //     java.lang.NullPointerException: Attempt to invoke virtual method
-                            //       'java.lang.Class java.lang.Object.getClass()' on a null object reference
-                            //       at ...resolveTaskOrientation(...)
-                            //       at MiuiFreeFormActivityStack.<init>(MiuiFreeFormActivityStack.java:229)
-                            //   ⇒ `chain.thisObject` 在此为 **null**（静态/lambda 调用上下文），
-                            //     直接 `call(null, ...)` 内部 `obj.javaClass` 抛 NPE，
-                            //     **打断 MIUI 的 MiuiFreeFormActivityStack 构造**（第 229 行正是横屏名单判定处）
-                            //     ⇒ setSkipAutoLayout 从未生效 ⇒ MIUI 自动重排成竖屏。
-                            //
-                            //   修法：先判空；thisObject 为空时退回"从第 0 个参数（Task）取包名"。
-                            val self = chain.thisObject
-                            val taskArg = runCatching { chain.args.firstOrNull() }.getOrNull()
-                            val pkg = self?.let { call(it, "getStackPackageName") } as? String
-                                ?: self?.let { call(it, "getTaskInfo") }?.let { taskPkg(it) }
-                                ?: self?.let { field(it, "mTaskInfo") }?.let { taskPkg(it) }
-                                ?: taskArg?.let { taskPkg(it) }
-                            val ctx = AppCtx.get()
-                            // ★ v0.4.38：这条守卫此前**静默失败**——两份分支各有一条日志，实测 5 份日志里
-                            //   `系统探针★` 命中 0 次 ⇒ skipAutoLayout 杆从未生效过（查不到原因）。
-                            //   现在把"为什么没生效"打出来（log-only，不改行为）。
-                            if (pkg == null || ctx == null) {
-                                Logx.always("系统探针: resolveTaskOrientation 守卫不成立 pkg=$pkg ctx=${ctx != null}（skipAutoLayout 杆未生效）")
-                            }
-                            if (pkg != null && ctx != null) {
-                                val memo = Bounds.get(ctx, pkg, Bounds.screenKey(ctx))
-                                if (memo != null && self != null) {
-                                    self.javaClass
-                                        .getMethod("setSkipAutoLayout", java.lang.Boolean.TYPE)
-                                        .invoke(self, true)
-                                    Logx.always("系统探针★: 有记忆 ⇒ setSkipAutoLayout(true) pkg=$pkg 记忆=$memo")
-                                } else {
-                                    Logx.always("系统探针: 无记忆，不动 skipAutoLayout pkg=$pkg")
-                                }
-                            }
-                        }.onFailure { Logx.e("skipAutoLayout 杆失败", it) }
-                    }
-                    res
-                })) {
-                n++
-                Logx.always("系统探针: hook 成功 #$sig")
-            }
-        }
-        Logx.always("系统探针: 共挂 $n 个")
-    }
-
     /**
      * ★★★ v0.4.43 正解（用户 2026-10-06 点破："能不能把记忆里的比例值直接就给它？"）——**能**。
      *
@@ -1057,43 +769,6 @@ object Hooks {
                 }
             }
         if (n == 0) Logx.e("旋转几何钩子: calculateBoundsAndScaleAfterScreenRotation 一个重载都没挂上")
-    }
-
-    /**
-     * WCT 探针（log-only）：旋转后 MIUI 把新几何推给 shell 时，**必然经过一次
-     * `WindowContainerTransaction#setBounds/setAppBounds`**。这里只记录"旋转后 8s 内"的每一次调用，
-     * 目的是确认：旋转后的几何是否走 SystemUI 进程内的 WCT —— 若走，就能**改写 MIUI 自己的这次事务**
-     * （而不是像 v0.4.10 那样自造一份 bounds），从而免重启、免关窗地把记忆矩形注入进去。
-     * 只记录、不改行为。
-     */
-    private fun installWctProbe(m: MainHook, cl: ClassLoader) {
-        val cls = runCatching { Class.forName("android.window.WindowContainerTransaction", false, cl) }
-            .getOrNull()
-        if (cls == null) {
-            Logx.e("WCT 探针: 找不到 android.window.WindowContainerTransaction")
-            return
-        }
-        var n = 0
-        listOf("setBounds", "setAppBounds").forEach { name ->
-            cls.declaredMethods.filter { it.name == name }.forEach { mm ->
-                if (m.hookExecutable(mm, XposedInterface.Hooker { chain ->
-                        val res = chain.proceed()
-                        runCatching {
-                            val since = android.os.SystemClock.elapsedRealtime() - lastConfigChangeAt
-                            if (lastConfigChangeAt > 0L && since in 0..8_000) {
-                                val rect = (0 until chain.args.size)
-                                    .map { chain.getArg(it) }
-                                    .firstOrNull { it is Rect }
-                                Logx.always("WCT探针[$name] +${since}ms: rect=$rect 参数=${chain.args.toList()}")
-                            }
-                        }
-                        res
-                    })) {
-                    n++
-                }
-            }
-        }
-        Logx.always("WCT 探针: 共挂 $n 个 setBounds/setAppBounds")
     }
 
     private fun installLaunchBounds(m: MainHook, cl: ClassLoader) {
@@ -1702,7 +1377,6 @@ object Hooks {
         container.requestLayout()
         Logx.always("比例行已注入三点菜单（原始 + ${RATIO_BUTTONS.joinToString("/") { it.first }} + 方向，共 ${RATIO_BUTTONS.size + 2} 个）")
     }
-
 
     /** 与 MIUI 比例按钮文字同色（`caption_extend_text_color`），取不到就退回灰。 */
     /**
@@ -2322,7 +1996,6 @@ object Hooks {
      *     MIUI 走自己的建窗流程 ⇒ 会问我们的钩子 ⇒ 记忆的位置与比例都被采用。
      */
 
-
     /**
      * ★★★ 2026-10-06 用户点破 + 真机取证：**侧边栏开小窗会按记忆比例**（`核对通过(位置+尺寸)`），
      *   而模块用过的 `getActivityOptions`（只带位置）、纯 `startActivity`（MIUI 不认我们的矩形）
@@ -2353,29 +2026,6 @@ object Hooks {
         Logx.always("重开: 纯 startActivity（与点桌面图标同路，建窗钩子会套用记忆）pkg=$pkg")
         true
     }.onFailure { Logx.e("纯 startActivity 重开失败", it) }.getOrDefault(false)
-
-    private fun relaunchPlainFreeform(decoration: Any, id: Int, target: Rect): Boolean = runCatching {
-        val ctx = AppCtx.get() ?: return false
-        val info = field(decoration, "mRunningTaskInfo") as? android.app.ActivityManager.RunningTaskInfo
-            ?: return false
-        val intent = (field(info, "baseIntent") as? android.content.Intent)?.let { android.content.Intent(it) }
-            ?: info.topActivity?.let {
-                android.content.Intent(android.content.Intent.ACTION_MAIN)
-                    .addCategory(android.content.Intent.CATEGORY_LAUNCHER).setComponent(it)
-            } ?: return false
-        intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-        val opts = android.app.ActivityOptions.makeBasic()
-        // `setLaunchWindowingMode` 是 @hide API（公开 android.jar 里没有），必须反射
-        runCatching {
-            opts.javaClass.getMethod("setLaunchWindowingMode", Integer.TYPE).invoke(opts, 5)   // 5 = FREEFORM
-        }.onFailure { Logx.e("setLaunchWindowingMode 反射失败", it) }
-        ctx.startActivity(intent, opts.toBundle())
-        Logx.always(
-            "重开: plain freeform 启动（与 am start --windowingMode 5 同路，建窗钩子会套用记忆 @${target.left},${target.top}）"
-        )
-        true
-    }.onFailure { Logx.e("plain freeform 启动失败", it) }.getOrDefault(false)
-
     private fun relaunchViaMiuiApi(decoration: Any, id: Int, target: Rect): Boolean = runCatching {
         val ctx = AppCtx.get() ?: return false
         val info = field(decoration, "mRunningTaskInfo") as? android.app.ActivityManager.RunningTaskInfo
@@ -2493,17 +2143,6 @@ object Hooks {
      *   · 1.5s 后再重绘一次（此时已不满足"最近触摸"，于是自动隐藏）。
      * 只在开关开启（hiddenViews 收录了该视图）时才起作用，关掉开关行为不变。
      */
-    private fun markDecorTouched() {
-        lastDecorTouchAt = android.os.SystemClock.elapsedRealtime()
-        runCatching { hiddenViews.toList().forEach { (it as? android.view.View)?.invalidate() } }
-        Handler(Looper.getMainLooper()).postDelayed({
-            runCatching { hiddenViews.toList().forEach { (it as? android.view.View)?.invalidate() } }
-        }, 1500)
-    }
-
-    private fun decorRecentlyTouched(): Boolean =
-        android.os.SystemClock.elapsedRealtime() - lastDecorTouchAt < 1500
-
     private val hiddenViews: MutableSet<Any> =
         java.util.Collections.newSetFromMap(WeakHashMap<Any, Boolean>())
 
@@ -2547,6 +2186,13 @@ object Hooks {
         }
     }
 
+    private fun markDecorTouched() {
+        lastDecorTouchAt = android.os.SystemClock.elapsedRealtime()
+        runCatching { hiddenViews.toList().forEach { (it as? android.view.View)?.invalidate() } }
+        Handler(Looper.getMainLooper()).postDelayed({
+            runCatching { hiddenViews.toList().forEach { (it as? android.view.View)?.invalidate() } }
+        }, 1500)
+    }
     /**
      * 手势结束时间戳。抬手回调里 MIUI 的 taskInfo 还是**旧 bounds**（新 bounds 由
      * WindowContainerTransaction 异步应用，实测 `up=旧值 变化=false`），
@@ -2993,38 +2639,6 @@ object Hooks {
             Bounds.clampKeepRatio(r, area)
         }.getOrDefault(Rect(r))
     }
-
-    /** 真实 rect → 可视 rect（MIUI 的 scaleBounds 就是"以左上角为锚"乘 scale）。 */
-    private fun scaled(r: Rect, s: Float): Rect =
-        if (s <= 0f || kotlin.math.abs(s - 1f) < 0.0001f) Rect(r)
-        else Rect(r.left, r.top, r.left + (r.width() * s).toInt(), r.top + (r.height() * s).toInt())
-
-    /** 可视 rect → 真实 rect（反算）。"按记忆中的尺寸新建"就靠它：新建时把 rect 给 MIUI， */
-    /** MIUI 按**它自己的** scale 渲染 ⇒ 可视 = rect × scale = 记忆尺寸（我们从不推 scale）。 */
-    private fun unscaled(v: Rect, s: Float): Rect =
-        if (s <= 0f || kotlin.math.abs(s - 1f) < 0.0001f) Rect(v)
-        else Rect(
-            v.left, v.top,
-            v.left + maxOf((v.width() / s).toInt(), 1),
-            v.top + maxOf((v.height() / s).toInt(), 1)
-        )
-
-    /** MIUI 当前的 freeformScale（只读；模块从不写它）。 */
-    private fun currentScale(ctrl: Any): Float = runCatching {
-        val ctl = cls(Constants.CLS_MULTITASKING_CTL).getMethod("getInstance").invoke(null)
-        val repo = ctl.javaClass.getMethod("getMultiTaskingTaskRepository").invoke(ctl)
-        val ti = repo.javaClass.getMethod("getMiuiFreeformTaskInfo", Integer.TYPE).invoke(repo, taskId(ctrl))
-        (call(ti, "getFreeformScale") as? Float) ?: 0f
-    }.getOrDefault(0f)
-
-    /** MIUI 当前报告的**可视矩形**（getScaledBounds）——用户实际看到/操作的那块。 */
-    private fun currentVisible(ctrl: Any): Rect? = runCatching {
-        val ctl = cls(Constants.CLS_MULTITASKING_CTL).getMethod("getInstance").invoke(null)
-        val repo = ctl.javaClass.getMethod("getMultiTaskingTaskRepository").invoke(ctl)
-        val ti = repo.javaClass.getMethod("getMiuiFreeformTaskInfo", Integer.TYPE).invoke(repo, taskId(ctrl))
-        (call(ti, "getScaledBounds") as? Rect)?.takeIf { it.width() > 0 && it.height() > 0 }
-    }.getOrNull()
-
     private fun installBoundsRecorder(m: MainHook, cl: ClassLoader) {
         // 证据探针：MIUI 的手势分发层（若 handleDown/UpEvent 不派发，至少这里能看到）
         listOf("dispatchDownToDecoration", "dispatchMoveToDecoration", "dispatchUpToDecoration").forEach { name ->

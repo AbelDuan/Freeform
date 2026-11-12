@@ -2,7 +2,7 @@ package com.abel.os4freeformx
 
 /** 模块常量：包名、prefs 名、配置键、目标类名。 */
 object Constants {
-    const val VERSION = "0.7.77"
+    const val VERSION = "0.7.79"
     const val PREFS_CFG = "os4freeformx_cfg"
     const val PREFS_BOUNDS = "os4freeformx_bounds"
     const val AUTHORITY = "com.abel.os4freeformx.store"
@@ -58,10 +58,8 @@ object Constants {
     const val K_FOLD_SPLIT_MODE = "fold_split_mode"
     // 注：原 K_RESIZE（"允许拖动调整尺寸"）是死开关：值存了、也读了，但全库没有任何代码用它，
     //     已移除（角柄缩放本来就是 MIUI 原生行为，模块不接管）。
-    // 手势总开关已移除（用户 2026-10-02）：只保留「左右下角内滑→小窗」这一个手势，常开。
-    // 仍读该键是为了兼容老配置，但设置页不再提供开关。
-    const val K_GESTURES = "gestures"
-    const val K_CORNER_FREEFORM = "corner_freeform"  // 角落斜滑 → 前台应用转小窗
+    // 注（2026-11-12）：手势功能已于 2026-10-02 整体下线，本次连死代码一起删除
+    //   （Gestures.kt、installGestures()、K_GESTURES / K_CORNER_FREEFORM 及其 Cfg 字段）。
 
     // ---- 小白条（手势导航条）----
     const val K_GESTURE_HANDLE = "gesture_handle"                // 总开关
@@ -92,9 +90,6 @@ object Constants {
     const val K_MAGIC_WINDOW = "magic_window"
     /** 逐行 "包名=比例"，比例取值同 [MagicWindow.RATIOS]（如 "16:9"） */
     const val K_MAGIC_RATIO_MAP = "magic_ratio_map"
-
-    /** 调试开关：system_server 侧几何探针（198 个钩子，日志量大，默认关） */
-    const val DBG_GEO_PROBE = false
 
     /** 多小窗上限：256 = HyperCeiler 用值，等价于"实际不限制" */
     const val FREEFORM_MAX_COUNT = 256
@@ -129,8 +124,6 @@ object Constants {
     const val FOLD_SPLIT_DEPTH_SLUGGISH = "sluggish"
     /** 轻折触发灵敏度默认值：折下去约 15° 才判定为"开始折"（比原"标准 20°"更易触发一点）。单位：度。 */
     const val DEF_FOLD_SPLIT_DEPTH = 15
-    const val DEF_GESTURES = true
-    const val DEF_CORNER_FREEFORM = true
     const val DEF_GESTURE_HANDLE = true
     const val DEF_GESTURE_HANDLE_FOLLOW = true
     const val DEF_GESTURE_HANDLE_TOUCH = true

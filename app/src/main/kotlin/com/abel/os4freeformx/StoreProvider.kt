@@ -43,8 +43,6 @@ class StoreProvider : ContentProvider() {
                 putBoolean(Constants.K_GESTURE_HANDLE_IDLE, c?.getBoolean(Constants.K_GESTURE_HANDLE_IDLE, Constants.DEF_GESTURE_HANDLE_IDLE) ?: Constants.DEF_GESTURE_HANDLE_IDLE)
                 putFloat(Constants.K_GESTURE_HANDLE_AREA, c?.getFloat(Constants.K_GESTURE_HANDLE_AREA, Constants.DEF_GESTURE_HANDLE_AREA) ?: Constants.DEF_GESTURE_HANDLE_AREA)
                 putString(Constants.K_NBI_ASSIGN, c?.getString(Constants.K_NBI_ASSIGN, Constants.DEF_NBI_ASSIGN) ?: Constants.DEF_NBI_ASSIGN)
-                putBoolean(Constants.K_GESTURES, c?.getBoolean(Constants.K_GESTURES, Constants.DEF_GESTURES) ?: Constants.DEF_GESTURES)
-                putBoolean(Constants.K_CORNER_FREEFORM, c?.getBoolean(Constants.K_CORNER_FREEFORM, Constants.DEF_CORNER_FREEFORM) ?: Constants.DEF_CORNER_FREEFORM)
             }
             "put" -> {
                 val k = extras?.getString("k")

@@ -60,7 +60,6 @@ class SettingsActivity : Activity() {
         }.apply { isDaemon = true; name = "os4ffx-nbi-restore" }.start()
     }
 
-
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
 
     /** 状态栏高度（px）；拿不到给 28dp 兜底，避免顶部标题被状态栏图标压住。 */
@@ -433,32 +432,6 @@ class SettingsActivity : Activity() {
         })
         body.addView(row)
     }
-
-    private fun numberRow(title: String, key: String, value: Int, onChange: (Int) -> Unit) {
-        val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
-        row.addView(TextView(this).apply {
-            text = title
-            textSize = 13f
-            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
-        })
-        val edit = EditText(this).apply {
-            inputType = InputType.TYPE_CLASS_NUMBER
-            setText(value.toString())
-            layoutParams = LinearLayout.LayoutParams(dp(110), ViewGroup.LayoutParams.WRAP_CONTENT)
-        }
-        row.addView(edit)
-        row.addView(Button(this).apply {
-            text = "保存"
-            setOnClickListener {
-                val v = edit.text.toString().toIntOrNull() ?: 0
-                AppPrefs.putInt(this@SettingsActivity, key, v)
-                onChange(v)
-                Toast.makeText(this@SettingsActivity, "已保存 $v", Toast.LENGTH_SHORT).show()
-            }
-        })
-        body.addView(row)
-    }
-
     private fun refreshInfo(tv: TextView) {
         // App 进程内存里没有 bounds，必须先经 Provider 拉一次，否则列表永远是空的
         Bounds.loadNow(this)
