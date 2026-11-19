@@ -348,9 +348,12 @@ object FoldSplitTrigger {
     // ───────────────────────── 触发 ─────────────────────────
 
     private fun fire() {
-        // ★ 每次触发**同步**取一次真值：开关是热开关，用户随手改完立刻就能生效，
-        //   不该"这一折还按旧值处理"（一次轻折一条 IPC，成本可忽略）。
-        Cfg.refreshSync()
+        // ★ 2026-11-19：**不再同步 refreshSync()**。
+        //   原来这里每次折都发一条跨进程 IPC 去读配置。虽然折角传感器回调不持系统锁，
+        //   但 IPC 一旦被 provider 端阻塞，就会占住 SensorManager 回调线程并推迟触发。
+        //   现在投递到后台线程（1.5s 节流）：本轮直接用内存里的配置值，
+        //   改开关最多滞后一拍，但绝不阻塞本折。
+        Cfg.reloadThrottled()
         if (!Cfg.foldSplit) {
             Logx.always("轻折加分屏: 开关为关 ⇒ 不执行（热开关，改完无需重启 SystemUI）")
             return

@@ -17,6 +17,16 @@ object Bounds {
     @Volatile private var loaded = false
 
     /**
+     * 只读快照 —— 供**持锁风险路径**（如 setRequestedOrientation 的 hook）无锁读取。
+     *
+     * ★ 2026-11-19：不能用 `synchronized(this)` 去读 `cache`，因为 [load] 也是 @Synchronized，
+     *   后台刷新期间会把读方挡住 ⇒ 等于又把阻塞搬回来。
+     *   这里在 [load] 末尾整体发布一份不可变副本：读方拿到的一定是一致快照，
+     *   且永不阻塞。
+     */
+    @Volatile private var cacheRef: Map<String, Rect> = emptyMap()
+
+    /**
      * 屏幕形态标识：**短边x长边**（排序后，与旋转无关）。
      *
      * 之前直接用 `ctx.resources.displayMetrics`，结果 system_server 与 SystemUI 两个进程
@@ -145,12 +155,87 @@ object Bounds {
                 if (legacy.isNotEmpty()) Logx.always("旧键清理: 迁移 $migrated 条、删除 ${legacy.size} 条 @P/@L")
             }
 
+            // ★ 发布不可变快照（供无锁读）——必须在 synchronized(this) 内完成，保证原子替换
+            cacheRef = java.util.HashMap(cache)
+            orientRef = java.util.HashMap(orientCache)
             loaded = true
             Logx.always("bounds 载入 ${cache.size} 条")
         }.onFailure { Logx.e("bounds 载入失败", it) }
     }
 
     @Volatile private var lastLoad = 0L
+
+    // ───────────────────── 异步刷新（防 ABBA 死锁）─────────────────────
+    //
+    // ★★★ 2026-11-19 真机事故根因（ANR traces_SystemServer_WDT19_11_14_34_48）：
+    //   system_server 发生 ABBA 死锁 → Watchdog 判定 69s 无响应 → 软重启。
+    //
+    //   线程A 持有 WindowManagerGlobalLock
+    //     └ ActivityRecord.setRequestedOrientation
+    //       └ 本模块 hook getFreeformIgnoreRequestOrientationList
+    //         └ allLandscapePackages() → load() → ContentResolver.call()  ← 跨进程 IPC
+    //           └ 需要 ActivityManagerService 锁 ⇒ 被线程B 持有
+    //   线程B 持有 ActivityManagerService 锁
+    //     └ onProcessMapped
+    //       └ 需要 WindowManagerGlobalLock ⇒ 被线程A 持有  ⇒ 死锁
+    //
+    //   结论：**hook 回调里绝不能做跨进程调用**。而 getFreeformIgnoreRequestOrientationList
+    //   正是被 setRequestedOrientation 在持 WM 全局锁时调用的。
+    //
+    // 修复：所有"读"只返回内存快照，永不阻塞；数据由**后台单线程**周期刷新。
+    //   首次读时缓存为空 ⇒ 返回空/null（退化成"模块不介入"，绝不阻塞系统）。
+
+    /** 刷新调度锁（只管调度，不保护缓存 —— 缓存仍由 `this` 保护）。 */
+    private val REFRESH_LOCK = Any()
+
+    /** 后台刷新线程（单线程，惰性创建；daemon 防止拖住进程退出）。 */
+    @Volatile private var refresher: Thread? = null
+
+    /** 是否已排过刷新任务（避免高频读取时反复投递）。 */
+    @Volatile private var refreshScheduled = false
+
+    /** 应用上下文（后台线程刷新时用；由首次带 ctx 的调用塞进来）。 */
+    @Volatile private var appCtx: Context? = null
+
+    /**
+     * 请求一次**后台**刷新。立刻返回，绝不阻塞调用线程。
+     * 同一时刻最多只有一个刷新任务排队（[refreshScheduled] 做 coalesce）。
+     */
+    private fun requestRefresh(ctx: Context) {
+        if (appCtx == null) {
+            appCtx = runCatching { ctx.applicationContext }.getOrNull() ?: ctx
+        }
+        synchronized(REFRESH_LOCK) {
+            if (refreshScheduled) return
+            refreshScheduled = true
+            if (refresher == null) {
+                val t = Thread({
+                    while (true) {
+                        try {
+                            Thread.sleep(200)
+                        } catch (ie: InterruptedException) {
+                            return@Thread
+                        }
+                        if (!refreshScheduled) continue
+                        synchronized(REFRESH_LOCK) { refreshScheduled = false }
+                        val c = appCtx ?: continue
+                        // 后台线程里做 IPC：即使慢也只拖慢这一条线程，绝不卡住持锁的系统线程
+                        runCatching { load(c) }.onFailure { Logx.e("bounds 后台刷新失败", it) }
+                        lastLoad = android.os.SystemClock.elapsedRealtime()
+                    }
+                }, "os4ffx-bounds-refresh")
+                t.isDaemon = true
+                t.start()
+                refresher = t
+            }
+        }
+    }
+
+    /** 纯内存读取：缓存为空或过期时**只排后台刷新**，当前线程返回旧快照（绝不阻塞）。 */
+    private fun refreshIfStale(ctx: Context) {
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (!loaded || now - lastLoad > 300) requestRefresh(ctx)
+    }
 
     /**
      * 读记忆值。缓存 TTL 内直接用快照：systemui 写入新值后，system_server（负责打开时套用）
@@ -159,18 +244,17 @@ object Bounds {
      * TTL 从 30s 降到 1.5s：菜单里刚按比例存下的尺寸要马上生效（重开小窗在 ~1.8s 后），
      * 30s 会让 system_server 拿旧值把方向/比例盖回去（真机现象：选横屏又被恢复成竖屏）。
      */
-    @Synchronized
     fun get(ctx: Context, pkg: String, screen: String): Rect? {
-        val now = android.os.SystemClock.elapsedRealtime()
-        if (!loaded || now - lastLoad > 300) {
-            loaded = false
-            load(ctx)
-            lastLoad = now
-        }
-        cache[key(pkg, screen)]?.let { return Rect(it) }
+        // ★ 2026-11-19：纯内存读取（见 requestRefresh 处的事故说明）。
+        //   注意不能 synchronized(this)：load() 也是 @Synchronized，后台刷新时会把这里挡住，
+        //   那就退化成"二次阻塞"。改为读 volatile 快照 map 的引用 —— HashMap 在 load() 里
+        //   是整体替换而非原地增删，读到旧引用也只是一份一致的旧快照。
+        refreshIfStale(ctx)
+        val snap = cacheRef
+        snap[key(pkg, screen)]?.let { return Rect(it) }
         // 兼容旧键格式（未排序的 宽x高，例如 2364x1672）
         val alt = screen.split('x').takeIf { it.size == 2 }?.let { "${it[1]}x${it[0]}" }
-        return alt?.let { cache[key(pkg, it)] }?.let { Rect(it) }
+        return alt?.let { snap[key(pkg, it)] }?.let { Rect(it) }
     }
 
     /**
@@ -188,10 +272,16 @@ object Bounds {
      */
     private val orientCache = HashMap<String, Boolean>()
 
+    /** 方向表的不可变快照（同 [cacheRef]，供持锁风险路径无锁读）。 */
+    @Volatile private var orientRef: Map<String, Boolean> = emptyMap()
+
     /** 记方向（横屏=true）。与 [putPoint] 配合使用：点决定位置，方向决定宽高谁大。 */
     fun putOrientation(ctx: Context, pkg: String, screen: String, landscape: Boolean) {
         val k = key(pkg, screen)
-        synchronized(this) { orientCache[k] = landscape }
+        synchronized(this) {
+            orientCache[k] = landscape
+            orientRef = java.util.HashMap(orientCache)   // ★ 同步发布快照
+        }
         // ★★★ v0.5.5 **方向改用独立键 `@D`**，与比例槽彻底分开。
         //   真机取证：同一个 `@` 字段被两种语义轮流覆写（比例 vs 方向+比例）⇒ 方向时有时无
         //   ⇒ 用户看到"第一次横屏、之后弹回竖屏"。
@@ -202,13 +292,8 @@ object Bounds {
     /** 读方向：true=横屏，false=竖屏，null=没有记录（交回 MIUI 默认）。 */
     fun getOrientation(ctx: Context, pkg: String, screen: String): Boolean? {
         val k = key(pkg, screen)
-        val now = android.os.SystemClock.elapsedRealtime()
-        if (!loaded || now - lastLoad > 300) {
-            loaded = false
-            load(ctx)
-            lastLoad = now
-        }
-        synchronized(this) { orientCache[k]?.let { return it } }
+        refreshIfStale(ctx)          // ★ 2026-11-19：纯内存 + 后台刷新，绝不阻塞
+        orientRef[k]?.let { return it }   // 无锁读快照
         // 从落盘值解码（+10 偏移 = 横屏）
         val raw = rawScale(ctx, pkg, screen)
         if (raw <= 0f) return null
@@ -217,12 +302,7 @@ object Bounds {
 
     /** 落盘的**原始** `@` 值（不做偏移解码），供方向判定用。 */
     private fun rawScale(ctx: Context, pkg: String, screen: String): Float {
-        val now = android.os.SystemClock.elapsedRealtime()
-        if (!loaded || now - lastLoad > 300) {
-            loaded = false
-            load(ctx)
-            lastLoad = now
-        }
+        refreshIfStale(ctx)   // ★ 2026-11-19：纯内存 + 后台刷新，绝不阻塞系统持锁路径
         return scaleCache[key(pkg, screen)] ?: 0f
     }
 
@@ -244,12 +324,7 @@ object Bounds {
     private val scaleCache = HashMap<String, Float>()
 
     fun getScale(ctx: Context, pkg: String, screen: String): Float {
-        val now = android.os.SystemClock.elapsedRealtime()
-        if (!loaded || now - lastLoad > 300) {
-            loaded = false
-            load(ctx)
-            lastLoad = now
-        }
+        refreshIfStale(ctx)   // ★ 2026-11-19：纯内存 + 后台刷新，绝不阻塞系统持锁路径
         val v = scaleCache[key(pkg, screen)] ?: 0f
         // 剥掉方向偏移：>10 的存的是"横屏"编码
         return if (v > 10f) v - 10f else v
@@ -288,16 +363,11 @@ object Bounds {
      * （同样从上游 `d156b72` 取回。）
      */
     fun getAny(ctx: Context, pkg: String): Rect? {
-        val now = android.os.SystemClock.elapsedRealtime()
-        if (!loaded || now - lastLoad > 300) {
-            loaded = false
-            load(ctx)
-            lastLoad = now
-        }
-        synchronized(this) {
-            for ((k, v) in cache) {
-                if (k.startsWith("$pkg|")) return Rect(v)
-            }
+        refreshIfStale(ctx)   // ★ 2026-11-19：纯内存 + 后台刷新，绝不阻塞系统持锁路径
+        // ★ 无锁读快照（同 get()）：synchronized(this) 会被后台 load() 挡住
+        val pfx = "$pkg|"
+        for ((k, v) in cacheRef) {
+            if (k.startsWith(pfx)) return Rect(v)
         }
         return null
     }
@@ -365,6 +435,7 @@ object Bounds {
             if (old == null || old != r || eff != prevRaw) {
                 cache[k] = Rect(r)
                 if (eff > 0f) scaleCache[k] = eff
+                cacheRef = java.util.HashMap(cache)   // ★ 同步发布快照
                 changed = true
             }
         }
@@ -419,20 +490,21 @@ object Bounds {
      *  MIUI 自己就会把它们当横屏小窗处理 —— 不需要我们改它的几何。
      */
     fun allLandscapePackages(ctx: Context): List<String> {
-        val now = android.os.SystemClock.elapsedRealtime()
-        if (!loaded || now - lastLoad > 300) {
-            loaded = false
-            load(ctx)
-            lastLoad = now
-        }
+        // ★ 2026-11-19：绝不在这里同步 load()。
+        //   本方法由 getFreeformIgnoreRequestOrientationList hook 调用，而那个 hook
+        //   运行在 system_server 持有 WindowManagerGlobalLock 的路径上 ——
+        //   一旦这里做 IPC 就会与 AMS 锁形成 ABBA 死锁（真机已导致软重启）。
+        //   改为：只读内存 + 后台刷新。缓存未就绪时返回空列表（= 模块不介入，安全）。
+        refreshIfStale(ctx)
+        // ★ 无锁读快照：本方法运行在持有 WM 全局锁的 setRequestedOrientation 路径上，
+        //   synchronized(this) 会被后台 load()（@Synchronized）挡住 ⇒ 必须无锁。
+        val snap = orientRef
         val out = LinkedHashSet<String>()
-        synchronized(this) {
-            // key 形如 `pkg|屏幕`；只看方向位为"横屏"（编码 > 10，见 putOrientation）
-            orientCache.entries.forEach { (k, v) -> if (v) out.add(k.substringBefore('|')) }
-            // ★★★ v0.5.5 **删除用比例槽判方向的旧逻辑**（用户主诉："用过横屏后永远横屏"）。
-            //   历史遗留值（如 10.77）会被 `> 10f` 误判成横屏 ⇒ 该应用被并入 ROM 的
-            //   getForceLandscapeApplication() 名单 ⇒ **永久横屏**。只信 `@D` 独立槽。
-        }
+        // key 形如 `pkg|屏幕`；只看方向位为"横屏"（编码 > 10，见 putOrientation）
+        snap.entries.forEach { (k, v) -> if (v) out.add(k.substringBefore('|')) }
+        // ★★★ v0.5.5 **删除用比例槽判方向的旧逻辑**（用户主诉："用过横屏后永远横屏"）。
+        //   历史遗留值（如 10.77）会被 `> 10f` 误判成横屏 ⇒ 该应用被并入 ROM 的
+        //   getForceLandscapeApplication() 名单 ⇒ **永久横屏**。只信 `@D` 独立槽。
         return out.toList()
     }
 
