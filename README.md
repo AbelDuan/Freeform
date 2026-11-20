@@ -23,6 +23,8 @@ HyperOS 4（Android 17 / API 37）**小窗（freeform）与分屏体验增强** 
 
 ## 1. 功能
 
+> **v0.7.81 变更**：① 移植旋屏三项（见 §1.8）；② 修复「分屏顶部中间三点菜单点了不弹出」。
+
 ### 1.1 自由小窗
 
 | 功能 | 说明 |
@@ -251,6 +253,97 @@ adb shell su -c 'killall com.android.systemui'
 
 > 实现思路来自 HyperPlus v0.9.0-alpha（`FoldJudge.kt` / `SplitTrigger.kt`，AGPL-3.0），
 > 按其公开的行为规格重写；绑定的类名均在机上 dex 里逐个 grep 验证过。
+
+### 1.8 旋屏（v0.7.81 自 OS4 Themer 移植）
+
+> 2026-11-20 用户要求：「把 OS4 Themer 里关于旋屏提示、旋屏操作以及自动旋屏的功能
+> 全部移植到 freeform」。OS4 Themer 已同步删除这三项，本模块接手。
+> ⚠️ **两边不要重复启用**，否则同一个旋钮会被弹两次、方向互相打架。
+
+| 设置项 | 默认 | 实现 | 说明 |
+| --- | --- | --- | --- |
+| **方向不一致时提示旋转** | 开 | `RotationHint.kt` | 锁定方向后，手机被转到与画面不一致的方向就弹出旋钮，点一下转过去 |
+| **点击旋钮强制旋转** | 开 | `OrientationForcer.kt` | 应用在清单里写死方向时，用 `fixed-to-user-rotation` 绕开它 |
+| **展开时联动自动旋转** | 开 | `InnerRotation.kt` | 展开内屏瞬间临时解锁、跟随传感器 5 秒，到点重新锁定 |
+
+三项都是**热开关**：改设置后 `Cfg` 刷新即生效，不用重启 SystemUI。
+
+**方向判定为什么用重力传感器而不是 `TYPE_DEVICE_ORIENTATION`**
+
+后者是 **on-change** 传感器，只在跨过边界时上报一次；快速旋转时两次上报能隔 3 秒以上，
+中间怎么转都没事件 ⇒ 旋钮停在旧角度。所以这里挂持续型重力传感器（10Hz），自己算：
+
+```
+roll     = atan2(gx, gy)          // 设备绕屏幕法线的转角
+rotation = (round(roll/90) + 4) % 4
+```
+
+验证：roll 0→0、-90→3、180→2、+90→1，与 `Surface.ROTATION_*` 一致。
+连续 3 次算出同一方向才采纳（滤掉转动过程的抖动）。
+
+**点击后为什么保留按钮**：转屏要 300~600ms，立刻收起会让用户以为「没点上」。
+保留到 `屏幕方向 == 目标` 或 700ms 静默期结束再收。
+
+**两个实现要点（照抄 OS4 Themer，别「优化」掉）**
+
+1. **可见性绝不交给动画**。`addView` 后视图往往还没 attach，`animate().alpha(0→1)`
+   一旦没跑，alpha 永久停在 0 —— 窗口明明在、`dumpsys` 也显示 shown，肉眼什么都没有。
+   所以先 `setAlpha(1f)`，动画只做缩放。
+2. **隐藏时彻底 `removeView`**。常驻的 `TYPE_NAVIGATION_BAR_PANEL` 透明窗会参与系统的
+   dim/覆盖层计算，长按通知等场景会让「整屏亮度/通透度」变化。用完即移除。
+
+**系统状态判定口径**
+
+- 内屏（`current_device_state == 3`）读 `accelerometer_rotation_inner`；
+- 外屏优先读 `accelerometer_rotation_outer`，没有这个键才退 `accelerometer_rotation`；
+- 读错键会把「用户已取消锁定」误判成「仍锁定」，模块于是接管旋转、弹旋钮 ——
+  表现就是「不用模块能转，用了模块得点旋钮」。
+
+**自动旋转开着时什么时候才介入**：等 2 秒看系统自己有没有转；转了就不管，
+没转才认定「应用拒绝旋转」并给旋钮（用户定的规则：能转就别干涉，转不动才介入）。
+
+**内屏联动的铁律**：只切 `accelerometer_rotation_inner` 这一个**开关**，
+**绝不写 `user_rotation*` 任何方向值**。唯一例外是「合上时预置 270°」——
+它作用于此刻不可见的内屏，展开后立刻解除锁定交还系统。
+
+**图标与外观（与 OS4 Themer 逐项对齐）**
+
+| 项目 | 值 | 说明 |
+| --- | --- | --- |
+| 尺寸 / 边距 | 56dp / 64dp | 与原版一致 |
+| 窗口类型 | `2024`（`TYPE_NAVIGATION_BAR_PANEL`） | 系统 `FloatingRotationButton` 用的就是它 |
+| 窗口 FLAG | `NOT_FOCUSABLE \| LAYOUT_IN_SCREEN \| LAYOUT_NO_LIMITS` | 不抢焦点、可贴边 |
+| **图标** | **系统原生 `ic_sysbar_rotate_button_ccw_start_0`** 等 4 个 `AnimatedVectorDrawable` | **与系统自己的旋转按钮完全一致，带动画** |
+| 着色 | 浅色模式=深灰底+白图标；深色模式=浅灰底+近黑图标（反色块） | 解决「系统图标固定白色，浅色模式下看不见」 |
+| 角落编号 | 0=左上 1=右上 **2=左下 3=右下** | 与原版一致 |
+
+图标来源（`MiuiSystemUI.apk` 实测存在这 4 个）：
+```
+ic_sysbar_rotate_button_ccw_start_0    逆时针·起点0
+ic_sysbar_rotate_button_ccw_start_90   逆时针·起点90
+ic_sysbar_rotate_button_cw_start_0     顺时针·起点0
+ic_sysbar_rotate_button_cw_start_90    顺时针·起点90
+```
+
+> ⚠️ **两个必须照抄的实现约束**：
+> 1. **绝不能共享系统 `FloatingRotationButton.mAnimatedDrawable`**。Drawable 带 callback，
+>    同一实例挂到两个 View 上会互相打断动画（原版实测「要等上一个界面的动画播完，
+>    5 秒后下一个才出现」）。必须 `ctx.getDrawable(resId)` 新建独立实例。
+> 2. **自绘兜底图标必须是纯白剪影**。显示时 `applyThemeTint` 会用 `SRC_IN` 的
+>    `colorFilter` 把它整体染色；若图标自己再画白底深色箭头，染色后就是一整块纯色，
+>    图标直接「消失」（2026-11-20 实测踩到）。底色统一由圆形 `GradientDrawable` 提供。
+
+**装不上/不生效怎么查**：三项都在 `installSystemUi` 里装，日志 tag 为
+`OS4FreeFromX` / `LSPosedFramework`，搜 `[旋转提示]` / `[旋转按钮]` / `[内屏联动]`。
+
+> 🔴 **调试陷阱（2026-11-20 踩了近 2 小时）**：
+> LSPosed 把模块日志打在 **`LSPosedFramework`** 这个 tag 名下，不是模块自己的 tag。
+> 用 `grep OS4FreeFromX` 会**完全搜不到**，误以为「模块没加载」。
+> 正确查法：
+> ```bash
+> P=$(pidof com.android.systemui)
+> logcat -d | grep 'LSPosedFramework' | grep " $P " | grep os4freeformx
+> ```
 
 ---
 

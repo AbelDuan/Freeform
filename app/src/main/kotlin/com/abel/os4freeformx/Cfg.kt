@@ -51,6 +51,13 @@ object Cfg {
     @Volatile var edgeFreeformFront = Constants.DEF_EDGE_FREEFORM_FRONT
     /** 通知栏下滑开小窗（解除 canNotificationSlide 的应用限制） */
     @Volatile var notificationSlide = Constants.DEF_NOTIFICATION_SLIDE
+    // ── 旋屏三项（2026-11-20 自 OS4 Themer 移植）──
+    /** 方向不一致时弹出旋转按钮。 */
+    @Volatile var rotationHint = Constants.DEF_ROTATION_HINT
+    /** 点击旋钮强制旋转（同时决定「自动旋转开着但应用不跟随」时是否弹旋钮）。 */
+    @Volatile var forceRotate = Constants.DEF_FORCE_ROTATE
+    /** 展开内屏时联动自动旋转（跟随 5 秒后重新锁定）。 */
+    @Volatile var innerFollowRotation = Constants.DEF_INNER_FOLLOW_ROTATION
     @Volatile private var assign: Map<String, Int> = emptyMap()
 
     /** 该应用的归属（0=不处理 1=隐藏 2=取色）。热路径只读 volatile。 */
@@ -161,6 +168,7 @@ object Cfg {
             multiFreeform = p.getBoolean(Constants.K_MULTI_FREEFORM, Constants.DEF_MULTI_FREEFORM)
             edgeFreeformFront = p.getBoolean(Constants.K_EDGE_FREEFORM_FRONT, Constants.DEF_EDGE_FREEFORM_FRONT)
             notificationSlide = p.getBoolean(Constants.K_NOTIFICATION_SLIDE, Constants.DEF_NOTIFICATION_SLIDE)
+            readRotationPrefs(p)
             parseAssign(p.getString(Constants.K_NBI_ASSIGN, Constants.DEF_NBI_ASSIGN) ?: Constants.DEF_NBI_ASSIGN)
             magicWindow = p.getBoolean(Constants.K_MAGIC_WINDOW, Constants.DEF_MAGIC_WINDOW)
             parseMagic(p.getString(Constants.K_MAGIC_RATIO_MAP, Constants.DEF_MAGIC_RATIO_MAP) ?: Constants.DEF_MAGIC_RATIO_MAP)
@@ -285,6 +293,9 @@ object Cfg {
             forceFreeform = b.getBoolean(Constants.K_FORCE_FREEFORM, Constants.DEF_FORCE_FREEFORM)
             multiFreeform = b.getBoolean(Constants.K_MULTI_FREEFORM, Constants.DEF_MULTI_FREEFORM)
             edgeFreeformFront = b.getBoolean(Constants.K_EDGE_FREEFORM_FRONT, Constants.DEF_EDGE_FREEFORM_FRONT)
+            rotationHint = b.getBoolean(Constants.K_ROTATION_HINT, Constants.DEF_ROTATION_HINT)
+            forceRotate = b.getBoolean(Constants.K_FORCE_ROTATE, Constants.DEF_FORCE_ROTATE)
+            innerFollowRotation = b.getBoolean(Constants.K_INNER_FOLLOW_ROTATION, Constants.DEF_INNER_FOLLOW_ROTATION)
             parseAssign(b.getString(Constants.K_NBI_ASSIGN, Constants.DEF_NBI_ASSIGN) ?: Constants.DEF_NBI_ASSIGN)
             Logx.verbose = log
         }.onFailure { Logx.e("读配置失败", it) }
@@ -296,6 +307,35 @@ object Cfg {
                 "配置更新: log=$log immersive=$immersive rememberBounds=$rememberBounds " +
                         "比例菜单=$ratioMenu 分屏[$splitExtras] 导航栏归属=[$assignRaw]"
             )
+        }
+    }
+
+    /**
+     * 读旋屏三项。`reload()`（LSPosed remote prefs 快照）与 [readFromProvider]（模块 App 的
+     * ContentProvider）两条通道共用，避免两处各写一遍而漏改其中一处。
+     *
+     * 关掉「旋转提示」或「强制旋转」时要立刻把 WMS 里那个全局开关还回去，
+     * 否则强制状态会残留到下次熄屏 —— 别的应用会莫名其妙跟着转。
+     */
+    private fun readRotationPrefs(p: android.content.SharedPreferences) {
+        rotationHint = p.getBoolean(Constants.K_ROTATION_HINT, Constants.DEF_ROTATION_HINT)
+        forceRotate = p.getBoolean(Constants.K_FORCE_ROTATE, Constants.DEF_FORCE_ROTATE)
+        innerFollowRotation = p.getBoolean(
+            Constants.K_INNER_FOLLOW_ROTATION, Constants.DEF_INNER_FOLLOW_ROTATION
+        )
+        if (!forceRotate || !rotationHint) {
+            OrientationForcer.release(if (forceRotate) "旋转提示已关闭" else "强制旋转开关已关闭")
+        }
+    }
+
+    private fun readRotationPrefs(b: android.os.Bundle) {
+        rotationHint = b.getBoolean(Constants.K_ROTATION_HINT, Constants.DEF_ROTATION_HINT)
+        forceRotate = b.getBoolean(Constants.K_FORCE_ROTATE, Constants.DEF_FORCE_ROTATE)
+        innerFollowRotation = b.getBoolean(
+            Constants.K_INNER_FOLLOW_ROTATION, Constants.DEF_INNER_FOLLOW_ROTATION
+        )
+        if (!forceRotate || !rotationHint) {
+            OrientationForcer.release(if (forceRotate) "旋转提示已关闭" else "强制旋转开关已关闭")
         }
     }
 

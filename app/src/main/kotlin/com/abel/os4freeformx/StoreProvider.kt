@@ -43,6 +43,12 @@ class StoreProvider : ContentProvider() {
                 putBoolean(Constants.K_GESTURE_HANDLE_IDLE, c?.getBoolean(Constants.K_GESTURE_HANDLE_IDLE, Constants.DEF_GESTURE_HANDLE_IDLE) ?: Constants.DEF_GESTURE_HANDLE_IDLE)
                 putFloat(Constants.K_GESTURE_HANDLE_AREA, c?.getFloat(Constants.K_GESTURE_HANDLE_AREA, Constants.DEF_GESTURE_HANDLE_AREA) ?: Constants.DEF_GESTURE_HANDLE_AREA)
                 putString(Constants.K_NBI_ASSIGN, c?.getString(Constants.K_NBI_ASSIGN, Constants.DEF_NBI_ASSIGN) ?: Constants.DEF_NBI_ASSIGN)
+                // 旋屏三项（2026-11-20 自 OS4 Themer 移植）：必须一起透传，
+                // 否则被 hook 的进程只能拿到 LSPosed remote prefs 的启动快照，
+                // 用户在设置页改了开关要重启 SystemUI 才生效。
+                putBoolean(Constants.K_ROTATION_HINT, c?.getBoolean(Constants.K_ROTATION_HINT, Constants.DEF_ROTATION_HINT) ?: Constants.DEF_ROTATION_HINT)
+                putBoolean(Constants.K_FORCE_ROTATE, c?.getBoolean(Constants.K_FORCE_ROTATE, Constants.DEF_FORCE_ROTATE) ?: Constants.DEF_FORCE_ROTATE)
+                putBoolean(Constants.K_INNER_FOLLOW_ROTATION, c?.getBoolean(Constants.K_INNER_FOLLOW_ROTATION, Constants.DEF_INNER_FOLLOW_ROTATION) ?: Constants.DEF_INNER_FOLLOW_ROTATION)
             }
             "put" -> {
                 val k = extras?.getString("k")

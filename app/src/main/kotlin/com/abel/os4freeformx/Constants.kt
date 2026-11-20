@@ -2,7 +2,7 @@ package com.abel.os4freeformx
 
 /** 模块常量：包名、prefs 名、配置键、目标类名。 */
 object Constants {
-    const val VERSION = "0.7.80"
+    const val VERSION = "0.7.81"
     const val PREFS_CFG = "os4freeformx_cfg"
     const val PREFS_BOUNDS = "os4freeformx_bounds"
     const val AUTHORITY = "com.abel.os4freeformx.store"
@@ -85,6 +85,25 @@ object Constants {
     const val K_MULTI_FREEFORM = "multi_freeform"
     /** 贴边小窗强制前台 */
     const val K_EDGE_FREEFORM_FRONT = "edge_freeform_front"
+
+    // ── 旋屏（2026-11-20 自 OS4 Themer 移植过来）──
+    /**
+     * 方向不一致时提示旋转：锁定方向后，手机被转到与当前画面不一致的方向时，
+     * 弹出旋转按钮，点一下就把屏幕转到你手持的方向。实现见 RotationHint.kt。
+     */
+    const val K_ROTATION_HINT = "rotation_hint_enable"
+    /**
+     * 点击旋钮 = 强制旋转：应用在清单里把 screenOrientation 写死时，
+     * 打开 WMS 的 fixed-to-user-rotation 把它强行转过去。实现见 OrientationForcer.kt。
+     *
+     * 同时决定「自动旋转开着、但应用不跟随」时要不要弹旋钮。
+     */
+    const val K_FORCE_ROTATE = "force_rotate"
+    /**
+     * 展开内屏时联动自动旋转：展开瞬间临时解除旋转锁定、跟随传感器 5 秒，
+     * 到点把当时的方向重新锁定。实现见 InnerRotation.kt。
+     */
+    const val K_INNER_FOLLOW_ROTATION = "inner_follow_rotation"
     // ── 魔法窗口（magic-windows）：宽屏把应用收成固定比例 + 两侧模糊 ──
     /** 总开关 */
     const val K_MAGIC_WINDOW = "magic_window"
@@ -135,6 +154,14 @@ object Constants {
     // 魔法窗口：默认关闭（零行为变化，用户在设置里逐个应用打开）
     const val DEF_MAGIC_WINDOW = false
     const val DEF_MAGIC_RATIO_MAP = ""
+
+    // 旋屏三项默认开（与 OS4 Themer 的线上默认一致；均为热开关，关掉立刻退回系统原行为）
+    const val DEF_ROTATION_HINT = true
+    const val DEF_FORCE_ROTATE = true
+    const val DEF_INNER_FOLLOW_ROTATION = true
+
+    /** 展开联动时跟随传感器的时长（毫秒）——与 OS4 Themer 的 INNER_FOLLOW_DURATION_MS 一致。 */
+    const val INNER_FOLLOW_DURATION_MS = 5000L
 
     // 小窗增强默认值（用户 2026-10-15 要求移植，默认开）
     const val DEF_FORCE_FREEFORM = true

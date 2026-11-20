@@ -194,6 +194,17 @@ class SettingsActivity : Activity() {
             Cfg.foldSplitDepth, 10, 90, "°"
         ) { Cfg.foldSplitDepth = it }
 
+        section("旋屏")
+        switchRow("方向不一致时提示旋转", Constants.K_ROTATION_HINT, Cfg.rotationHint) {
+            Cfg.rotationHint = it
+            RotationHint.onPrefsChanged()
+        }
+        switchRow("点击旋钮强制旋转", Constants.K_FORCE_ROTATE, Cfg.forceRotate) { Cfg.forceRotate = it }
+        switchRow(
+            "展开时联动自动旋转（跟随 5 秒后锁定）",
+            Constants.K_INNER_FOLLOW_ROTATION, Cfg.innerFollowRotation
+        ) { Cfg.innerFollowRotation = it }
+
         section("通知栏")
         switchRow(
             "通知栏下滑开小窗（所有应用）",

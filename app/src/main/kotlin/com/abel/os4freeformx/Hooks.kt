@@ -1,6 +1,7 @@
 package com.abel.os4freeformx
 
 import android.content.Context
+import android.content.Intent
 import android.graphics.Rect
 import android.os.Handler
 import android.os.Looper
@@ -20,6 +21,11 @@ import java.util.concurrent.ConcurrentHashMap
 object Hooks {
 
     private const val MODE_FREEFORM = 5
+
+    /** 旋屏亮/熄屏监听的安装重试计数（SystemUI 冷启动早期 Context 未就绪）。 */
+    @Volatile private var rotationWatcherTries = 0
+    /** 折叠状态监听的安装重试计数。 */
+    @Volatile private var foldWatcherTries = 0
 
     /**
      * 「分屏比例记忆」的全局最近值键（配合 [Bounds] 使用，pkg 位存这个常量、screen 位存屏幕键）。
@@ -165,6 +171,85 @@ object Hooks {
         // 诊断探针：枚举 MIUI 小窗"尺寸/动画"链路的类与方法（旋转后比例从哪来 —— 只为定位，不改行为）
         // ★ 主修复：在 MIUI 算 (bounds, scale) 的地方换成记忆值
         runCatching { installSizeLevelHook(m, cl) }.onFailure { Logx.e("尺寸档位挂钩安装失败", it) }
+
+        // ★★★ 旋屏（2026-11-20 自 OS4 Themer 移植：RotationHint / OrientationForcer / InnerRotation）
+        //   ① 方向不一致时弹旋钮（自绘悬浮窗 + 重力传感器判定）
+        //   ② 点旋钮 = 强制旋转（fixed-to-user-rotation，绕开应用写死的方向）
+        //   ③ 展开内屏时联动自动旋转（跟随 5 秒后重新锁定）
+        //   三个都是热开关：改设置后 Cfg 刷新即生效，无需重启 SystemUI。
+        runCatching { RotationHint.install(m, cl) }.onFailure { Logx.e("旋转提示安装失败", it) }
+        runCatching { InnerRotation.install() }.onFailure { Logx.e("内屏联动安装失败", it) }
+        // 亮/熄屏：熄屏注销方向传感器省电，亮屏重新注册并重算
+        runCatching { installRotationScreenWatcher(m, cl) }.onFailure { Logx.e("旋屏屏幕监听安装失败", it) }
+        // 折叠状态变化（展开/合上）→ 内屏联动
+        runCatching { installFoldStateWatcher(m, cl) }.onFailure { Logx.e("折叠状态监听安装失败", it) }
+    }
+
+    /**
+     * 亮/熄屏监听：给旋转提示做传感器省电（熄屏注销、亮屏重注册）。
+     *
+     * 为什么要省电：重力传感器按 10Hz 持续上报会一直唤醒 CPU，
+     * 而一天里大半时间屏幕是灭的，这处优化收益最大（OS4 Themer 实测结论）。
+     */
+    private fun installRotationScreenWatcher(m: MainHook, cl: ClassLoader) {
+        // SystemUI 冷启动早期拿不到 Context（createPackageContext 会抛
+        // NameNotFoundException，实测 2026-11-20）⇒ 延后重试，别让它抛出去。
+        runCatching {
+            val ctx = AppCtx.get()
+            if (ctx == null) {
+                if (++rotationWatcherTries < 15) {
+                    android.os.Handler(android.os.Looper.getMainLooper())
+                        .postDelayed({ installRotationScreenWatcher(m, cl) }, 1_500L)
+                } else {
+                    Logx.always("旋屏: 亮/熄屏监听放弃（拿不到 Context）")
+                }
+                return
+            }
+            ctx.registerReceiver(object : android.content.BroadcastReceiver() {
+                override fun onReceive(c: Context?, intent: Intent?) {
+                    when (intent?.action) {
+                        Intent.ACTION_SCREEN_ON -> {
+                            RotationHint.onScreenStateChanged(true)
+                            InnerRotation.onFoldStateMaybeChanged("亮屏")
+                        }
+                        Intent.ACTION_SCREEN_OFF -> RotationHint.onScreenStateChanged(false)
+                    }
+                }
+            }, android.content.IntentFilter().apply {
+                addAction(Intent.ACTION_SCREEN_ON)
+                addAction(Intent.ACTION_SCREEN_OFF)
+            })
+            Logx.always("旋屏: 已注册亮/熄屏监听")
+        }.onFailure { Logx.e("旋屏屏幕监听失败", it) }
+    }
+
+    /**
+     * 折叠状态监听：`current_device_state` 从外屏(非3)变内屏(3)或反之时，
+     * 触发内屏联动（展开解除锁定跟随 / 合上预置 270° 并回锁）。
+     */
+    private fun installFoldStateWatcher(m: MainHook, cl: ClassLoader) {
+        runCatching {
+            val ctx = AppCtx.get()
+            if (ctx == null) {
+                if (++foldWatcherTries < 15) {
+                    android.os.Handler(android.os.Looper.getMainLooper())
+                        .postDelayed({ installFoldStateWatcher(m, cl) }, 1_500L)
+                } else {
+                    Logx.always("旋屏: 折叠状态监听放弃（拿不到 Context）")
+                }
+                return
+            }
+            val obs = object : android.database.ContentObserver(android.os.Handler(android.os.Looper.getMainLooper())) {
+                override fun onChange(selfChange: Boolean) {
+                    runCatching { InnerRotation.onFoldStateMaybeChanged("折叠状态变化") }
+                        .onFailure { Logx.e("折叠状态处理失败", it) }
+                }
+            }
+            ctx.contentResolver.registerContentObserver(
+                android.provider.Settings.Global.getUriFor("current_device_state"), false, obs
+            )
+            Logx.always("旋屏: 已注册折叠状态监听")
+        }.onFailure { Logx.e("折叠状态监听失败", it) }
     }
 
     /**
@@ -1087,11 +1172,22 @@ object Hooks {
         // 多分屏自己那套 UI（MultipleSplitUIController 的 SCVH：MultipleSplitUIContainer /
         // MultipleSplitAbstractView 派生视图）——真机取证：Miui Caption 那套已确认隐藏(true)
         // 却仍看得到栏，说明栏由这里画。直接在视图挂到窗口时置 INVISIBLE（不占绘制）。
+        //
+        // 🔴 v0.7.81 修复「顶部中间的三点菜单点了不弹出」（用户 2026-11-20）：
+        //   ⚠️ **绝不能把 MultipleSplitDotView 置 INVISIBLE**。它是 3+ 分屏里
+        //   每个应用顶部那个「···」按钮本身；而 View.INVISIBLE 不接收触摸 ——
+        //   Android 的 `canViewReceivePointerEvents()` 要求 VISIBILITY==VISIBLE 才派发
+        //   触摸事件（模块自己在 OS4Theme 的「控制中心编辑」一节里就踩过同一个坑：
+        //   用 INVISIBLE 隐藏后按钮"隐了但点不动"，v3.8 改成 alpha=0 才修好）。
+        //   置 INVISIBLE 后点击落不到按钮上 ⇒ 菜单永不弹出，且没有任何日志。
+        //
+        //   正确做法在下面 `onDraw` 那一段：**返回 null 不绘制**，视图仍是 VISIBLE，
+        //   触摸照常命中 —— 这才是"隐藏但不影响交互"。两段叠加时以 INVISIBLE 为准，
+        //   所以之前那句"保留视图与触摸逻辑"的注释与实现相反，实际是点不动的。
         listOf(
             "com.android.wm.shell.multiplesplit.ui.MultipleSplitUIContainer",
             "com.android.wm.shell.multiplesplit.ui.MultipleSplitAbstractView",
             "com.android.wm.shell.multiplesplit.ui.MultipleSplitPanelView",
-            "com.android.wm.shell.multiplesplit.ui.MultipleSplitDotView",
             "com.android.wm.shell.multiplesplit.ui.MultipleSplitGestureBottomView"
         ).forEach { cls0 ->
             // 三个时机都压：挂载、每次布局、每次绘制前的 dispatchDraw。
@@ -1221,13 +1317,25 @@ object Hooks {
                 if (view != null && view.findViewWithTag<View>(TAG_RATIO_ROW) != null) {
                     val args = chain.args.toTypedArray()
                     val extra = extraRowPx()
-                    val originalHeight = args[4] as Int
+                    // 🔴 v0.7.81：参数类型必须先判再改，**不能直接 `as Int` 强转**。
+                    //   MainHook.hookExecutable 给所有 hook 设了 ExceptionMode.PROTECTIVE，
+                    //   hook 里抛出的异常会被框架吞掉、本次调用按"未执行原方法"收场 ——
+                    //   即 addWindow 不会执行，菜单窗口建不出来 ⇒ 点三点完全没反应，
+                    //   而日志里只留下一条被 PROTECTIVE 吞掉的堆栈。
+                    //   ROM 换版时若第 2/4 参变成别的数值类型（Point/float/long），
+                    //   旧写法就会这样静默炸掉菜单。取不到合法值就不碰，交回原方法。
+                    val originalHeight = args.getOrNull(4) as? Int
+                    val originalY = args.getOrNull(2) as? Int
+                    if (originalHeight == null || originalY == null) {
+                        Logx.always("三点菜单加高跳过：addWindow 参数类型不符（args=${args.joinToString { it?.javaClass?.simpleName ?: "null" }}）")
+                        return@Hooker chain.proceed()
+                    }
                     args[4] = originalHeight + extra
-                    args[2] = (args[2] as Int) - extra / 2
+                    args[2] = originalY - extra / 2
                     val controller = chain.proceed(args)
                     // MIUI 的菜单圆角 = 高度/2，加高后圆角也会变大（真机反馈：太圆、干涉）
                     runCatching {
-                        val surface = field(controller!!, "mWindowSurface") ?: return@runCatching
+                        val surface = controller?.let { field(it, "mWindowSurface") } ?: return@runCatching
                         val tx = android.view.SurfaceControl.Transaction()
                         tx.javaClass.getMethod(
                             "setCornerRadius", android.view.SurfaceControl::class.java, java.lang.Float.TYPE
