@@ -2,7 +2,7 @@ package com.abel.os4freeformx
 
 /** 模块常量：包名、prefs 名、配置键、目标类名。 */
 object Constants {
-    const val VERSION = "0.7.81"
+    const val VERSION = "0.8.3"
     const val PREFS_CFG = "os4freeformx_cfg"
     const val PREFS_BOUNDS = "os4freeformx_bounds"
     const val AUTHORITY = "com.abel.os4freeformx.store"
@@ -101,7 +101,7 @@ object Constants {
     const val K_FORCE_ROTATE = "force_rotate"
     /**
      * 展开内屏时联动自动旋转：展开瞬间临时解除旋转锁定、跟随传感器 5 秒，
-     * 到点把当时的方向重新锁定。实现见 InnerRotation.kt。
+     * 到点把当时的方向重新锁定。实现见 InnerRotationHost.java（自 OS4 Themer 原样移植）。
      */
     const val K_INNER_FOLLOW_ROTATION = "inner_follow_rotation"
     // ── 魔法窗口（magic-windows）：宽屏把应用收成固定比例 + 两侧模糊 ──
@@ -142,6 +142,26 @@ object Constants {
     const val FOLD_SPLIT_DEPTH_NORMAL = "normal"
     const val FOLD_SPLIT_DEPTH_SLUGGISH = "sluggish"
     /** 轻折触发灵敏度默认值：折下去约 15° 才判定为"开始折"（比原"标准 20°"更易触发一点）。单位：度。 */
+    /**
+     * 轻折触发深度（度）。
+     *
+     * <p>⚠️ 2026-11-21 从 15 收紧到 **30**。
+     * 实机误触发证据：用户「手机旋转或不小心碰到，过一会儿发现半边屏幕变分屏了」，
+     * 日志：`完全展开 178.0°，历时 243ms，最低 163.0° ⇒ 触发` ——
+     * 178-163 = 15°，**刚好压线通过**。
+     *
+     * 日常拿起手机、翻转、放到桌上，铰链角抖动 15° 非常容易；
+     * 而真正想折叠时一般会折到 130° 以下。30° 既能区分开，又不需要刻意用力。
+     */
+    /**
+     * 轻折触发深度（度）。
+     *
+     * <p>保持 **15°**：这是原本正常使用的手感。
+     * 2026-11-21 曾试过收紧到 30° 防误触，但用户反馈「影响正常想分屏时折叠的使用」⇒ 已回退。
+     *
+     * <p>防误触**改由时间维度**承担（见 `FoldSplitTrigger.MIN_FOLD_DURATION_MS`）：
+     * 深度决定"好不好折"，时间决定"是不是手滑"，两者分工不重叠。
+     */
     const val DEF_FOLD_SPLIT_DEPTH = 15
     const val DEF_GESTURE_HANDLE = true
     const val DEF_GESTURE_HANDLE_FOLLOW = true

@@ -1,9 +1,15 @@
 #!/usr/bin/env bash
 # OS4FreeFromX 离线构建（arm64 容器，无 gradle/AGP）
-#   aapt2(编译资源+链接清单) → kotlinc → d8 → zip(classes.dex + META-INF/xposed) → zipalign → apksigner
+#   aapt2(编译资源+链接清单) → javac(旋屏 Java) → kotlinc → d8 → zip(classes.dex + META-INF/xposed) → zipalign → apksigner
 set -euo pipefail
 HERE=$(cd "$(dirname "$0")" && pwd)
 . "$HERE/env.sh"
+
+# aapt2 通过系统链接器直接运行：容器里 proroot-ldso 不遵守 LD_LIBRARY_PATH，
+# 会报 "cannot find libaapt2.so.0"。显式指定 --library-path 绕开它。
+# aapt2 必须用**相对路径**：proot 下它解析不了绝对路径（报 failed to open directory）。
+# 所以统一 cd 到仓库根，用 ./xxx 形式传参与输出。
+AAPT2_RUN=(/lib/ld-linux-aarch64.so.1 --library-path "$HERE/tools/android-tools" "$AAPT2")
 
 SRC=$HERE/app/src/main
 OUT=${OUT:-$HERE/build}
@@ -21,25 +27,40 @@ if ! command -v zip >/dev/null 2>&1 && [ -f "$HERE/tools/zip-shim.py" ]; then
     cp -f "$HERE/tools/zip-shim.py" /usr/local/bin/zip && chmod +x /usr/local/bin/zip
 fi
 
-rm -rf "$OUT"; mkdir -p "$OUT/res" "$OUT/gen" "$OUT/kt" "$OUT/dex" "$OUT/stdlib" "$HERE/dist"
+rm -rf "$OUT"; mkdir -p "$OUT/res" "$OUT/gen" "$OUT/kt" "$OUT/java" "$OUT/dex" "$OUT/stdlib" "$HERE/dist"
 
-echo "== 1/6 aapt2 compile =="
-"$AAPT2" compile --dir "$SRC/res" -o "$OUT/res.zip"
+echo "== 1/7 aapt2 compile =="
+( cd "$HERE" && "${AAPT2_RUN[@]}" compile --dir ./app/src/main/res -o ./build/res.zip )
 
-echo "== 2/6 aapt2 link =="
-"$AAPT2" link -o "$OUT/base.apk" -I "${ANDROID_RES_JAR:-$ANDROID_JAR}" \
-    --manifest "$SRC/AndroidManifest.xml" -R "$OUT/res.zip" \
-    --auto-add-overlay --java "$OUT/gen" \
+echo "== 2/7 aapt2 link =="
+# aapt2 只认相对路径 ⇒ 用 --relative-to 把绝对路径换算成相对仓库根的路径
+RES_JAR_REL=$(python3 -c "import os,sys;print(os.path.relpath(sys.argv[1], sys.argv[2]))" "${ANDROID_RES_JAR:-$ANDROID_JAR}" "$HERE")
+( cd "$HERE" && "${AAPT2_RUN[@]}" link -o ./build/base.apk -I "$RES_JAR_REL" \
+    --manifest ./app/src/main/AndroidManifest.xml -R ./build/res.zip \
+    --auto-add-overlay --java ./build/gen \
     --min-sdk-version 33 --target-sdk-version 36 \
-    --version-code "$VCODE" --version-name "$VER"
+    --version-code "$VCODE" --version-name "$VER" )
 
-echo "== 3/6 kotlinc =="
+echo "== 3a/7 javac（旋屏三件套是从 OS4 Themer 原样移植的 Java 代码）=="
+# ⚠️ 顺序必须是 javac → kotlinc：Kotlin 只调用 Java 的方法（不看 Java 源码），
+#    所以 Java 必须先编出 class 供 kotlinc 当 classpath 用；反向依赖不允许出现。
+mkdir -p "$SRC/java"
+if find "$SRC/java" -name '*.java' 2>/dev/null | grep -q .; then
+    find "$SRC/java" -name '*.java' > "$OUT/java-sources.txt"
+    "$JAVA_HOME/bin/javac" -nowarn -source 17 -target 17 -encoding UTF-8 \
+        -classpath "$ANDROID_JAR:$LIBXP:$KOTLIN_STDLIB" \
+        -d "$OUT/java" @"$OUT/java-sources.txt"
+else
+    echo "   （无 Java 源，跳过）"
+fi
+
+echo "== 3b/7 kotlinc =="
 find "$SRC/kotlin" -name '*.kt' > "$OUT/sources.txt"
 "$KOTLINC" -nowarn -jvm-target 17 -no-stdlib \
-    -classpath "$ANDROID_JAR:$LIBXP:$KOTLIN_STDLIB" \
+    -classpath "$ANDROID_JAR:$LIBXP:$KOTLIN_STDLIB:$OUT/java" \
     -d "$OUT/kt" @"$OUT/sources.txt"
 
-echo "== 4/6 d8 =="
+echo "== 4/7 d8 =="
 # kotlin-stdlib 大且不变：只 dex 一次，缓存为 classes2.dex（多 dex APK，minSdk 33 原生支持）
 STDLIB_DEX=$HERE/tools/kotlin-stdlib.dex
 if [ ! -f "$STDLIB_DEX" ]; then
@@ -49,9 +70,9 @@ if [ ! -f "$STDLIB_DEX" ]; then
 fi
 "$BT/d8" --release --min-api 33 --lib "$ANDROID_JAR" --classpath "$LIBXP" --classpath "$KOTLIN_STDLIB" \
     --output "$OUT/dex" \
-    $(find "$OUT/kt" -name '*.class')
+    $(find "$OUT/kt" "$OUT/java" -name '*.class')
 
-echo "== 5/6 组装 APK =="
+echo "== 5/7 组装 APK =="
 cp -f "$OUT/base.apk" "$OUT/app-unsigned.apk"
 cp -f "$STDLIB_DEX" "$OUT/dex/classes2.dex"
 ( cd "$OUT/dex" && zip -q -X "$OUT/app-unsigned.apk" classes.dex classes2.dex )
@@ -84,7 +105,7 @@ else
     echo "  （无 native 库需要打包）"
 fi
 
-"$ZIPALIGN" -f -p 4 "$OUT/app-unsigned.apk" "$OUT/app-aligned.apk"
+( cd "$HERE" && /lib/ld-linux-aarch64.so.1 --library-path "$HERE/tools/android-tools" "$ZIPALIGN" -f -p 4 ./build/app-unsigned.apk ./build/app-aligned.apk )
 
 echo "== 6/6 签名 =="
 if [ ! -f "$KS" ]; then

@@ -1,40 +1,15 @@
-# ── 构建产物 / 签名密钥（不入库）─────────────────────────────
+# 构建产物
 build/
-/dist/*.idsig
-/dist/*.apk
-/dist/*.bundle
-/keystore/
-.env
+apkbuild/
+out.apk
+out.apk.idsig
+unsigned.apk
+*.dex
 
-# ── 重型逆向产物（体积大，按需本地重生成）────────────────────
-# 反编译出的 dex 反汇编（fw/dex_*.txt 可达 150MB）、框架 jar、原始抓取
-/recon/
-fw/
-tools/tmp/
-*.jar
-!app/libs/*.jar
-cap_demo.txt
-trace_all.txt
+# 本机工具链（不入库，见 env.sh 说明）
+tools/
+keystore/
+env.sh
 
-# ── 设备侧大日志与截图（不入库）─────────────────────────────
-# 原始 logcat 抓取 64MB+；截图数百 KB~MB 级
-/logs/
-*.png
-*.jpg
-*.jpeg
-anr*.txt
-mod_clean.log
-module_readable.log
-*_decoded.log
-
-# ── 测试运行时输出（脚本产物，非源码）───────────────────────
-/_out/
-/_lspdb/
-/_recon/
-t17_*.png
-t17_*.txt
-small_*.png
-frame*.txt
-.shots/
-tools/sdk/
-__pycache__/
+# 系统文件
+.DS_Store

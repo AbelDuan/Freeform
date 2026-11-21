@@ -72,6 +72,18 @@ object Hooks {
         runCatching { MagicWindow.install(m, cl) }
             .onFailure { Logx.e("魔法窗口安装失败", it) }
 
+        // ★★★ 2026-11-20 方案 A：折叠期间在**输入分发层**丢弃触摸（不创建任何窗口）
+        //
+        //   为什么不沿用之前的覆盖窗口：`TYPE_SYSTEM_ERROR` 覆盖层一旦没能及时撤下，
+        //   整块屏幕（含锁屏）都会失去触摸 —— 实机出过"锁屏解不开"的严重故障。
+        //   覆盖层这条路在折叠屏上不安全，彻底弃用。
+        //
+        //   现在的做法是 hook 输入分发链上的方法，**直接丢弃**事件：
+        //   · 不创建窗口 ⇒ 不可能留下残留覆盖层
+        //   · 在分发层丢弃 ⇒ 手指已经在屏幕上按着时也能立刻生效（用户要求）
+        runCatching { TouchBlocker.installSystem(m, cl) }
+            .onFailure { Logx.e("触摸屏蔽(系统侧)安装失败", it) }
+
         // ★★★ v0.4.56：小窗几何权威探针（system_server 侧）。
         //   目的：查明横屏后被 MIUI 覆盖回竖屏的**真正方法**。只打日志、不改行为。
         //   需要重启 zygote 才生效（system 作用域只在开机注入）。
@@ -171,85 +183,29 @@ object Hooks {
         // 诊断探针：枚举 MIUI 小窗"尺寸/动画"链路的类与方法（旋转后比例从哪来 —— 只为定位，不改行为）
         // ★ 主修复：在 MIUI 算 (bounds, scale) 的地方换成记忆值
         runCatching { installSizeLevelHook(m, cl) }.onFailure { Logx.e("尺寸档位挂钩安装失败", it) }
-
-        // ★★★ 旋屏（2026-11-20 自 OS4 Themer 移植：RotationHint / OrientationForcer / InnerRotation）
-        //   ① 方向不一致时弹旋钮（自绘悬浮窗 + 重力传感器判定）
-        //   ② 点旋钮 = 强制旋转（fixed-to-user-rotation，绕开应用写死的方向）
-        //   ③ 展开内屏时联动自动旋转（跟随 5 秒后重新锁定）
-        //   三个都是热开关：改设置后 Cfg 刷新即生效，无需重启 SystemUI。
+        // ★★★ 旋屏（2026-11-20 自 OS4 Themer **原样移植**）
+        //   ① 方向不一致时弹旋钮（RotationHint.java，2615 行）
+        //   ② 点旋钮 = 强制旋转（OrientationForcer.java，741 行）
+        //   ③ 自绘悬浮窗 + 系统原生图标（RotationButtonOverlay.java，781 行）
+        //   ④ 息屏/亮屏/解锁/展开的内屏联动状态机（InnerRotationHost.java，约 960 行）
+        //
+        //   用户 2026-11-20：「所有相关的功能全部按原版对齐，代码都可以用一样的」。
+        //   所以这里**不复刻、不简化**，直接把 OS4 Themer 的 Java 代码搬过来，
+        //   只补一个 MainHook/LogUtil 适配层。那些看起来啰嗦的分支
+        //   （亮屏钉回熄屏方向、展开伴随亮屏不钉回、跟随窗口互斥……）
+        //   每一条都对应一次真机事故，删掉就会把老问题带回来。
+        //
+        //   ⚠️ 亮/熄屏、解锁、折叠状态的广播与 DisplayListener 都在
+        //   InnerRotationHost.ensureScreenWatchers 内部自己注册，
+        //   这里**不要再重复装**，否则同一个事件会被处理两遍。
+        LogUtil.setSink(object : LogUtil.Sink {
+            override fun always(msg: String) = Logx.always(msg)
+        })
+        // 折叠期间的触摸拦截：用 SystemUI 自带的 InputMonitor + pilferPointers。
+        // 不创建窗口 ⇒ 不可能像上一次那样把整块屏幕（含锁屏）锁死。
+        runCatching { FoldTouchBlock.attach(cl) }.onFailure { Logx.e("折叠触摸屏蔽初始化失败", it) }
         runCatching { RotationHint.install(m, cl) }.onFailure { Logx.e("旋转提示安装失败", it) }
-        runCatching { InnerRotation.install() }.onFailure { Logx.e("内屏联动安装失败", it) }
-        // 亮/熄屏：熄屏注销方向传感器省电，亮屏重新注册并重算
-        runCatching { installRotationScreenWatcher(m, cl) }.onFailure { Logx.e("旋屏屏幕监听安装失败", it) }
-        // 折叠状态变化（展开/合上）→ 内屏联动
-        runCatching { installFoldStateWatcher(m, cl) }.onFailure { Logx.e("折叠状态监听安装失败", it) }
-    }
-
-    /**
-     * 亮/熄屏监听：给旋转提示做传感器省电（熄屏注销、亮屏重注册）。
-     *
-     * 为什么要省电：重力传感器按 10Hz 持续上报会一直唤醒 CPU，
-     * 而一天里大半时间屏幕是灭的，这处优化收益最大（OS4 Themer 实测结论）。
-     */
-    private fun installRotationScreenWatcher(m: MainHook, cl: ClassLoader) {
-        // SystemUI 冷启动早期拿不到 Context（createPackageContext 会抛
-        // NameNotFoundException，实测 2026-11-20）⇒ 延后重试，别让它抛出去。
-        runCatching {
-            val ctx = AppCtx.get()
-            if (ctx == null) {
-                if (++rotationWatcherTries < 15) {
-                    android.os.Handler(android.os.Looper.getMainLooper())
-                        .postDelayed({ installRotationScreenWatcher(m, cl) }, 1_500L)
-                } else {
-                    Logx.always("旋屏: 亮/熄屏监听放弃（拿不到 Context）")
-                }
-                return
-            }
-            ctx.registerReceiver(object : android.content.BroadcastReceiver() {
-                override fun onReceive(c: Context?, intent: Intent?) {
-                    when (intent?.action) {
-                        Intent.ACTION_SCREEN_ON -> {
-                            RotationHint.onScreenStateChanged(true)
-                            InnerRotation.onFoldStateMaybeChanged("亮屏")
-                        }
-                        Intent.ACTION_SCREEN_OFF -> RotationHint.onScreenStateChanged(false)
-                    }
-                }
-            }, android.content.IntentFilter().apply {
-                addAction(Intent.ACTION_SCREEN_ON)
-                addAction(Intent.ACTION_SCREEN_OFF)
-            })
-            Logx.always("旋屏: 已注册亮/熄屏监听")
-        }.onFailure { Logx.e("旋屏屏幕监听失败", it) }
-    }
-
-    /**
-     * 折叠状态监听：`current_device_state` 从外屏(非3)变内屏(3)或反之时，
-     * 触发内屏联动（展开解除锁定跟随 / 合上预置 270° 并回锁）。
-     */
-    private fun installFoldStateWatcher(m: MainHook, cl: ClassLoader) {
-        runCatching {
-            val ctx = AppCtx.get()
-            if (ctx == null) {
-                if (++foldWatcherTries < 15) {
-                    android.os.Handler(android.os.Looper.getMainLooper())
-                        .postDelayed({ installFoldStateWatcher(m, cl) }, 1_500L)
-                } else {
-                    Logx.always("旋屏: 折叠状态监听放弃（拿不到 Context）")
-                }
-                return
-            }
-            val obs = object : android.database.ContentObserver(android.os.Handler(android.os.Looper.getMainLooper())) {
-                override fun onChange(selfChange: Boolean) {
-                    runCatching { InnerRotation.onFoldStateMaybeChanged("折叠状态变化") }
-                        .onFailure { Logx.e("折叠状态处理失败", it) }
-                }
-            }
-            ctx.contentResolver.registerContentObserver(
-                android.provider.Settings.Global.getUriFor("current_device_state"), false, obs
-            )
-            Logx.always("旋屏: 已注册折叠状态监听")
-        }.onFailure { Logx.e("折叠状态监听失败", it) }
+        runCatching { InnerRotationHost.install() }.onFailure { Logx.e("内屏联动安装失败", it) }
     }
 
     /**
@@ -367,6 +323,13 @@ object Hooks {
         // 会话状态跟踪：单边 / 双应用分屏的判定完全依赖它（拿到 lastCoordinator）。
         installSplitCoordTracker(m, cl)
 
+        // ⛔ 2026-11-21：这里曾经加过 SplitTapGuard（分屏转场期点击补偿），已删除。
+        //   真机取证证明方向是错的：点击事件并没有丢失，系统照常收到并 START 了应用；
+        //   真正的延迟来自 MIUI 桌面 Rust 层把「打开应用」误判成「回桌面」
+        //   （SceneTransitionDetectorService: app -> home，toHome=true isSosc=true），
+        //   先按回桌面收尾、27ms 后才纠正成 home -> app，往返约 2 秒。
+        //   补发点击只会加重问题，故整个模块移除。
+
         // 多分屏（3 个及以上应用，SoSc 的 activeStages >= 3）时，隐藏每个应用顶部的三点
         // 与底部手势/导航条 —— 与自由小窗同一套"只不绘制、保留触摸"的做法。
         // 两分屏保持官方原样（用户明确要求恢复官方遮罩）。
@@ -389,27 +352,6 @@ object Hooks {
                 }.onFailure { Logx.e("挂多分屏 ${meth.name} 失败", it) }
             }
         }.onFailure { Logx.e("遍历 SoScSplitDecorManager 失败", it) }
-
-        // 拖动时的"白屏替身"：screenshotIfNeeded/setScreenshotIfNeeded 会抓一张 mHostLeash 快照
-        // reparent 上来顶替真实内容（真机抓到的是白帧）→ 跑完即 remove。
-        listOf("screenshotIfNeeded", "setScreenshotIfNeeded").forEach { name ->
-            runCatching {
-                m.hookMethod(cl, "com.android.wm.shell.sosc.SoScSplitDecorManager", name, null,
-                    XposedInterface.Hooker { chain ->
-                        val r = chain.proceed()
-                        runCatching {
-                            val tx2 = (chain.getArg(0) as? android.view.SurfaceControl.Transaction)
-                                ?: (chain.getArg(1) as? android.view.SurfaceControl.Transaction)
-                            val shot = field(chain.thisObject, "mScreenshot") as? android.view.SurfaceControl
-                            if (tx2 != null && shot != null) {
-                                tx2.javaClass.getMethod("remove", android.view.SurfaceControl::class.java)
-                                    .invoke(tx2, shot)
-                            }
-                        }
-                        r
-                    })
-            }.onFailure { Logx.e("挂 $name 失败", it) }
-        }
 
         // 【已放弃的实验，勿重试】让拖动时两侧内容逐帧重排：
         //   1) 强制 SoScStageCoordinator.updateWindowBounds 返回 true —— 无效，它本来就返回 true
@@ -667,7 +609,6 @@ object Hooks {
     @Volatile private var splitActiveAt = 0L
 
     /** 已置不可见的多分屏 UI 视图（日志去重）。 */
-    private val msHidden = java.util.Collections.newSetFromMap(WeakHashMap<View, Boolean>())
 
     /** 取分屏里两个 Stage 的包名（按名字排序，作为这组分屏的标识）。 */
     /** 从常驻单例取 coordinator 并恢复该组合的分屏比例（分屏建立后调用）。 */
@@ -1184,35 +1125,14 @@ object Hooks {
         //   正确做法在下面 `onDraw` 那一段：**返回 null 不绘制**，视图仍是 VISIBLE，
         //   触摸照常命中 —— 这才是"隐藏但不影响交互"。两段叠加时以 INVISIBLE 为准，
         //   所以之前那句"保留视图与触摸逻辑"的注释与实现相反，实际是点不动的。
-        listOf(
-            "com.android.wm.shell.multiplesplit.ui.MultipleSplitUIContainer",
-            "com.android.wm.shell.multiplesplit.ui.MultipleSplitAbstractView",
-            "com.android.wm.shell.multiplesplit.ui.MultipleSplitPanelView",
-            "com.android.wm.shell.multiplesplit.ui.MultipleSplitGestureBottomView"
-        ).forEach { cls0 ->
-            // 三个时机都压：挂载、每次布局、每次绘制前的 dispatchDraw。
-            // 只挂 onAttachedToWindow 不够 —— 切换窗口时框架会把它设回 VISIBLE，
-            // 表现为"消失→切换窗口又出现→过一会儿/摸一下再消失"（用户实测）。
-            listOf("onAttachedToWindow", "onLayout", "dispatchDraw").forEach { m0 ->
-                runCatching {
-                    m.hookMethod(cl, cls0, m0, null,
-                        XposedInterface.Hooker { chain ->
-                            runCatching {
-                                Cfg.reloadThrottled()
-                                val v = chain.thisObject as? View
-                                if (Cfg.immersive && v != null && v.visibility != View.INVISIBLE) {
-                                    if (msHidden.add(v)) {
-                                        Logx.e("多分屏栏: ${cls0.substringAfterLast('.')} 置 INVISIBLE($m0)")
-                                    }
-                                    v.visibility = View.INVISIBLE
-                                }
-                            }
-                            chain.proceed()
-                        })
-                }.onFailure { Logx.e("挂多分屏 UI 隐藏失败($cls0#$m0)", it) }
-            }
-        }
-
+        // 🔴🔴 v0.7.82：这一段原本把 `MultipleSplitUIContainer` / `MultipleSplitAbstractView`
+        //   等容器与基类置 INVISIBLE 来"隐藏栏"，实机造成：
+        //     图标消失 / 分隔条透出桌面 / 滑动作用到桌面（用户 2026-11-21）。
+        //   INVISIBLE 只影响绘制、不解除触摸与布局 ⇒ 分屏区变得"看不见但仍占位"。
+        //   而且 `msHidden` 是 WeakHashMap，**没有任何恢复逻辑**，一旦置上就再也不恢复。
+        //
+        //   现在只保留下面 `onDraw` 返回 null 的做法（视图保持 VISIBLE，触摸照常），
+        //   容器与基类一律不碰。三段 hook（挂载/布局/绘制）同步移除。
         // 多分屏（3~6 个应用）：每个应用顶部的"三点"与底部的手势/导航条，
         // 与自由小窗同样处理 —— 只不绘制，保留视图与触摸逻辑（顶部状态栏不动）。
         listOf(

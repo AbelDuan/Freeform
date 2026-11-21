@@ -111,6 +111,23 @@ object CaptionSplitBoth {
      */
     private fun addOppositeSplitPair(chain: XposedInterface.Chain) {
         val cl = loader ?: return
+        // ★ 单侧分屏（一侧应用 + 一侧桌面，SoSc minimized）**不补按钮**。
+        //
+        //   实机证据（用户 2026-11-20）：「单侧分屏后点击另一侧桌面无法直接进入应用」。
+        //   日志：
+        //     MiuiDecorationDot: isTouchedInTopCaption: taskId = 23095,
+        //                        mMulWinSwitchVIewHost is not ready for layout
+        //     MulWinSwitchEventHandler: dispatchToFullOrSplitDecorationDot: touchedTaskId=-1
+        //   ⇒ 圆点宿主布局未就绪，触摸命中任务为 -1，点击被吞掉。
+        //
+        //   原因：我们补的"另一方向"按钮会撑大菜单宽度（本文件开头已注明
+        //   "菜单窗口宽度是按按钮数算的，多出的一对会落在裁剪区外"），
+        //   单侧分屏时布局本就不稳定，再把容器撑宽会让宿主迟迟无法就绪。
+        //   这与其它模块的铁律一致：单侧分屏是雷区，一律交还官方。
+        if (SoScSupport.inMinimizedMode(cl)) {
+            Logx.once("caption-both-min", "双向分屏: minimized 单侧分屏，不补按钮（交还官方）")
+            return
+        }
         val cc = containerCls ?: return
         val create = createButton ?: return
         val container = chain.thisObject as? ViewGroup ?: return
@@ -160,7 +177,21 @@ object CaptionSplitBoth {
             }.onFailure { Logx.e("双向分屏: 创建按钮 0x${ids[i].toString(16)} 失败", it) }
             if (buttons.findViewById<View>(ids[i]) != null) added++
         }
-        if (added > 0) Logx.always("双向分屏: 已补另一方向一对按钮（当前方向左右=$leftRight）")
+        if (added > 0) {
+            // 🔴 v0.7.82 修复：补完按钮**必须请求重新布局**。
+            //
+            //   原来只插视图、不调 requestLayout —— 容器的子视图数量变了，
+            //   但测量缓存还是旧的 ⇒ 后续所有几何计算（包括分屏分隔条位置、
+            //   窗口圆角、图标绘制区域）都基于错误的尺寸，实机表现为：
+            //     · 桌面图标"消失"      （绘制区域算错，画到裁剪区外）
+            //     · 分隔条处透出桌面     （几何错位）
+            //     · 圆角动画卡顿         （每帧都在纠正错误尺寸）
+            //
+            //   这里同时 requestLayout + invalidate：前者重算尺寸，后者重绘。
+            buttons.requestLayout()
+            buttons.invalidate()
+            Logx.always("双向分屏: 已补另一方向一对按钮（当前方向左右=$leftRight）并请求重新布局")
+        }
     }
 
     // ---------------- 2) 菜单窗口补宽 + 挂自己的点击监听 ----------------
@@ -176,12 +207,24 @@ object CaptionSplitBoth {
         }
         return if (m.hookExecutable(method, XposedInterface.Hooker { chain ->
                 val args = chain.args.toMutableList()
-                if (Cfg.captionSplitBoth) {
+                // ★ 单侧分屏（一侧应用 + 一侧桌面，SoSc minimized）**完全不碰菜单窗口**。
+                //
+                //   实机证据（用户 2026-11-21）：「分屏后点另一侧桌面图标，第一次点不开，
+                //   要第二次才进」。日志：
+                //     isTouchedInTopCaption: taskId = 23220, mMulWinSwitchVIewHost is not ready for layout
+                //     MulWinSwitchEventHandler: dispatchToFullOrSplitDecorationDot: touchedTaskId=-1
+                //   ⇒ 菜单宿主布局未就绪，触摸命中任务为 -1。
+                //
+                //   补宽窗口会改 `addWindow` 的 width/x/centerX 三个参数，单侧分屏时
+                //   官方布局本就处于过渡态，再改这些几何量会让宿主迟迟无法就绪。
+                //   此时我们的"双向分屏按钮"没有意义（单侧分屏不是双向布局），直接放行。
+                val skip = !Cfg.captionSplitBoth || SoScSupport.inMinimizedMode(cl)
+                if (!skip) {
                     runCatching { widenMenuWindow(chain.thisObject, args) }
                         .onFailure { Logx.e("双向分屏: 补宽菜单失败", it) }
                 }
                 val r = chain.proceed(args.toTypedArray())
-                if (Cfg.captionSplitBoth) {
+                if (!skip) {
                     runCatching { attachOwnListeners(chain.thisObject, args.getOrNull(0) as? ViewGroup) }
                         .onFailure { Logx.e("双向分屏: 挂按钮监听失败", it) }
                 }
@@ -270,7 +313,9 @@ object CaptionSplitBoth {
         }
         return if (m.hookExecutable(method, XposedInterface.Hooker { chain ->
                 val shift = pendingDotPivotShift
-                if (shift == 0f) {
+                // 单侧分屏时不改圆点枢轴（与 addOppositeSplitPair 同一铁律：
+                // 此时圆点宿主布局本就脆弱，任何几何改写都可能让点击落空）。
+                if (shift == 0f || SoScSupport.inMinimizedMode(cl)) {
                     chain.proceed()
                 } else {
                     pendingDotPivotShift = 0f

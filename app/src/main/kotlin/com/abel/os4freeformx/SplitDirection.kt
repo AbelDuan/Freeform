@@ -103,7 +103,14 @@ object SplitDirection {
         }
         return if (m.hookExecutable(method, XposedInterface.Hooker { chain ->
                 // 热路径：两个 volatile 开关读一次即可；都关着就完全不干预
-                val want = if (Cfg.splitUnlockDir || Cfg.captionSplitBoth) {
+                // ★ 单侧分屏（一侧应用 + 一侧桌面，SoSc minimized）时不改写方向判定。
+                //
+                //   本文件与其它分屏模块遵循同一条铁律：单侧分屏状态机由官方维护，
+                //   模块任何介入（连"方向询问"这种看似只读的改写）都可能让
+                //   布局计算与官方不一致 —— 实机表现就是桌面任务停在 STOPPED、
+                //   第一次点击只唤醒不传递。
+                val want = if ((Cfg.splitUnlockDir || Cfg.captionSplitBoth)
+                    && !SoScSupport.inMinimizedMode(cl)) {
                     runCatching { SoScSupport.effectiveLeftRightSplit(cl) }.getOrNull()
                 } else {
                     null
