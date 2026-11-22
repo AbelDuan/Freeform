@@ -43,6 +43,11 @@ object Constants {
      */
     /** 把手（···）菜单同时显示左右与上下两对分屏按钮。实现见 CaptionSplitBoth.kt。 */
     const val K_CAPTION_SPLIT_BOTH = "caption_split_both"
+    /**
+     * 外屏分屏适配：三点菜单定位修正（显示尺寸换成真实屏、挖孔避让按真实摄像头）。
+     * 实现见 [CaptionMenuOuter]。折叠屏专属，热开关。
+     */
+    const val K_OUTER_SPLIT = "outer_split"
     /** 轻折一下 → 分屏 +1（铰链角度判定触发）。实现见 FoldSplitTrigger.kt。 */
     const val K_FOLD_SPLIT = "fold_split"
     /** 轻折触发时当前应用留在哪一侧。取值为 [FOLD_SPLIT_LEFT] / [FOLD_SPLIT_RIGHT]。 */
@@ -124,6 +129,10 @@ object Constants {
     const val DEF_SPLIT_RATIO_KEEP = true
     // 功能暂停：默认关闭。恢复时改回 true，并取消 Hooks.kt 里 installSplitRatio 那行的注释。
     const val DEF_CAPTION_SPLIT_BOTH = true
+    /** 外屏分屏适配：默认开（折叠屏外屏与内屏行为对齐）。 */
+    /** 外屏分屏适配：默认开（把系统三点菜单放到外屏全屏应用顶部）。 */
+    const val DEF_OUTER_SPLIT = true
+    /** 摄像头分屏入口：默认开。 */
     const val FOLD_SPLIT_LEFT = "left"
     const val FOLD_SPLIT_RIGHT = "right"
     /** 每折一次加一格（原有逻辑）。 */

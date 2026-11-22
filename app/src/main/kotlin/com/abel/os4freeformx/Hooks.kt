@@ -143,6 +143,19 @@ object Hooks {
         runCatching { MultiSplitRatio.install(m, cl) }.onFailure { Logx.e("多分屏无级安装失败", it) }
         runCatching { SplitRatioKeep.install(m, cl) }.onFailure { Logx.e("换向保比例安装失败", it) }
         runCatching { CaptionSplitBoth.install(m, cl) }.onFailure { Logx.e("双向分屏安装失败", it) }
+        // ★★★ 外屏（折叠屏副屏）分屏适配（2026-11-21）
+        //   反编译证实：MultiTaskingDisplayInfo 的显示尺寸是进程静态值且只跟 Display 0 更新
+        //   ⇒ 外屏三点菜单按内屏尺寸算位置。这里在菜单计算期间临时换成真实屏尺寸，
+        //   并按真实摄像头（外屏顶部居中）重算挖孔避让。实现见 CaptionMenuOuter.kt。
+        runCatching { CaptionMenuOuter.install(m, cl) }.onFailure { Logx.e("外屏菜单安装失败", it) }
+        // ★★★ 外屏全屏应用显示官方三点菜单（2026-11-22 用户明确要求）
+        //   反编译证实：shouldShowCaptionForWindowingMode 用 isFoldInnerScreen 决定
+        //   「全屏时是否给应用加顶栏」，而该判定只对内屏为 true ⇒ 外屏全屏什么都不显示。
+        //   这里只把这一条判定在外屏上放行，菜单本体（含全部按钮与行为）完全走系统原版。
+        runCatching { OuterFullscreenCaption.install(m, cl) }.onFailure { Logx.e("外屏顶栏安装失败", it) }
+        // 外屏竖屏左右分屏：只在「方向切换」期间放宽判定，平时不动，
+        // 保证上下分屏按钮仍然是上下分屏（第一版全局改写导致上下也变左右，已纠正）。
+        runCatching { OuterSplitDirection.install(m, cl) }.onFailure { Logx.e("外屏方向安装失败", it) }
         // 最后装：给 snapToTarget 兜住 null 目标（竖屏单侧分屏拖分隔条会崩 SystemUI）
         runCatching { SplitSnapGuard.install(m, cl) }.onFailure { Logx.e("分屏吸附守卫安装失败", it) }
         // ★★★ 轻折加分屏（2026-10-27，思路来自 HyperPlus v0.9.0-alpha，AGPL-3.0）：
@@ -304,7 +317,10 @@ object Hooks {
                 XposedInterface.Hooker { chain ->
                     val upstream = chain.getArg(2)
                     val id = upstream?.let { field(it, "snapPosition") } as? Int
-                    if (id != null && id in 101..106) upstream else chain.proceed()
+                    // 2026-11-22：自造的 16:9 档（101/102）已取消 ——
+                    // 它的 id 会被写进 mSplitState 导致触摸区失效。
+                    // 现在全部使用系统原生档位（1:9/5:5/9:1），这里不再需要放行。
+                    chain.proceed()
                 })
         }.onFailure { Logx.e("挂 SoScUtilsImpl.findSnapTarget 失败", it) }
 
@@ -409,6 +425,9 @@ object Hooks {
         field(coord, "mMinimized") as? Boolean ?: false
     }.getOrDefault(false)
 
+    /** 吸附点的小工具：两个位置 + 对应 id。 */
+    private data class Quad(val a: Int, val b: Int, val idA: Int, val idB: Int)
+
     private fun splitRatioTarget(o: Any, pos: Int, isFling: Boolean = false): Any? = runCatching {
         splitActiveAt = android.os.SystemClock.elapsedRealtime()
         val leftRight = field(o, "mIsLeftRightSplit") as? Boolean ?: true
@@ -419,6 +438,12 @@ object Hooks {
         val start = if (leftRight) insets.left else insets.top
         val span = display - start - (if (leftRight) insets.right else insets.bottom)
         if (span <= 0) return null
+        // 诊断：把参与计算的关键值打出来（用户 2026-11-22「1:9 又没了」时定位用）
+        if (pos in 1..200 || pos in (span - 200)..span) {
+            Logx.always("分屏吸附边缘: pos=$pos span=$span start=$start divider=$divider "
+                    + "tinyP=${(span * 0.1f).toInt()} magnet=${(span * 0.07f).toInt()} "
+                    + "first=${(runCatching { field(field(o, "mFirstSplitTarget")!!, "position") }.getOrNull())}")
+        }
         // 记下"用户拖到哪儿就松手了"。必须放在单边判断之前：
         // 单边态会直接 return null，原先放在后面的写法导致 lastSnapPos 永远是 null，
         // 甩动时只能拿到系统传进来的极端值（-24 / 2364），起点判不出来。
@@ -446,29 +471,44 @@ object Hooks {
         val last = lastObj?.let { field(it, "position") as? Int }
         val mid = midObj?.let { field(it, "position") as? Int }
         val target = { p: Int, id: Int -> buildSnapTarget(o, p, id) }
+        // 诊断：系统的 first/last 档位 id 决定「点击窄侧是否交换」。
+        //   `SplitLayout#flingDividerToOtherSide(3/4)` 内部用 mFirstSplitTarget /
+        //   mLastSplitTarget 的 snapPosition 调 updateFocusInRatio1_9。
+        //   如果这里不是 4/3，点击就不会交换（用户 2026-11-22 的现象）。
+        val firstId = firstObj?.let { fo -> runCatching { field(fo, "snapPosition") }.getOrNull() }
+        val lastId = lastObj?.let { lo -> runCatching { field(lo, "snapPosition") }.getOrNull() }
+        val alg = runCatching { field(o, "mDividerSnapAlgorithm") }.getOrNull()
+        val snapMode = alg?.let { runCatching { field(it, "mSnapMode") }.getOrNull() }
+        Logx.once("firstlast-$first-$last-$firstId-$lastId",
+            "分屏首尾档: first=$first(id=$firstId) last=$last(id=$lastId) mid=$mid snapMode=$snapMode")
 
-        // 16:9 两档位置。SnapTarget.position 语义 = 小窗在分割轴上的像素尺寸，不加 start。
-        //   小边在前 id=101：p = 940
-        //   小边在后 id=102：p = 屏长 - 940 - divider
-        val small = Constants.SPLIT_SMALL_SIDE_PX
+        // 16:9 / 1:9 两档位置。SnapTarget.position 语义 = 小窗在分割轴上的像素尺寸，不加 start。
+        //
+        // 🔴 2026-11-22 修复（用户：「竖屏上下分屏吸附档位需要调整；外屏横屏只有 5:5」）：
+        //
+        //   原来用的是固定像素 `Constants.SPLIT_SMALL_SIDE_PX = 940`，那是**按内屏短边
+        //   1672 × 9/16 算出来的**（=940）。外屏短边只有 1168，16:9 的小边应该是
+        //   1168 × 9/16 = **657** —— 直接套 940 会占掉 55% 的屏幕，吸附点跑到 5:5 附近，
+        //   于是「外屏吸附不正常 / 只有 5:5」。
+        //
+        //   改为**按当前分屏的短边实时计算**：短边 × 9/16。
+        //   上下分屏时短边 = 宽度，左右分屏时短边 = 高度，内屏外屏都自动正确。
+        val shortSide = runCatching {
+            val dm = AppCtx.get()?.resources?.displayMetrics
+            if (leftRight) (dm?.heightPixels ?: 0) else (dm?.widthPixels ?: 0)
+        }.getOrDefault(0).let { if (it > 0) it else minOf(display, 1 shl 20) }
+        val small = if (shortSide > 0) (shortSide * 9f / 16f).toInt() else Constants.SPLIT_SMALL_SIDE_PX
         val hasSlots = span > small + divider
-        val pA = small
-        var pB = 0
-        if (hasSlots) {
-            val screenLong = runCatching {
-                val dm = AppCtx.get()?.resources?.displayMetrics
-                if (leftRight) dm?.widthPixels?.takeIf { it >= display }
-                else dm?.heightPixels?.takeIf { it >= display }
-            }.getOrNull() ?: display
-            pB = screenLong - small - divider
-        }
 
         // ③ 甩动：2026-10-31 用户决定取消。原实现见 git 历史（v0.7.63–v0.7.73）。
         //    留着 isFling 形参只为将来恢复时不必改 hook 签名。
 
-        // ④ 两侧官方台阶 ±7%
-        if (firstObj != null && first != null && kotlin.math.abs(pos - first) <= magnet) return firstObj
-        if (lastObj != null && last != null && kotlin.math.abs(pos - last) <= magnet) return lastObj
+        // ④ 两侧官方台阶 ±7% —— ⚠️ 2026-11-22 起**移到 16:9 / 1:9 判定之后**，
+        //    见下方 ⑥/⑥b。原因（用户实测「上下分屏还是只有三分之一左右的档位」）：
+        //    官方台阶 first ≈ span/3（外屏 1712 → 570），与我们算出的 16:9（657）
+        //    只差 87px，磁吸半径 ±7%（≈120px）**两者重叠**；官方台阶先判，
+        //    于是拖到 657 附近会被 570 先吸走，用户就只感到「一个 1/3 档」。
+        //    让更精确的 16:9 / 1:9 先抢答，官方台阶只在它们之外生效。
 
         // ⑤ 拉满 / 甩出屏幕：交还官方（全屏、退出分屏由官方手势负责）
         val loEdge = start + (span * 0.01f).toInt()
@@ -477,45 +517,78 @@ object Hooks {
         // ⑤b 2026-10-31 用户要求：**边缘台阶到屏幕边缘之间也禁止无极** ——
         //     吸到 10% / 90% 之后继续往外拖，之前会在"台阶 ~ 1%"之间自由伸缩，
         //     现在这段一律贴回台阶（1% 以内仍交还官方，负责全屏手势）。
+        //     （判定已并入 ⑤c / ⑤d：先 16:9 / 1:9，再官方台阶。）
+        // ⑤c 16:9 / 1:9 优先于官方台阶（见 ④ 的说明）。
+        //     先算好两个小边位置，命中就直接返回，不给官方 1/3 台阶机会。
+        if (hasSlots) {
+            val tinyP = (span * 0.1f).toInt()
+            // 1:9（最窄，在 16:9 更外侧）
+            //
+            // 🔴 2026-11-22：**必须复用系统的 id 4 / 3，不能自造 103/104**。
+            //   用户实测「1:9 能停顿，但应用被压得特别小，不是一侧接近全屏」。
+            //   原因是系统对 1:9 有**独立的状态机**：
+            //     `SoScStageCoordinator#isInSplitRatio1_9State()` →
+            //     `mFirstSplitTarget.snapPosition`(4) / `mLastSplitTarget.snapPosition`(3)
+            //   自造 id 系统不认识，`updateSoScState` 会把布局按普通比例重算回 5:5。
+            //   `DividerSnapAlgorithm` 的 `case 5` 里系统自己就是 4 / 3：
+            //     mTargets.add(new SnapTarget(i16, 4));       // 1:9
+            //     mTargets.add(new SnapTarget(..., 3));       // 9:1
+            if (kotlin.math.abs(pos - tinyP) <= magnet) {
+                Logx.always("分屏吸附: $pos -> 1:9 前档 position=$tinyP id=4(系统1:9)")
+                return target(tinyP, 4)
+            }
+            if (kotlin.math.abs(pos - (span - tinyP - divider)) <= magnet) {
+                Logx.always("分屏吸附: $pos -> 1:9 后档 position=${span - tinyP - divider} id=3(系统9:1)")
+                return target(span - tinyP - divider, 3)
+            }
+            // 🔴 2026-11-22：**取消自造的 16:9 档（101/102）**。
+            //
+            //   用户要求「1:9 的点击切换完全使用系统内屏之前的逻辑」。
+            //   而 `SplitLayout#setDivideRatio` 会把我们 `snap()` 返回的
+            //   `snapPosition` **直接写进 `mSplitState`**：
+            //   ```java
+            //   splitLayout.mSplitState.set(findSnapTarget.snapPosition);
+            //   ```
+            //   系统只认 0/1/2/3/4 这五个值，101 落进 `populateTouchZones`
+            //   的 `else` 分支 → 打出 `branch=none, zones=[]`
+            //   → **点击区根本没注册** → 点击穿透到应用 → 表现成「窄侧变大」。
+            //
+            //   所以档位只用系统原生的一组：
+            //     1:9 (id=4) / 5:5 (id=1) / 9:1 (id=3)
+            //   全部是系统认识的，点击切换、状态机、动画都是原生行为。
+        }
+        // ⑤d 官方台阶（两侧 1/3、2/3），在 16:9 / 1:9 之外才生效
+        if (firstObj != null && first != null && kotlin.math.abs(pos - first) <= magnet) return firstObj
+        if (lastObj != null && last != null && kotlin.math.abs(pos - last) <= magnet) return lastObj
         if (firstObj != null && first != null && pos < first) return firstObj
         if (lastObj != null && last != null && pos > last) return lastObj
 
-        // ⑥ 16:9 **外侧** ±7% 吸附。内侧不在这里判——内侧到 5:5 之间是"全区间就近"（⑦）。
-        if (hasSlots) {
-            if (pos < pA && kotlin.math.abs(pos - pA) <= magnet) {
-                Logx.always("分屏吸附: $pos -> 16:9 左档(外侧) position=$pA")
-                return target(pA, 101)
-            }
-            if (pos > pB && kotlin.math.abs(pos - pB) <= magnet) {
-                Logx.always("分屏吸附: $pos -> 16:9 右档(外侧) position=$pB")
-                return target(pB, 102)
-            }
-        }
+        // ⑥ 说明：16:9 / 1:9 的吸附已在 ⑤c 处理（且优先于官方台阶），
+        //    这里不再重复判断，避免出现两套互相矛盾的阈值。
 
-        // ⑦ 2026-10-31 用户要求：**5:5 与 16:9 之间不留无极调节，只能选更近一侧**。
-        //    这两档相距约 7.7% 跨度，中间留缝隙会停在一个"既不是 5:5 也不是 16:9"的暧昧比例。
-        //    注意 16:9 ↔ 两侧官方台阶之间仍保留无极（⑥ 只做 ±7% 磁吸，其余落 ⑨）。
-        if (midObj != null && mid != null && hasSlots) {
-            for ((p, id) in listOf(pA to 101, pB to 102)) {
-                val lo = minOf(p, mid)
-                val hi = maxOf(p, mid)
-                if (pos > lo && pos < hi) {
-                    return if (kotlin.math.abs(pos - p) <= kotlin.math.abs(pos - mid)) {
-                        Logx.always("分屏吸附: $pos 在 5:5($mid)/16:9($p) 之间 -> 就近吸 16:9 id=$id")
-                        target(p, id)
-                    } else {
-                        Logx.always("分屏吸附: $pos 在 5:5($mid)/16:9($p) 之间 -> 就近吸 5:5")
-                        midObj
-                    }
-                }
-            }
-        }
+        // ⑦ 说明：原「5:5 与 16:9 之间不留无极」的规则随 16:9 档一起取消
+        //    （16:9 用自造 id 会污染 `mSplitState`，见 ⑤c 的说明）。
+        //    现在 5:5 与 1:9 之间按正常磁吸半径判断，其余位置保持无极调节。
 
         // ⑧ 5:5 自身 ±7%
         if (midObj != null && mid != null && kotlin.math.abs(pos - mid) <= magnet) return midObj
 
         // ⑨ 其余位置：松手即落点 → 任意比例（无极调节）
-        target(pos, 103)
+        //
+        // 🔴 2026-11-22 修复（用户：「1:9 的点击切换还是不对，要完全使用系统内屏逻辑」）：
+        //
+        //   这里原来返回自造的 **id=103**。而 `SplitLayout#setDivideRatio` 会把
+        //   `snapPosition` 直接写进 `mSplitState`：
+        //   ```java
+        //   splitLayout.mSplitState.set(findSnapTarget.snapPosition);
+        //   ```
+        //   系统只认 0/1/2/3/4/10 这些值，103 使 `populateTouchZonesForSoSc`
+        //   落进 `else` 分支 → 日志 `branch=none, zones=[]`
+        //   → **点击区不注册** → 点击穿透到应用 → 表现为「点击窄侧它变大」。
+        //
+        //   系统自己给自由比例用的就是 **10**（`snap()` 里 `new SnapTarget(i, 10)`），
+        //   所以这里改用 10，状态机就能正常识别。
+        target(pos, 10)
     }.onFailure { Logx.e("构造分屏吸附目标失败", it) }.getOrNull()
 
     // ---------------- 多分屏（≥3 应用）栏隐藏 ----------------
@@ -2192,6 +2265,9 @@ object Hooks {
                     )
                 }
             }
+            // 外屏顶栏判定所需的 screenType：只在布局变化这种低频时机刷新，不进热路径
+            runCatching { OuterFullscreenCaption.refreshOuterScreenType(AppCtx.get()) }
+                .onFailure { Logx.e("外屏顶栏刷新失败", it) }
 
             // 2) 沉浸：隐藏上下栏。**不再限定自由小窗** —— 分屏里每个应用的
             //    "Miui Caption / Bottom Caption" 用的是同一个装饰类，之前被

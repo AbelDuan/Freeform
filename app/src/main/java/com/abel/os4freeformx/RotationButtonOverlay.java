@@ -758,7 +758,9 @@ final class RotationButtonOverlay {
         Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
         p.setColor(Color.WHITE);
         p.setStyle(Paint.Style.STROKE);
-        p.setStrokeWidth(size * 0.075f);
+        // 2026-11-22（用户：「旋钮和官方的旋钮大小，内部尺寸粗细不一致，需要调整到官方一致」）：
+        // 线宽系数统一为 0.085f（与 v0.8.3 基线 / Kotlin 版一致），尺寸 56dp 不变。
+        p.setStrokeWidth(size * 0.085f);
         p.setStrokeCap(Paint.Cap.ROUND);
 
         RectF oval = new RectF(size * 0.26f, size * 0.26f,

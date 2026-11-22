@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 应用图标背景：深蓝渐变（从头像左上到右下略微提亮，避免纯色死板） -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <gradient
+        android:startColor="#16233F"
+        android:endColor="#2B4C7E"
+        android:angle="315"
+        android:type="linear" />
+</shape>

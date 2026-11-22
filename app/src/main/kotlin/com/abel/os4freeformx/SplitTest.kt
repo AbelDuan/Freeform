@@ -93,13 +93,52 @@ object SplitTest {
             return
         }
         Logx.always("$TAG: 调用 SoScUtilsImpl.enterSplitScreen(task=$id pkg=$pkg isSplit=$left)")
-        try {
-            m.invoke(utils, ti, wct, left)
-            Logx.always("$TAG: enterSplitScreen 调用完成")
-        } catch (t: Throwable) {
-            Logx.e("$TAG: enterSplitScreen 抛出", t)
-            t.cause?.let { Logx.e("$TAG: 内层原因", it) }
+        // ★★ 必须在 WMShell 自己的线程上调用：`enterSplitScreen` 内部会走 `Transitions.startTransition`，
+        //    它有 `HandlerExecutor.assertCurrentThread()` 断言 —— 在其他线程调用直接抛
+        //    `IllegalStateException: must be called on Handler (android.os.Handler) {…}`（真机实测）。
+        //    解法：投到 `SoScStageCoordinator.mTransitions.mMainExecutor.mHandler`（与 FoldSplitTrigger 同源）。
+        val h = shellHandler(utils)
+        if (h != null) {
+            h.post {
+                runCatching { m.invoke(utils, ti, wct, left) }
+                    .onSuccess { Logx.always("$TAG: enterSplitScreen 调用完成（WMShell 线程）") }
+                    .onFailure {
+                        Logx.e("$TAG: enterSplitScreen 抛出", it)
+                        it.cause?.let { c -> Logx.e("$TAG: 内层原因", c) }
+                    }
+            }
+        } else {
+            Logx.e("$TAG: 拿不到 WMShell Handler，退回当前线程（可能触发线程断言）")
+            try {
+                m.invoke(utils, ti, wct, left)
+                Logx.always("$TAG: enterSplitScreen 调用完成")
+            } catch (t: Throwable) {
+                Logx.e("$TAG: enterSplitScreen 抛出", t)
+                t.cause?.let { Logx.e("$TAG: 内层原因", it) }
+            }
         }
+    }
+
+    /**
+     * WMShell 自己的主线程 Handler。
+     *
+     * 链路：`SoScUtilsImpl.mStageCoordinator` → `mTransitions` → `mMainExecutor`(ShellExecutor)
+     * → `mHandler`。拿不到返回 null（调用方退回当前线程，并打日志说明）。
+     */
+    private fun shellHandler(utils: Any): android.os.Handler? {
+        val candidates = listOf<() -> Any?>(
+            { SoScSupport.field(SoScSupport.field(utils, "mStageCoordinator"), "mTransitions") },
+            { SoScSupport.field(SoScSupport.field(SoScSupport.field(utils, "mStageCoordinator"), "mSplitLayout"), "mTransitions") },
+            { SoScSupport.field(utils, "mTransitions") },
+        )
+        for (get in candidates) {
+            val tr = runCatching { get() }.getOrNull() ?: continue
+            val h = runCatching {
+                SoScSupport.field(SoScSupport.field(tr, "mMainExecutor"), "mHandler")
+            }.getOrNull() as? android.os.Handler
+            if (h != null) return h
+        }
+        return null
     }
 
     // —————————————— 反射工具 ——————————————

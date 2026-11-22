@@ -286,7 +286,7 @@ final class OrientationForcer {
      * <p>不改变当前的方向锁定状态：锁在哪个角度就留在哪个角度 ——
      * 这和系统「接受旋转建议」的语义一致。
      */
-    static void release(final String reason) {
+    public static void release(final String reason) {
         boolean had = sTarget >= 0 || sFixedOn || sIgnoreOn;
         sTarget = -1;
         sReached = false;
@@ -380,8 +380,17 @@ final class OrientationForcer {
             Method m = wm.getClass().getMethod("setRotationLockForFold",
                     boolean.class, int.class, boolean.class);
             m.setAccessible(true);
+            // ✅ 参数语义以 InnerRotationHost 里 2026-10-20 app_process 实测结论为准：
+            //   setRotationLockForFold(arg0, arg1, arg2)
+            //     arg0 = 是否锁定旋转（true=锁定 / false=解除）
+            //     arg1 = 目标方向（-1 = 以当前方向为准）
+            //     arg2 = isFold（true=外屏 / false=内屏）
+            //
+            //   所以这里 arg0 固定 true（把屏幕锁到指定方向），arg2 传 isOuter 指认屏幕。
+            //   ⚠️ 2026-11-22 曾误以为 arg2 是「是否锁定」而改成传 userLocked，
+            //   导致 arg2（屏幕选择）被污染：内屏请求被发到外屏 → 点击旋钮方向不变。
             m.invoke(wm, true, targetRotation, isOuter);
-            LogUtil.logAlways(TAG + " setRotationLockForFold(true, " + targetRotation
+            LogUtil.logAlways(TAG + " setRotationLockForFold(锁定=true, 方向=" + targetRotation
                     + ", isFold=" + isOuter + ") 成功");
             any = true;
         } catch (Throwable th) {

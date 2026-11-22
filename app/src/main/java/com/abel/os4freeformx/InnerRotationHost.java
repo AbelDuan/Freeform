@@ -905,6 +905,18 @@ public final class InnerRotationHost {
             sInnerStateAt = android.os.SystemClock.uptimeMillis();
             LogUtil.logAlways("[内屏联动] 检测到展开");
 
+            // 🔴 2026-11-22 修复（用户：「亮屏和解锁还是没有自动解锁旋转」）：
+            //
+            //   `sLastUnfoldAt` 此前**只声明、从未赋值**（恒为 0L），
+            //   因此 `unfoldJustHappened()` 恒为 false —— 下面「亮屏」分支
+            //   的 `if (sUnfoldSettling || unfoldJustHappened())` 那层保护永不生效，
+            //   于是「展开 + 亮屏」几乎同时到达时，亮屏会把刚放开的锁
+            //   又按熄屏方向钉回去（日志实证：
+            //     27.094 展开：已放开旋转锁
+            //     27.159 亮屏：先钉回熄屏时的方向=3  ← 把放锁覆盖掉）。
+            //   在展开边沿记录时刻，保护才会真正起作用。
+            sLastUnfoldAt = android.os.SystemClock.uptimeMillis();
+
             // 已在计时中（多次入口重复触发）：忽略
             if (sFollowing) {
                 LogUtil.logAlways("[内屏联动] 计时中，忽略重复触发");
@@ -1033,14 +1045,18 @@ public final class InnerRotationHost {
         // ★ 先记录解锁时刻：isUnfoldWindowActive() 依赖它判断「刚解锁」窗口期。
         //   必须放在所有 return 之前，否则被前面的守卫挡住时就记不到。
         sLastUserPresentAt = android.os.SystemClock.uptimeMillis();
+        LogUtil.logAlwaysOnce("unlock-enter", "[内屏联动诊断] 收到解锁/亮屏事件，开始判定");
         if (!RotationHost.sInnerFollowRotation.get()) {
+            LogUtil.logAlwaysOnce("unlock-off", "[内屏联动诊断] 联动开关关闭 ⇒ 不处理");
             return;
         }
         if (!isSystemUiProc()) {
+            LogUtil.logAlwaysOnce("unlock-notsu", "[内屏联动诊断] 非 SystemUI 进程 ⇒ 不处理");
             return;
         }
         Context ctx = sInnerCtx;
         if (ctx == null) {
+            LogUtil.logAlwaysOnce("unlock-noctx", "[内屏联动诊断] sInnerCtx 为空 ⇒ 不处理");
             return;
         }
         try {
@@ -1057,6 +1073,7 @@ public final class InnerRotationHost {
             //    isInteractiveNow 把关，与这里互不影响。）
             // 只在内屏生效
             if (!isInnerDisplayActiveNow(ctx)) {
+                LogUtil.logAlwaysOnce("unlock-notinner", "[内屏联动诊断] 当前不是内屏 ⇒ 不处理");
                 return;
             }
             // 🔴 2026-11-21（用户：「每次重启 SystemUI 之后，本来锁定的屏幕旋转被关掉」）：
@@ -1142,9 +1159,37 @@ public final class InnerRotationHost {
         }
     }
 
+    /**
+     * 当前的「自动旋转」开关是不是**用户亲手打开**的（而非模块为了跟随临时写的）。
+     *
+     * 🔴 2026-11-22 修复（用户：「不会自动解开，等会又自动恢复锁定，之前要求是
+     *   能自动解开旋转锁定，数秒后恢复锁定」）：
+     *
+     * 原实现是「模块是否在过去 1500ms 内写过」：
+     * <pre>
+     * return !(sSelfWrittenCr == 1 &amp;&amp; now - sSelfWriteAt &lt; 1500L);
+     * </pre>
+     * 但放锁与回锁之间隔着 {@code INNER_FOLLOW_DURATION_MS = 5000ms} ——
+     * 到点回锁时，距那次写入早已超过 1500ms，判定**必然**为 true
+     * ⇒ 每次都被当成「用户自己开的自由旋转」⇒ 永远不回锁（锁被永久解除）。
+     *
+     * 正确判据是模块自己维护的 {@link #sUserIntent}：
+     *   · {@code sUserIntent == 1} → 用户确实亲手打开过 → 让位，不回锁；
+     *   · 其它值 → 这个 1 是模块为了跟随写的 → 到点必须回锁。
+     * 1500ms 窗口只用于「观察者回声」过滤（见 {@link #isSelfWriteEcho}），
+     * 不该拿来当用户意志的判据。
+     */
     private static boolean isUserOpenedAutoRotate() {
-        return !(sSelfWrittenCr == 1
-                && android.os.SystemClock.uptimeMillis() - sSelfWriteAt < 1500L);
+        return sUserIntent == 1;
+    }
+
+    /**
+     * 设置观察者的**回声过滤**：模块刚写过，随之而来的 onChange 不算用户操作。
+     * 这个才该用 1500ms 窗口。
+     */
+    private static boolean isSelfWriteEcho() {
+        return sSelfWrittenCr == 1
+                && android.os.SystemClock.uptimeMillis() - sSelfWriteAt < 1500L;
     }
 
     private static void markOccupy() {
@@ -1345,14 +1390,32 @@ public final class InnerRotationHost {
         }
         // ★ 只有「刚刚发生过展开/亮屏/解锁」才算窗口期，否则会把
         //   长时间正常使用内屏也当成窗口期（旋转旋钮会被无谓抑制）。
-        if (!unfoldJustHappened() && !inScreenOnWindow() && !userPresentJustHappened()) {
+        boolean u = unfoldJustHappened();
+        boolean so = inScreenOnWindow();
+        boolean up = userPresentJustHappened();
+        if (!u && !so && !up) {
+            LogUtil.logAlwaysOnce("iw-none", "[内屏联动诊断] 窗口期不成立："
+                    + "展开=" + u + " 亮屏=" + so + " 解锁=" + up
+                    + "（展开距=" + age(sLastUnfoldAt) + "ms 亮屏剩="
+                    + (sScreenOnUntil - android.os.SystemClock.uptimeMillis()) + "ms 解锁距="
+                    + age(sLastUserPresentAt) + "ms）");
             return false;
         }
         Context ctx = sInnerCtx;
         if (ctx == null || !isInteractiveNow(ctx)) {
+            LogUtil.logAlwaysOnce("iw-inactive", "[内屏联动诊断] 窗口期成立但 ctx=" + ctx
+                    + " interactive=" + (ctx != null && isInteractiveNow(ctx)));
             return false;
         }
-        return isInnerDisplayActiveNow(ctx);
+        boolean innerNow = isInnerDisplayActiveNow(ctx);
+        LogUtil.logAlwaysOnce("iw-pass", "[内屏联动诊断] 窗口期成立 展开=" + u + " 亮屏=" + so
+                + " 解锁=" + up + " 内屏=" + innerNow);
+        return innerNow;
+    }
+
+    /** 距某时刻过了多少毫秒（0 表示未记录）。 */
+    private static long age(long t) {
+        return t <= 0L ? -1L : android.os.SystemClock.uptimeMillis() - t;
     }
 
     public static boolean isUnfoldSettling() {

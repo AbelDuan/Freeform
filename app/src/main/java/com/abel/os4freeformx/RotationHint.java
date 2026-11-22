@@ -771,7 +771,7 @@ public final class RotationHint {
         return pkg != null && (pkg.equals(LAUNCHER_PKG) || pkg.startsWith(LAUNCHER_PKG + "."));
     }
 
-    private static boolean isRotationLocked(Context ctx) {
+    static boolean isRotationLocked(Context ctx) {
         try {
             android.content.ContentResolver cr = ctx.getContentResolver();
             int state = android.provider.Settings.Global.getInt(

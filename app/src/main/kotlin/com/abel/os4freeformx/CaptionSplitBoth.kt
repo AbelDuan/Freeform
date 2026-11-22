@@ -359,7 +359,12 @@ object CaptionSplitBoth {
                 // 官方的方向切换只改方向、保留各窗口「第几侧」的角色，于是会出现「点左却落到右」；
                 // 先按需把两侧位置静默互换，旋转动画随后的目标就会落在用户点击的那一侧。
                 alignSideForRotation(cl, official, sideZero)
-                SoScSupport.call(SoScSupport.soScUtils(cl), "switchSplitDirection")
+                OuterSplitDirection.expectLeftRight(wantLeftRight)
+                try {
+                    SoScSupport.call(SoScSupport.soScUtils(cl), "switchSplitDirection")
+                } finally {
+                    OuterSplitDirection.clearExpect()
+                }
                 SplitRatioBridge.nextSwitchRatio = null
                 closeMenu(dot)
                 Logx.always("双向分屏: 点击另一方向 → 旋转分屏方向（左右=$wantLeftRight）")
@@ -367,7 +372,14 @@ object CaptionSplitBoth {
             }
             Logx.v("双向分屏: 已分屏且方向相同，走官方同侧/换位语义")
         } else {
-            val aligned = SoScSupport.ensureDirection(cl, wantLeftRight)
+            // 把「用户点的方向」告诉外屏方向模块：它只在切换期间按这个值放行，
+            // 避免上下分屏按钮被强制成左右（用户 2026-11-22：「无法上下分屏」）。
+            OuterSplitDirection.expectLeftRight(wantLeftRight)
+            val aligned = try {
+                SoScSupport.ensureDirection(cl, wantLeftRight)
+            } finally {
+                OuterSplitDirection.clearExpect()
+            }
             Logx.always("双向分屏: 进入分屏前对齐方向 左右=$wantLeftRight 成功=$aligned")
         }
 
