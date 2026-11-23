@@ -252,7 +252,8 @@ fi
 
 echo "== 7/7 签名 =="
 APKSIGNER=""
-for c in "$BT/apksigner" "$BT/lib/apksigner.jar" "$HERE/tools/apksigner.jar"; do
+for c in "$BT/apksigner" "$BT/apksigner.jar" "$BT/lib/apksigner.jar" \
+         "$HERE/tools/apksigner.jar" "$(command -v apksigner 2>/dev/null || true)"; do
     if [ -e "$c" ]; then APKSIGNER=$c; break; fi
 done
 [ -n "$APKSIGNER" ] || die "找不到 apksigner（Android build-tools 34+）"
