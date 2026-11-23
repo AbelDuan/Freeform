@@ -266,14 +266,70 @@ adb shell su -c 'killall com.android.systemui'
 
 ## 3. 构建与自检
 
+### 3.1 快速开始（clone 即可编译）
+
 ```bash
-./build.sh     # 产出 dist/OS4FreeFromX-v0.1.0.apk
+git clone https://github.com/AbelDuan/Freeform.git
+cd Freeform
+./build-portable.sh          # 产出 dist/OS4FreeFromX-v<版本>.apk
+```
+
+**仓库自带**（无需外部获取）：
+
+| 文件 | 用途 |
+|---|---|
+| `app/libs/libxposed-api-102.jar` | LSPosed API 102，编译必需 |
+| `app/libs/template.apk` | 资源 + 清单模板；没有 aapt2 时用它换 dex |
+| `keystore/os4freeformx.jks` | 签名密钥，别名 `os4ffx`，密码 `android` |
+
+**需要自备**（脚本会自动探测，找不到会明确提示）：
+
+| 工具 | 探测顺序 |
+|---|---|
+| JDK 17+ | `$JAVA_HOME` → `PATH` 里的 `javac` → `/usr/lib/jvm/java-*` |
+| kotlinc 2.x | `$KOTLINC` → `PATH` → `tools/kotlinc/bin/kotlinc` |
+| `android.jar` | `$ANDROID_JAR` → `$ANDROID_SDK`/`$ANDROID_HOME` 下最高的 `platforms/android-*` |
+| `d8` | `$ANDROID_SDK/build-tools/*/d8` |
+| `aapt2` + `zipalign` | **可选**。有则走正规流程；没有则自动用 `template.apk` |
+
+最小依赖（Debian/Ubuntu arm64）：
+
+```bash
+apt install openjdk-21-jdk-headless python3
+# kotlinc：https://github.com/JetBrains/kotlin/releases 下载 kotlin-compiler-*.zip 解压到 tools/kotlinc
+# d8/apksigner：Android SDK build-tools 34+
+```
+
+### 3.2 两条构建路径
+
+```
+A. 有 aapt2：aapt2 compile → aapt2 link → javac → kotlinc → d8 → 打包 → zipalign → apksigner
+B. 无 aapt2：template.apk → javac → kotlinc → d8 → 替换 template 里的 dex → apksigner
+```
+
+路径 B 是给 proot 容器准备的 —— 那里的 aapt2 常因缺 `libdl.so` 跑不起来。
+
+### 3.3 五个容易踩的坑（脚本里已处理）
+
+1. **kotlinc 的 classpath 不能含完整 `android.jar`**：会遮蔽 JDK 的 `java.security` → `InternalError`。
+   脚本用 `$ANDROID_JAR`，若在 proot 里卡死，改用剔除 `java/*javax/*jdk/*sun/*` 的版本。
+2. **Java ↔ Kotlin 双向依赖**：Java 调 `LogUtil`/`AppCtx`，Kotlin 又调 Java。脚本先引导编译这几个
+   Kotlin 叶子文件，javac 才过得去。
+3. **`OrientationForcer` / `RotationButtonOverlay` / `RotationHint` 各有 `.java` 与 `.kt` 两份实现**，
+   Kotlin 版是后来重写的、实际生效的那个。脚本按「Kotlin 优先」去重后再 dex，
+   否则报 `Type X is defined multiple times`。
+4. **`kotlin-stdlib.jar` 必须精确匹配**：通配 `kotlin-stdlib*.jar` 会先命中 `kotlin-stdlib-jdk7.jar`，
+   它不含核心类型，报 `cannot access built-in declaration 'kotlin.String'`。
+5. **`resources.arsc` 必须 STORED**（targetSdk 30+ 强制），dex 必须 DEFLATED
+   （否则 APK 体积翻倍）。脚本已按此写入。
+
+### 3.4 自检脚本
+
+```bash
 ./check.sh     # 主机侧自检：比例与尺寸算法断言（不需要设备）
 ./verify.sh    # 真机取证：hook 安装情况 / 记忆 / 当前 bounds
 ```
 
-流水线：`aapt2(arm64) → kotlinc → d8 → zip(classes.dex + classes2.dex + META-INF/xposed) → zipalign → apksigner`，
-工具在 `tools/`（Debian arm64 的 aapt2/zipalign + Kotlin 2.1.0 + 预编译 `kotlin-stdlib.dex`）。
 `Ratio.kt` 为纯算术，`test/RatioCheck.kt` 是它的断言测试。
 
 > 重装 APK 后必须重启 SystemUI 才会载入新 dex；签名密钥在 `keystore/`（不在构建目录内，
