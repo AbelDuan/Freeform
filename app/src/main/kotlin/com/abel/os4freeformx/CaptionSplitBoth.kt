@@ -294,7 +294,19 @@ object CaptionSplitBoth {
             runCatching { onOwnSplitClick(dot, official, view) }
                 .onFailure { Logx.e("双向分屏: 处理按钮点击失败", it) }
         }
-        SPLIT_IDS.forEach { id -> container.findViewById<View>(id)?.setOnClickListener(listener) }
+        var hooked = 0
+        SPLIT_IDS.forEach { id ->
+            val v = container.findViewById<View>(id)
+            if (v != null) {
+                v.setOnClickListener(listener)
+                hooked++
+            }
+        }
+        // 🔴 2026-11-22：**必须打日志**。
+        //   用户报「方向调整按钮点不动」，而旧代码在这里完全静默 ——
+        //   分不清是「没找到按钮」还是「找到了但点击没进来」。
+        //   `hooked < 4` 说明只挂上了一部分（四个按钮是两对：左/右 + 上/下）。
+        Logx.always("双向分屏: 挂按钮监听 $hooked/${SPLIT_IDS.size} 个（容器子视图=${container.childCount}）")
     }
 
     /**
@@ -339,7 +351,12 @@ object CaptionSplitBoth {
      * - 已进入分屏且方向相同：不修改方向，走官方语义（同侧聚焦 / 异侧换位）。
      */
     private fun onOwnSplitClick(dot: Any?, official: Any, view: View) {
-        val cl = loader ?: return
+        // 入口即打日志：区分「点击没到达」与「到达但中途失败」
+        Logx.always("双向分屏: 按钮被点击 id=0x${view.id.toString(16)}")
+        val cl = loader ?: run {
+            Logx.e("双向分屏: loader 为空，无法处理按钮点击")
+            return
+        }
         val id = view.id
         val sideZero = when (id) {
             ID_LR_LEFT, ID_TB_TOP -> true

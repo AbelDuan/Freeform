@@ -109,6 +109,11 @@ object SplitDirection {
                 //   模块任何介入（连"方向询问"这种看似只读的改写）都可能让
                 //   布局计算与官方不一致 —— 实机表现就是桌面任务停在 STOPPED、
                 //   第一次点击只唤醒不传递。
+                // ★ 用户正在通过把手菜单点方向按钮时，**让位于用户点击的意图**：
+                //   外屏的 [OuterSplitDirection] 会在这段时间里按 `expectLeftRight`
+                //   给出正确答案；这里若再按 `effectiveLeftRightSplit()` 全局改写，
+                //   两者会互相覆盖（真机表现：点了「上下」仍进左右分屏）。
+                if (OuterSplitDirection.expectingInThisThread()) return@Hooker chain.proceed()
                 val want = if ((Cfg.splitUnlockDir || Cfg.captionSplitBoth)
                     && !SoScSupport.inMinimizedMode(cl)) {
                     runCatching { SoScSupport.effectiveLeftRightSplit(cl) }.getOrNull()

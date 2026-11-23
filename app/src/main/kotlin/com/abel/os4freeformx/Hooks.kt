@@ -498,7 +498,8 @@ object Hooks {
             if (leftRight) (dm?.heightPixels ?: 0) else (dm?.widthPixels ?: 0)
         }.getOrDefault(0).let { if (it > 0) it else minOf(display, 1 shl 20) }
         val small = if (shortSide > 0) (shortSide * 9f / 16f).toInt() else Constants.SPLIT_SMALL_SIDE_PX
-        val hasSlots = span > small + divider
+        // 16:9 / 1:9 都需要「小边 + 分隔条」放得下
+        val hasSlots = span > small + divider * 2
 
         // ③ 甩动：2026-10-31 用户决定取消。原实现见 git 历史（v0.7.63–v0.7.73）。
         //    留着 isFling 形参只为将来恢复时不必改 hook 签名。
@@ -521,7 +522,16 @@ object Hooks {
         // ⑤c 16:9 / 1:9 优先于官方台阶（见 ④ 的说明）。
         //     先算好两个小边位置，命中就直接返回，不给官方 1/3 台阶机会。
         if (hasSlots) {
-            val tinyP = (span * 0.1f).toInt()
+            // 1:9 的三个量必须与系统 `DividerSnapAlgorithm#case 5` 逐字对齐：
+            //   ```java
+            //   int i16 = ((int)(i3 * 0.1f)) - (i6 / 2);        // i3=轴长, i6=分隔条宽
+            //   mTargets.add(new SnapTarget(i16, 4));           // 1:9
+            //   mTargets.add(new SnapTarget((i3 - i16) - i6, 3));// 9:1
+            //   ```
+            // 本机坐标多一个 `start`（分屏根的起点，通常是 0），所以要补回去；
+            // 且 10% 里**含**分隔条 —— 少减半个 divider，小窗实际会比 1/10 宽半个条。
+            val tenth = (span * 0.1f).toInt()
+            val tinyP = start + (tenth - divider / 2)
             // 1:9（最窄，在 16:9 更外侧）
             //
             // 🔴 2026-11-22：**必须复用系统的 id 4 / 3，不能自造 103/104**。
@@ -537,26 +547,45 @@ object Hooks {
                 Logx.always("分屏吸附: $pos -> 1:9 前档 position=$tinyP id=4(系统1:9)")
                 return target(tinyP, 4)
             }
-            if (kotlin.math.abs(pos - (span - tinyP - divider)) <= magnet) {
-                Logx.always("分屏吸附: $pos -> 1:9 后档 position=${span - tinyP - divider} id=3(系统9:1)")
-                return target(span - tinyP - divider, 3)
+            val tinyPe = start + span - (tenth + divider / 2)
+            if (kotlin.math.abs(pos - tinyPe) <= magnet) {
+                Logx.always("分屏吸附: $pos -> 1:9 后档 position=$tinyPe id=3(系统9:1)")
+                return target(tinyPe, 3)
             }
-            // 🔴 2026-11-22：**取消自造的 16:9 档（101/102）**。
+            // ⑥ 16:9 档（用户 2026-11-22 明确要求保留，且必须**避让分隔条**）
             //
-            //   用户要求「1:9 的点击切换完全使用系统内屏之前的逻辑」。
-            //   而 `SplitLayout#setDivideRatio` 会把我们 `snap()` 返回的
-            //   `snapPosition` **直接写进 `mSplitState`**：
-            //   ```java
-            //   splitLayout.mSplitState.set(findSnapTarget.snapPosition);
-            //   ```
-            //   系统只认 0/1/2/3/4 这五个值，101 落进 `populateTouchZones`
-            //   的 `else` 分支 → 打出 `branch=none, zones=[]`
-            //   → **点击区根本没注册** → 点击穿透到应用 → 表现成「窄侧变大」。
+            //   物理含义：小窗的**短边** = 另一条边的 9/16 时，
+            //   竖起来播放横屏视频正好「左右满铺、上下无黑边」。
+            //   内屏 1672 × 9/16 = 940（历史定稿值）；
+            //   外屏 1168 × 9/16 = 657 —— 必须按**当前屏**现算，不能套 940。
             //
-            //   所以档位只用系统原生的一组：
-            //     1:9 (id=4) / 5:5 (id=1) / 9:1 (id=3)
-            //   全部是系统认识的，点击切换、状态机、动画都是原生行为。
+            //   ⚠️ 关于 id：历史上这里用过自造的 101/102，会污染 `mSplitState`
+            //   （`setDivideRatio` 把 snapPosition 直接写进去，系统只认 0/1/2/3/4/10），
+            //   导致点击区不注册。**16:9 不是「比例档」，而是「自由位置」**，
+            //   所以用系统给自由比例的那个 id —— **10**（`snap()` 里 `new SnapTarget(i, 10)`），
+            //   状态机认得、点击区正常注册，同时位置精确落在 16:9。
+            //
+            //   两个方向各一个位置：
+            //     · 短边贴「起点侧」（左侧 / 上侧）；
+            //     · 短边贴「终点侧」（右侧 / 下侧）。
+            //   `SnapTarget.position` 的语义 = **分割线中心**距轴起点的像素，
+            //   所以「小窗尺寸 = small」对应的分割线位置是 `small + divider/2`，
+            //   而不是 `small` —— 少算半个分隔条，窗口实际就短了 1 个 divider 宽。
+            val halfDivider = divider / 2
+            if (hasSlots) {
+                val p16a = start + small + halfDivider
+                val p16b = start + span - small - halfDivider
+                if (kotlin.math.abs(pos - p16a) <= magnet) {
+                    Logx.always("分屏吸附: $pos -> 16:9 前侧 position=$p16a（小边=$small, 分隔条=$divider）id=10")
+                    return target(p16a, 10)
+                }
+                if (kotlin.math.abs(pos - p16b) <= magnet) {
+                    Logx.always("分屏吸附: $pos -> 16:9 后侧 position=$p16b（小边=$small, 分隔条=$divider）id=10")
+                    return target(p16b, 10)
+                }
+            }
         }
+
         // ⑤d 官方台阶（两侧 1/3、2/3），在 16:9 / 1:9 之外才生效
         if (firstObj != null && first != null && kotlin.math.abs(pos - first) <= magnet) return firstObj
         if (lastObj != null && last != null && kotlin.math.abs(pos - last) <= magnet) return lastObj

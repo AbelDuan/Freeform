@@ -241,6 +241,12 @@ object SplitRatioKeep {
             return 0
         }
         return if (m.hookExecutable(method, XposedInterface.Hooker { chain ->
+                // ★ 用户点了「分隔条菜单里的方向按钮」⇒ 记下**翻转后**的方向，
+                //   让 [OuterSplitDirection] 在后续 `updateDynamicLeftRightSplit`
+                //   里稳定采用它（否则系统每算一次就把方向重置回 landscape）。
+                //   与 `splitRatioKeep` 开关无关：方向记忆是外屏适配的一部分。
+                runCatching { recordUserDirection(chain.thisObject) }
+                    .onFailure { Logx.e("换向保比例: 记录用户方向失败", it) }
                 if (!Cfg.splitRatioKeep) {
                     chain.proceed()
                 } else {
@@ -393,4 +399,18 @@ object SplitRatioKeep {
     private data class RatioSnapshot(val ratio: Float, val oldLeftRight: Boolean, val from: String)
 
     private data class AppliedRatio(val ratio: Float, val leftRight: Boolean, val position: Int)
+
+    /**
+     * 用户点方向按钮时，把**取反后**的方向记为「用户选定」。
+     *
+     * 必须在 `chain.proceed()` **之前**调用 —— 系统方法体第一步会重新算
+     * `mIsLeftRightSplit`（恒等于 landscape），跑完之后原值就没了。
+     */
+    private fun recordUserDirection(coordinator: Any?) {
+        if (!Cfg.outerSplit) return
+        val cl = coordinator?.javaClass?.classLoader ?: return
+        val layout = SoScSupport.splitLayout(cl) ?: return
+        val cur = SoScSupport.boolField(layout, "mIsLeftRightSplit") ?: return
+        OuterSplitDirection.setUserDirection(!cur)
+    }
 }
