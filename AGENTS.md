@@ -80,6 +80,47 @@ adb shell "su -c 'killall com.android.systemui'"   # ← 只需这一步（见 �
 **结论**：多分屏（三分屏起）**只用系统原生手势进入**，模块不代劳。
 `Constants.DEF_FOUR_FINGER_MULTI` 永久锁死为 `false`。
 
+## 五点五、⚠️ 本机 git 与构建环境速查（2026-11-23 定稿）
+
+### git：必须直连，禁止第三方代理
+
+本机 `~/.gitconfig` 曾被写入全局 URL 改写：
+
+```
+[url "https://axisnow.gh-proxy.org/https://github.com/"]
+    insteadOf = https://github.com/
+```
+
+**后果**：所有 github 请求（含推送时的 PAT）都会交给第三方代理 —— 已清除。
+若再次出现 `git clone/push` 走到 `gh-proxy` 之类域名，先查：
+
+```bash
+git config --global --get-regexp "url\..*\.insteadof"
+git config --global --unset-all url.https://<代理域名>/.insteadof
+```
+
+**实测直连完全可用**，不需要代理。凭证按需从 `~/.dsh/ACCOUNT.md` 取，
+用完立刻 `git remote set-url origin https://github.com/AbelDuan/Freeform.git` 清掉，不落盘。
+
+### 构建：用 `os4ffx-toolchain`，不要用仓库里的 `build.sh`
+
+仓库 `build.sh` 依赖 aapt2 + SDK 里的 d8/zipalign。**本机 aapt2 在 proot 下不可用**
+（缺 `libdl.so`，系统 glibc 2.39 的版本符号被裁），所以实际构建走：
+
+```bash
+/root/os4ffx-toolchain/build.sh <源码根> <输出apk>
+```
+
+它走「模板 APK 换 dex」，绕开 aapt2。五个必知点：
+
+1. kotlinc 的 classpath **只能用** `lib/android-api-only.jar`（剔除 `java/*`，否则静默卡死）
+2. Java ↔ Kotlin 双向依赖：引导 kotlinc → javac → kotlinc → javac 复编
+3. `set -e` 下禁止 `[ x ] && cmd` 作语句
+4. 打包用 Python `zipfile`，且 **`resources.arsc` 必须 Stored**，
+   否则 `Targeting R+ requires the resources.arsc ... uncompressed and aligned`
+5. 签名密钥 `/root/os4ffx-toolchain/keystore.jks`，别名 `os4ffx`，密码 `android`，
+   指纹 `cb74fa5b...` —— **与设备已装版本一致，可直接覆盖升级**
+
 ## 六、构建环境
 
 容器 `/tmp` 会被清空，工具全部落在仓库 `tools/`（不入库）：
