@@ -17,7 +17,10 @@ import kotlin.math.abs
  *   桌面无法注入，所以我们在 SystemUI 侧自己判、自己调
  *   `SoScSplitScreenController#enterSplitScreen(taskId, isSplit)`。
  *
- * 开关：`setprop debug.os4ffx.split_gesture 0` 可临时关闭（默认开）。
+ * 开关：`setprop debug.os4ffx.split_gesture 1` 才启用；**正式版默认关闭**。
+ *   2026-11-23 用户反馈「外屏从底部上滑，偶尔莫名其妙分屏」——本手势的横向偏移阈值
+ *   只有 0.22，手指上滑时稍带一点横向意图就会被判成分屏/小窗。该功能属实验性入口，
+ *   默认关掉；需要时用上面的 prop 显式打开。
  */
 object SplitGesture {
     private const val TAG = "分屏手势"
@@ -114,8 +117,9 @@ object SplitGesture {
             sysPropCls = c
             sysPropGet = g
             g
-        }.getOrNull() ?: return true
-        return runCatching { (m.invoke(null, PROP, 1) as Int) == 1 }.getOrDefault(true)
+        }.getOrNull() ?: return false
+        // 正式版默认关闭：只有显式 setprop debug.os4ffx.split_gesture 1 才启用。
+        return runCatching { (m.invoke(null, PROP, 0) as Int) == 1 }.getOrDefault(false)
     }
 
     /**
