@@ -8,7 +8,8 @@ unsigned.apk
 *.dex
 
 # 本机工具链（不入库；构建脚本会自动探测，见 README「构建」）
-tools/
+tools/*
+!tools/patch-manifest-version.py
 env.sh
 
 # 注意：以下**故意入库**，保证 clone 后即可编译

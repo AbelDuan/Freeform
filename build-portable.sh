@@ -104,7 +104,11 @@ ZIPALIGN=${ZIPALIGN:-$(command -v zipalign || true)}
 #   B. 没有    → 用 lib/template.apk 的资源与清单，只替换 classes*.dex
 #      （proot 容器里 aapt2 常因缺 libdl.so 跑不起来，这条路径专门兜住它）
 TEMPLATE=$HERE/app/libs/template.apk
-if [ -x "${AAPT2:-}" ] && run_tool "$AAPT2" version >/dev/null 2>&1; then
+if [ -n "${FORCE_TEMPLATE:-}" ]; then
+    [ -f "$TEMPLATE" ] || die "FORCE_TEMPLATE=1 但缺少 $TEMPLATE"
+    BUILD_MODE=template
+    echo "提示：FORCE_TEMPLATE=1，强制用模板 APK（$TEMPLATE）换 dex"
+elif [ -x "${AAPT2:-}" ] && run_tool "$AAPT2" version >/dev/null 2>&1; then
     BUILD_MODE=aapt2
 elif [ -f "$TEMPLATE" ]; then
     BUILD_MODE=template
@@ -119,10 +123,9 @@ fi
 # ---------- 5. 版本号 ----------
 VER=$(sed -n 's/^version=//p' "$SRC/resources/META-INF/xposed/module.prop")
 VCODE=$(sed -n 's/^versionCode=//p' "$SRC/resources/META-INF/xposed/module.prop")
-# 递增 versionCode：pm install -r 只有版本号变化才会分配新 codePath，
-# 而 lspd 按路径缓存 dex —— 路径不变会一直加载旧字节码。
-VCODE=$((VCODE + 1))
-sed -i "s/^versionCode=.*/versionCode=$VCODE/" "$SRC/resources/META-INF/xposed/module.prop"
+# 版本号只认 module.prop（单一来源），构建不改源码：发布新版本前手动改 versionCode。
+# 部署时若需要强制刷新 lspd 的 dex 缓存（pm install -r 同版本不会换 codePath），
+# 由部署脚本自己递增 versionCode，构建脚本不碰源码。
 
 rm -rf "$OUT"; mkdir -p "$OUT/res" "$OUT/gen" "$OUT/kt" "$OUT/java" "$OUT/dex" "$OUT/stdlib" "$HERE/dist"
 
@@ -140,6 +143,10 @@ if [ "$BUILD_MODE" = aapt2 ]; then
 else
     echo "== 1-2/7 模板 APK（跳过 aapt2）=="
     cp -f "$TEMPLATE" "$OUT/base.apk"
+    # 模板里的清单是构建模板时的旧版本（versionCode/versionName），必须补丁成当前版本，
+    # 否则安装后系统看到的 versionCode 不会递增，LSPosed 也不会更新 APK 路径。
+    echo "   补丁清单版本：versionCode=$VCODE versionName=$VER"
+    python3 "$HERE/tools/patch-manifest-version.py" "$OUT/base.apk" "$VCODE" "$VER"
 fi
 
 echo "== 3a/7 引导编译（打破 Java ↔ Kotlin 双向依赖）=="
@@ -216,8 +223,8 @@ with zipfile.ZipFile(src) as zin, zipfile.ZipFile(dst, "w") as zout:
         n = item.filename
         if n.startswith("classes") and n.endswith(".dex"):
             continue            # 旧 dex 丢掉
-        if n.startswith("META-INF/") and n.endswith((".SF", ".RSA", ".DSA", ".MF")):
-            continue            # 旧签名丢掉
+        if n.startswith("META-INF/"):
+            continue            # 旧签名 + 旧模块元数据全部丢掉，随后用仓库源码重新写入
         data = zin.read(n)
         if os.path.splitext(n)[1].lower() in STORED:
             zi = zipfile.ZipInfo(n, date_time=(1980, 1, 1, 0, 0, 0))
@@ -238,7 +245,7 @@ with zipfile.ZipFile(src) as zin, zipfile.ZipFile(dst, "w") as zout:
             p = os.path.join(dp, f)
             arc = os.path.relpath(p, resdir)
             if arc in existing:
-                continue        # 模板里已有同名条目，避免重复
+                continue        # 模板里已有同名资源，避免重复；META-INF 已在上面丢弃后重建
             zout.write(p, arc)
 PY
 

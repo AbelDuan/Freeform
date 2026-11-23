@@ -17,10 +17,10 @@ LIBXP=$HERE/app/libs/libxposed-api-102.jar
 KS=${KS:-$HERE/keystore/os4freeformx.jks}   # 必须放在 build/ 之外：build 每轮会被清空，否则签名每轮都变
 VER=$(sed -n 's/^version=//p' "$SRC/resources/META-INF/xposed/module.prop")
 VCODE=$(sed -n 's/^versionCode=//p' "$SRC/resources/META-INF/xposed/module.prop")
-# 每次构建递增 versionCode：pm install -r 只有版本号变化才会分配新的 codePath，
-# 而 lspd 按路径缓存 dex —— 路径不变就一直加载旧字节码（本机实测踩坑）。
-VCODE=$((VCODE + 1))
-sed -i "s/^versionCode=.*/versionCode=$VCODE/" "$SRC/resources/META-INF/xposed/module.prop"
+# 版本号只认 module.prop（单一来源），构建不改源码：发布新版本前手动改 versionCode。
+# 部署时若需要强制刷新 lspd 的 dex 缓存（pm install -r 同版本不会换 codePath），
+# 由部署脚本自己递增 versionCode，构建脚本不碰源码。
+
 
 # 容器没有 zip（/usr/local/bin 会被 app 更新/重建清掉）→ 自愈：从仓库里的 shim 装一份
 if ! command -v zip >/dev/null 2>&1 && [ -f "$HERE/tools/zip-shim.py" ]; then
