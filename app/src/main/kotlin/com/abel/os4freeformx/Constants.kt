@@ -2,7 +2,7 @@ package com.abel.os4freeformx
 
 /** 模块常量：包名、prefs 名、配置键、目标类名。 */
 object Constants {
-    const val VERSION = "0.9.2"
+    const val VERSION = "0.9.3"
     const val PREFS_CFG = "os4freeformx_cfg"
     const val PREFS_BOUNDS = "os4freeformx_bounds"
     const val AUTHORITY = "com.abel.os4freeformx.store"
@@ -94,12 +94,12 @@ object Constants {
     // ── 旋屏（2026-11-20 自 OS4 Themer 移植过来）──
     /**
      * 方向不一致时提示旋转：锁定方向后，手机被转到与当前画面不一致的方向时，
-     * 弹出旋转按钮，点一下就把屏幕转到你手持的方向。实现见 RotationHint.kt。
+     * 弹出旋转按钮，点一下就把屏幕转到你手持的方向。实现见 RotationHint.java。
      */
     const val K_ROTATION_HINT = "rotation_hint_enable"
     /**
      * 点击旋钮 = 强制旋转：应用在清单里把 screenOrientation 写死时，
-     * 打开 WMS 的 fixed-to-user-rotation 把它强行转过去。实现见 OrientationForcer.kt。
+     * 打开 WMS 的 fixed-to-user-rotation 把它强行转过去。实现见 OrientationForcer.java。
      *
      * 同时决定「自动旋转开着、但应用不跟随」时要不要弹旋钮。
      */
@@ -141,9 +141,19 @@ object Constants {
     const val FOLD_SPLIT_MODE_SWAP = "swap"
     // 轻折加分屏：自 v0.7.9 起**默认开**（= 用户当前配置；折叠屏轻折一下进分屏已成主力习惯，写入默认让新装即生效）。
     const val DEF_FOLD_SPLIT = true
-    const val DEF_FOLD_SPLIT_SIDE = FOLD_SPLIT_LEFT
-    /** 默认沿用原有行为，老用户升级后手感不变。 */
-    const val DEF_FOLD_SPLIT_MODE = FOLD_SPLIT_MODE_APPEND
+    /**
+     * 轻折后**当前应用留在右侧**，新开的一格在左边。
+     *
+     * 2026-11-23 按用户要求改为默认右侧（此前是左侧）。
+     */
+    const val DEF_FOLD_SPLIT_SIDE = FOLD_SPLIT_RIGHT
+    /**
+     * 默认**交换模式**：轻折一次进左右双分屏，之后每次轻折交换左右两格。
+     *
+     * 2026-11-23 按用户要求从「每折加一格」改为交换模式
+     * （用户要的是"轻折一次左右分屏"，不是越折越多的多分屏）。
+     */
+    const val DEF_FOLD_SPLIT_MODE = FOLD_SPLIT_MODE_SWAP
     /**
      * 旧三档灵敏度（v0.7.7 及以前，现已改为 10~90° 滑动条）。仅用于把老配置迁移成数字角度。
      */

@@ -768,7 +768,8 @@ object FoldSplitTrigger {
     private fun doSplit(ctrl: Any) {
         val pos = posFor(Cfg.foldSplitSide)
         val n = stageCount()
-        // 两种模式共存（2026-11 新增）：默认仍是「每折加一格」，可选「进双分屏后每次折都交换」。
+        // 两种模式共存：**默认为「进双分屏后每次折都交换」**（2026-11-23 起，用户要求），
+        // 可选「每折加一格」。
         if (Cfg.foldSplitMode == Constants.FOLD_SPLIT_MODE_SWAP) {
             if (n >= 3) {
                 // 交换模式只接管「单屏 → 双屏」和「双屏互换」；三分屏及以上仍按原逻辑继续加格。
