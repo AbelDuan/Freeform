@@ -9,7 +9,6 @@ import io.github.libxposed.api.XposedModule
  * 热路径只读 volatile 字段，绝不每次查 prefs。
  */
 object Cfg {
-    @Volatile private var sp: SharedPreferences? = null
     @Volatile private var mod: XposedModule? = null
 
     @Volatile var log = Constants.DEF_ENABLE_LOG
@@ -103,19 +102,32 @@ object Cfg {
         mod = m
     }
 
-    /** 模块内（被 hook 的进程） */
+    /**
+     * 模块内（被 hook 的进程）：只记引用，配置延迟到启动完成后读。
+     *
+     * ⚠ 绝不能在 SystemUI 启动路径上同步读配置：`AppCtx.get()` 的
+     * `createPackageContext` 在 PMS 锁竞争时能卡好几秒，SystemUI 发布
+     * ContentProvider 超过 10 秒就被 AMS 杀掉（"timeout publishing content providers"），
+     * 连死 4 次后 LSPosed 判定不稳定、进安全模式（2026-11-24 实测）。
+     */
     fun attachRemote(m: XposedModule) {
+        runCatching { mod = m }.onFailure { Logx.e("attachRemote 失败", it) }
+        reloadSoon(2000)
+    }
+
+    /** 启动完成后再刷新配置：主线程延迟 + 后台线程执行，调用方永不阻塞。 */
+    fun reloadSoon(delayMs: Long = 3000) {
         runCatching {
-            mod = m
-            sp = m.getRemotePreferences(Constants.PREFS_CFG)
-            reload()
-        }.onFailure { Logx.e("attachRemote 失败", it) }
+            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                runCatching { pool.execute { runCatching { reload() } } }
+            }, delayMs)
+        }
     }
 
     /** 模块 App 自身进程 */
     fun attachLocal(ctx: Context) {
+        AppPrefs.migrateIfNeeded(ctx)
         migrateOldDepth(ctx)
-        sp = ctx.getSharedPreferences(Constants.PREFS_CFG, Context.MODE_PRIVATE)
         reload()
     }
 
@@ -137,45 +149,75 @@ object Cfg {
         Logx.once("depthMigrate", "轻折灵敏度旧值=$raw 已迁移为 ${deg.toInt()}°")
     }
 
-    fun reload() {
-        // LSPosed 的 remote preferences 是快照对象，配置改动后必须重新取一次，否则永远是旧值（2026-09-19 实测）
-        mod?.let { sp = runCatching { it.getRemotePreferences(Constants.PREFS_CFG) }.getOrNull() ?: sp }
-        val p = sp ?: return
+    /**
+     * 旧版配置一次性迁移：Settings.System 里还没有标记时，从模块 App 的 Provider 读一遍旧值写进去。
+     * 只发生一次（升级后的第一次进程启动），之后配置只走系统设置，不再叫醒模块 App。
+     */
+    private fun migrateLegacyOnce(cr: android.content.ContentResolver) {
+        if (Store.has(cr, Store.KEY_MIGRATED)) return
+        val ctx = runCatching { AppCtx.get() }.getOrNull() ?: return
+        val b = runCatching {
+            ctx.contentResolver.call(
+                android.net.Uri.parse("content://${Constants.AUTHORITY}"), "getCfg", null, null
+            )
+        }.getOrNull() ?: return
         runCatching {
-            log = p.getBoolean(Constants.K_ENABLE_LOG, Constants.DEF_ENABLE_LOG)
-            immersive = p.getBoolean(Constants.K_IMMERSIVE, Constants.DEF_IMMERSIVE)
-            rememberBounds = p.getBoolean(Constants.K_REMEMBER_BOUNDS, Constants.DEF_REMEMBER_BOUNDS)
-            rememberFold = p.getBoolean(Constants.K_REMEMBER_FOLD, Constants.DEF_REMEMBER_FOLD)
-            ratioMenu = p.getBoolean(Constants.K_RATIO_MENU, Constants.DEF_RATIO_MENU)
-            splitUnlockDir = p.getBoolean(Constants.K_SPLIT_UNLOCK_DIR, Constants.DEF_SPLIT_UNLOCK_DIR)
-            multiSplitFree = p.getBoolean(Constants.K_MULTI_SPLIT_FREE, Constants.DEF_MULTI_SPLIT_FREE)
-            splitRatioKeep = p.getBoolean(Constants.K_SPLIT_RATIO_KEEP, Constants.DEF_SPLIT_RATIO_KEEP)
-            captionSplitBoth = p.getBoolean(Constants.K_CAPTION_SPLIT_BOTH, Constants.DEF_CAPTION_SPLIT_BOTH)
-            outerSplit = p.getBoolean(Constants.K_OUTER_SPLIT, Constants.DEF_OUTER_SPLIT)
-            foldSplit = p.getBoolean(Constants.K_FOLD_SPLIT, Constants.DEF_FOLD_SPLIT)
-            foldSplitSide = p.getString(Constants.K_FOLD_SPLIT_SIDE, Constants.DEF_FOLD_SPLIT_SIDE)
+            b.keySet().forEach { k ->
+                when (val v = b.get(k)) {
+                    is Boolean -> Store.putBool(cr, k, v)
+                    is String -> Store.putString(cr, k, v)
+                    is Float -> Store.putFloat(cr, k, v)
+                    is Int -> android.provider.Settings.System.putInt(cr, Store.name(k), v)
+                }
+            }
+            Store.putBool(cr, Store.KEY_MIGRATED, true)
+            Logx.always("旧配置已迁移到 Settings.System（${b.size()} 项）")
+        }.onFailure { Logx.e("配置迁移失败", it) }
+    }
+
+    fun reload() {
+        // ★ 2026-11-24：配置改存 Settings.System —— hook 侧直接读系统设置，
+        //   不再经模块 App 的 Provider（会被拉起），也不用 LSPosed remote prefs（进程内快照，读不到新值）。
+        val appCtx = runCatching { AppCtx.get() }.getOrNull()
+        val cr = appCtx?.contentResolver
+        if (cr == null) return
+        runCatching { migrateLegacyOnce(cr) }
+        runCatching {
+            log = Store.getBool(cr, Constants.K_ENABLE_LOG, Constants.DEF_ENABLE_LOG)
+            immersive = Store.getBool(cr, Constants.K_IMMERSIVE, Constants.DEF_IMMERSIVE)
+            rememberBounds = Store.getBool(cr, Constants.K_REMEMBER_BOUNDS, Constants.DEF_REMEMBER_BOUNDS)
+            rememberFold = Store.getBool(cr, Constants.K_REMEMBER_FOLD, Constants.DEF_REMEMBER_FOLD)
+            ratioMenu = Store.getBool(cr, Constants.K_RATIO_MENU, Constants.DEF_RATIO_MENU)
+            splitUnlockDir = Store.getBool(cr, Constants.K_SPLIT_UNLOCK_DIR, Constants.DEF_SPLIT_UNLOCK_DIR)
+            multiSplitFree = Store.getBool(cr, Constants.K_MULTI_SPLIT_FREE, Constants.DEF_MULTI_SPLIT_FREE)
+            splitRatioKeep = Store.getBool(cr, Constants.K_SPLIT_RATIO_KEEP, Constants.DEF_SPLIT_RATIO_KEEP)
+            captionSplitBoth = Store.getBool(cr, Constants.K_CAPTION_SPLIT_BOTH, Constants.DEF_CAPTION_SPLIT_BOTH)
+            outerSplit = Store.getBool(cr, Constants.K_OUTER_SPLIT, Constants.DEF_OUTER_SPLIT)
+            foldSplit = Store.getBool(cr, Constants.K_FOLD_SPLIT, Constants.DEF_FOLD_SPLIT)
+            foldSplitSide = Store.getString(cr, Constants.K_FOLD_SPLIT_SIDE, Constants.DEF_FOLD_SPLIT_SIDE)
                 ?: Constants.DEF_FOLD_SPLIT_SIDE
             // ⚠ 旧版把灵敏度存成字符串枚举（"normal" 等），本版改成 Float 角度。
             // 老值若还在，getFloat 会抛 ClassCastException —— 用 runCatching 兜住，回退默认，绝不连累其它配置。
             foldSplitDepth = runCatching {
-                p.getFloat(Constants.K_FOLD_SPLIT_DEPTH, Constants.DEF_FOLD_SPLIT_DEPTH.toFloat())
+                Store.getFloat(cr, Constants.K_FOLD_SPLIT_DEPTH, Constants.DEF_FOLD_SPLIT_DEPTH.toFloat())
             }.getOrNull() ?: Constants.DEF_FOLD_SPLIT_DEPTH.toFloat()
-            foldSplitMode = p.getString(Constants.K_FOLD_SPLIT_MODE, Constants.DEF_FOLD_SPLIT_MODE)
+            foldSplitMode = Store.getString(cr, Constants.K_FOLD_SPLIT_MODE, Constants.DEF_FOLD_SPLIT_MODE)
                 ?: Constants.DEF_FOLD_SPLIT_MODE
-            gestureHandle = p.getBoolean(Constants.K_GESTURE_HANDLE, Constants.DEF_GESTURE_HANDLE)
-            gestureHandleFollow = p.getBoolean(Constants.K_GESTURE_HANDLE_FOLLOW, Constants.DEF_GESTURE_HANDLE_FOLLOW)
-            gestureHandleTouch = p.getBoolean(Constants.K_GESTURE_HANDLE_TOUCH, Constants.DEF_GESTURE_HANDLE_TOUCH)
-            gestureHandleIdle = p.getBoolean(Constants.K_GESTURE_HANDLE_IDLE, Constants.DEF_GESTURE_HANDLE_IDLE)
-            gestureHandleArea = p.getFloat(Constants.K_GESTURE_HANDLE_AREA, Constants.DEF_GESTURE_HANDLE_AREA)
-            forceFreeform = p.getBoolean(Constants.K_FORCE_FREEFORM, Constants.DEF_FORCE_FREEFORM)
-            multiFreeform = p.getBoolean(Constants.K_MULTI_FREEFORM, Constants.DEF_MULTI_FREEFORM)
-            edgeFreeformFront = p.getBoolean(Constants.K_EDGE_FREEFORM_FRONT, Constants.DEF_EDGE_FREEFORM_FRONT)
-            notificationSlide = p.getBoolean(Constants.K_NOTIFICATION_SLIDE, Constants.DEF_NOTIFICATION_SLIDE)
-            readRotationPrefs(p)
-            parseAssign(p.getString(Constants.K_NBI_ASSIGN, Constants.DEF_NBI_ASSIGN) ?: Constants.DEF_NBI_ASSIGN)
-            magicWindow = p.getBoolean(Constants.K_MAGIC_WINDOW, Constants.DEF_MAGIC_WINDOW)
-            parseMagic(p.getString(Constants.K_MAGIC_RATIO_MAP, Constants.DEF_MAGIC_RATIO_MAP) ?: Constants.DEF_MAGIC_RATIO_MAP)
+            gestureHandle = Store.getBool(cr, Constants.K_GESTURE_HANDLE, Constants.DEF_GESTURE_HANDLE)
+            gestureHandleFollow = Store.getBool(cr, Constants.K_GESTURE_HANDLE_FOLLOW, Constants.DEF_GESTURE_HANDLE_FOLLOW)
+            gestureHandleTouch = Store.getBool(cr, Constants.K_GESTURE_HANDLE_TOUCH, Constants.DEF_GESTURE_HANDLE_TOUCH)
+            gestureHandleIdle = Store.getBool(cr, Constants.K_GESTURE_HANDLE_IDLE, Constants.DEF_GESTURE_HANDLE_IDLE)
+            gestureHandleArea = Store.getFloat(cr, Constants.K_GESTURE_HANDLE_AREA, Constants.DEF_GESTURE_HANDLE_AREA)
+            forceFreeform = Store.getBool(cr, Constants.K_FORCE_FREEFORM, Constants.DEF_FORCE_FREEFORM)
+            multiFreeform = Store.getBool(cr, Constants.K_MULTI_FREEFORM, Constants.DEF_MULTI_FREEFORM)
+            edgeFreeformFront = Store.getBool(cr, Constants.K_EDGE_FREEFORM_FRONT, Constants.DEF_EDGE_FREEFORM_FRONT)
+            notificationSlide = Store.getBool(cr, Constants.K_NOTIFICATION_SLIDE, Constants.DEF_NOTIFICATION_SLIDE)
+            readRotationPrefs(cr)
+            parseAssign(Store.getString(cr, Constants.K_NBI_ASSIGN, Constants.DEF_NBI_ASSIGN) ?: Constants.DEF_NBI_ASSIGN)
+            magicWindow = Store.getBool(cr, Constants.K_MAGIC_WINDOW, Constants.DEF_MAGIC_WINDOW)
+            parseMagic(Store.getString(cr, Constants.K_MAGIC_RATIO_MAP, Constants.DEF_MAGIC_RATIO_MAP) ?: Constants.DEF_MAGIC_RATIO_MAP)
             Logx.verbose = log
+            loaded = true
         }.onFailure { Logx.e("reload 失败", it) }
     }
 
@@ -198,6 +240,11 @@ object Cfg {
 
     private var lastReload = 0L
 
+    /** 配置是否已经成功读取过（SystemUI 启动早期可能还拿不到 Context）。 */
+    @Volatile
+    var loaded = false
+        private set
+
     /**
      * **输入热路径专用**：异步取一次配置，绝不阻塞调用线程。
      *
@@ -216,23 +263,23 @@ object Cfg {
     }
 
     /**
-     * 热路径用的配置刷新：节流后**异步**经模块 App 的 [StoreProvider] 取真实值。
+     * 热路径用的配置刷新：节流后**异步**经 LSPosed remote prefs 读真实值。
      *
-     * 为什么不用 LSPosed 的 remote preferences：它在被 hook 的进程里是快照，App 改配置后
-     * 该进程永远读到旧值（2026-09-19 实测：DE 已写入 immersive=false，systemui 仍读到 true）。
-     * 也不能同步调用 provider——小窗打开路径上阻塞几百毫秒会拖慢启动，所以放线程池。
+     * 2026-11-24：配置改存 Settings.System，读取不再经模块 App 的 Provider
+     * （旧实现每次刷新都会把被杀掉的模块 App 拉起一次）。
+     * 仍放线程池 —— 小窗打开路径上不能同步读，会拖慢启动。
      */
     fun refreshAsync(intervalMs: Long = 1500) {
         val now = android.os.SystemClock.uptimeMillis()
         if (now - lastReload < intervalMs) return
         lastReload = now
-        // 懒挂载：第一次真正用到配置时（小窗打开，远晚于开机）才去读 LSPosed remote prefs
-        if (sp == null) mod?.let { m -> runCatching { attachRemote(m) } }
-        runCatching { pool.execute { readFromProvider() } }
+        // 懒挂载：第一次真正用到配置时（小窗打开，远晚于开机）才去读 Settings.System
+        if (mod == null) return
+        runCatching { pool.execute { runCatching { reload() } } }
     }
 
     /**
-     * **同步**刷一次配置（走同一条 provider 链路，只是不丢线程池）。
+     * **同步**刷一次配置（读 Settings.System，只是不丢线程池）。
      *
      * 给「轻折加分屏」这类**低频但需要当次就拿到真值**的场景用：它跑在传感器线程、
      * 一次轻折才调一次，几十毫秒的 IPC 完全付得起；而 [refreshAsync] 的结果要等下一次
@@ -240,103 +287,25 @@ object Cfg {
      * ⛔ 别放在热路径（小窗打开 / 每帧回调）上。
      */
     fun refreshSync() {
-        runCatching { readFromProvider() }
+        runCatching { reload() }
     }
 
     private val pool = java.util.concurrent.Executors.newSingleThreadExecutor { r ->
         Thread(r, "os4ffx-cfg").apply { isDaemon = true }
     }
 
-    private fun readFromProvider() {
-        // Context 在 SystemUI 启动早期可能还不完整（真机见过 getDefaultClassLoader NPE），
-        // 这里整体包起来，失败只记一次日志，绝不向外抛。
-        val ctx = runCatching { AppCtx.get() }.getOrNull()
-        if (ctx == null) {
-            Logx.once("cfgNoCtx", "读配置失败: 取不到 Context")
-            return
-        }
-        val call = runCatching {
-            ctx.contentResolver.call(
-                android.net.Uri.parse("content://${Constants.AUTHORITY}"), "getCfg", null, null
-            )
-        }
-        if (call.isFailure) {
-            Logx.once("cfgFail", "读配置失败: ${call.exceptionOrNull()}")
-            return
-        }
-        val b = call.getOrNull()
-        if (b == null) {
-            Logx.once("cfgNull", "读配置失败: provider 返回 null（authority=${Constants.AUTHORITY}）")
-            return
-        }
-        val before = "$log|$immersive|$rememberBounds|$ratioMenu|$splitExtras|$assignRaw|$foldSplit|$foldSplitSide|$foldSplitDepth|$foldSplitMode"
-        runCatching {
-            log = b.getBoolean(Constants.K_ENABLE_LOG, Constants.DEF_ENABLE_LOG)
-            immersive = b.getBoolean(Constants.K_IMMERSIVE, Constants.DEF_IMMERSIVE)
-            rememberBounds = b.getBoolean(Constants.K_REMEMBER_BOUNDS, Constants.DEF_REMEMBER_BOUNDS)
-            rememberFold = b.getBoolean(Constants.K_REMEMBER_FOLD, Constants.DEF_REMEMBER_FOLD)
-            ratioMenu = b.getBoolean(Constants.K_RATIO_MENU, Constants.DEF_RATIO_MENU)
-            splitUnlockDir = b.getBoolean(Constants.K_SPLIT_UNLOCK_DIR, Constants.DEF_SPLIT_UNLOCK_DIR)
-            multiSplitFree = b.getBoolean(Constants.K_MULTI_SPLIT_FREE, Constants.DEF_MULTI_SPLIT_FREE)
-            splitRatioKeep = b.getBoolean(Constants.K_SPLIT_RATIO_KEEP, Constants.DEF_SPLIT_RATIO_KEEP)
-            captionSplitBoth = b.getBoolean(Constants.K_CAPTION_SPLIT_BOTH, Constants.DEF_CAPTION_SPLIT_BOTH)
-            outerSplit = b.getBoolean(Constants.K_OUTER_SPLIT, Constants.DEF_OUTER_SPLIT)
-            foldSplit = b.getBoolean(Constants.K_FOLD_SPLIT, Constants.DEF_FOLD_SPLIT)
-            foldSplitSide = b.getString(Constants.K_FOLD_SPLIT_SIDE, Constants.DEF_FOLD_SPLIT_SIDE)
-                ?: Constants.DEF_FOLD_SPLIT_SIDE
-            foldSplitDepth = runCatching {
-                b.getFloat(Constants.K_FOLD_SPLIT_DEPTH, Constants.DEF_FOLD_SPLIT_DEPTH.toFloat())
-            }.getOrNull() ?: Constants.DEF_FOLD_SPLIT_DEPTH.toFloat()
-            foldSplitMode = b.getString(Constants.K_FOLD_SPLIT_MODE, Constants.DEF_FOLD_SPLIT_MODE)
-                ?: Constants.DEF_FOLD_SPLIT_MODE
-            gestureHandle = b.getBoolean(Constants.K_GESTURE_HANDLE, Constants.DEF_GESTURE_HANDLE)
-            gestureHandleFollow = b.getBoolean(Constants.K_GESTURE_HANDLE_FOLLOW, Constants.DEF_GESTURE_HANDLE_FOLLOW)
-            gestureHandleTouch = b.getBoolean(Constants.K_GESTURE_HANDLE_TOUCH, Constants.DEF_GESTURE_HANDLE_TOUCH)
-            gestureHandleIdle = b.getBoolean(Constants.K_GESTURE_HANDLE_IDLE, Constants.DEF_GESTURE_HANDLE_IDLE)
-            gestureHandleArea = b.getFloat(Constants.K_GESTURE_HANDLE_AREA, Constants.DEF_GESTURE_HANDLE_AREA)
-            forceFreeform = b.getBoolean(Constants.K_FORCE_FREEFORM, Constants.DEF_FORCE_FREEFORM)
-            multiFreeform = b.getBoolean(Constants.K_MULTI_FREEFORM, Constants.DEF_MULTI_FREEFORM)
-            edgeFreeformFront = b.getBoolean(Constants.K_EDGE_FREEFORM_FRONT, Constants.DEF_EDGE_FREEFORM_FRONT)
-            rotationHint = b.getBoolean(Constants.K_ROTATION_HINT, Constants.DEF_ROTATION_HINT)
-            forceRotate = b.getBoolean(Constants.K_FORCE_ROTATE, Constants.DEF_FORCE_ROTATE)
-            innerFollowRotation = b.getBoolean(Constants.K_INNER_FOLLOW_ROTATION, Constants.DEF_INNER_FOLLOW_ROTATION)
-            parseAssign(b.getString(Constants.K_NBI_ASSIGN, Constants.DEF_NBI_ASSIGN) ?: Constants.DEF_NBI_ASSIGN)
-            Logx.verbose = log
-        }.onFailure { Logx.e("读配置失败", it) }
-        val after = "$log|$immersive|$rememberBounds|$ratioMenu|$splitExtras|$assignRaw|$foldSplit|$foldSplitSide|$foldSplitDepth|$foldSplitMode"
-        // 把悬浮门禁（开关/模式/名单）一并打出来：实测排查中，"名单为空 ⇒ 门禁恒 false ⇒ hook 空转"
-        // 曾让人误判成"名单和开关都无效"。这条日志让配置是否送达被 hook 进程一眼可见。
-        if (before != after) {
-            Logx.always(
-                "配置更新: log=$log immersive=$immersive rememberBounds=$rememberBounds " +
-                        "比例菜单=$ratioMenu 分屏[$splitExtras] 导航栏归属=[$assignRaw]"
-            )
-        }
-    }
 
     /**
-     * 读旋屏三项。`reload()`（LSPosed remote prefs 快照）与 [readFromProvider]（模块 App 的
-     * ContentProvider）两条通道共用，避免两处各写一遍而漏改其中一处。
+     * 读旋屏三项（数据来自 Settings.System）。
      *
      * 关掉「旋转提示」或「强制旋转」时要立刻把 WMS 里那个全局开关还回去，
      * 否则强制状态会残留到下次熄屏 —— 别的应用会莫名其妙跟着转。
      */
-    private fun readRotationPrefs(p: android.content.SharedPreferences) {
-        rotationHint = p.getBoolean(Constants.K_ROTATION_HINT, Constants.DEF_ROTATION_HINT)
-        forceRotate = p.getBoolean(Constants.K_FORCE_ROTATE, Constants.DEF_FORCE_ROTATE)
-        innerFollowRotation = p.getBoolean(
-            Constants.K_INNER_FOLLOW_ROTATION, Constants.DEF_INNER_FOLLOW_ROTATION
-        )
-        if (!forceRotate || !rotationHint) {
-            OrientationForcer.release(if (forceRotate) "旋转提示已关闭" else "强制旋转开关已关闭")
-        }
-    }
-
-    private fun readRotationPrefs(b: android.os.Bundle) {
-        rotationHint = b.getBoolean(Constants.K_ROTATION_HINT, Constants.DEF_ROTATION_HINT)
-        forceRotate = b.getBoolean(Constants.K_FORCE_ROTATE, Constants.DEF_FORCE_ROTATE)
-        innerFollowRotation = b.getBoolean(
-            Constants.K_INNER_FOLLOW_ROTATION, Constants.DEF_INNER_FOLLOW_ROTATION
+    private fun readRotationPrefs(cr: android.content.ContentResolver) {
+        rotationHint = Store.getBool(cr, Constants.K_ROTATION_HINT, Constants.DEF_ROTATION_HINT)
+        forceRotate = Store.getBool(cr, Constants.K_FORCE_ROTATE, Constants.DEF_FORCE_ROTATE)
+        innerFollowRotation = Store.getBool(
+            cr, Constants.K_INNER_FOLLOW_ROTATION, Constants.DEF_INNER_FOLLOW_ROTATION
         )
         if (!forceRotate || !rotationHint) {
             OrientationForcer.release(if (forceRotate) "旋转提示已关闭" else "强制旋转开关已关闭")

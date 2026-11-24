@@ -44,6 +44,9 @@ object AppCtx {
         }
     }
 
+    /** 诊断用：当前进程名。 */
+    fun processNameForLog(): String? = procName()
+
     private fun procName(): String? = runCatching {
         Class.forName("android.app.ActivityThread").getMethod("currentProcessName").invoke(null) as? String
     }.getOrNull()

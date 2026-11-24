@@ -32,6 +32,30 @@ class SettingsActivity : Activity() {
         Cfg.attachLocal(this)
         buildUi()
         restoreNavAssignIfEmpty()
+        ensureWriteSettings()
+    }
+
+    /**
+     * 0.9.6 起配置存进 Settings.System（hook 侧读系统设置，不再经 Provider 叫醒本 App）。
+     * 写系统设置需要用户在系统里单独授权 —— 首次打开设置页时引导一次。
+     */
+    private fun ensureWriteSettings() {
+        if (AppPrefs.canWrite(this)) return
+        runCatching {
+            android.app.AlertDialog.Builder(this)
+                .setTitle("需要「修改系统设置」权限")
+                .setMessage("0.9.6 起模块配置保存在系统设置里，这样设置界面关闭后被系统回收，也不会因为读配置把模块 App 反复拉起。\n\n请在接下来打开的页面里允许 OS4FreeFromX 修改系统设置。")
+                .setPositiveButton("去授权") { _, _ ->
+                    runCatching {
+                        startActivity(
+                            android.content.Intent(android.provider.Settings.ACTION_MANAGE_WRITE_SETTINGS)
+                                .setData(android.net.Uri.parse("package:$packageName"))
+                        )
+                    }
+                }
+                .setNegativeButton("稍后", null)
+                .show()
+        }
     }
 
     /**

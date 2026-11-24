@@ -35,7 +35,9 @@ class MainHook : XposedModule() {
         val pkg = param.packageName
         try {
             Logx.v("onPackageLoaded: $pkg")
-            Cfg.reload()
+            // 配置读取放到启动完成后的后台线程；onPackageLoaded 是 SystemUI 启动关键路径，
+            // 任何阻塞（createPackageContext / Settings 读取）都会拖到 provider 发布超时被 AMS 杀掉。
+            Cfg.reloadSoon()
             when (pkg) {
                 Constants.PKG_SYSTEM -> Hooks.installSystemServer(this, param.defaultClassLoader)
                 Constants.PKG_SYSTEMUI -> {

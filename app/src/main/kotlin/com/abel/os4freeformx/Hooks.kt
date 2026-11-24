@@ -125,8 +125,9 @@ object Hooks {
 
     /** SystemUI：小窗装饰 → 2.4 沉浸底栏；三点菜单 → 比例调整；手势结束 → 2.2/2.3 记忆 */
     fun installSystemUi(m: MainHook, cl: ClassLoader) {
-        Cfg.reload()
-        Logx.always("installSystemUi: immersive=${Cfg.immersive} remember=${Cfg.rememberBounds}")
+        // 启动关键路径：配置异步加载，绝不在这里同步读（会拖到 provider 发布超时被杀）
+        Cfg.reloadSoon()
+        Logx.always("installSystemUi: 配置将在启动完成后异步加载")
         installLaunchBounds(m, cl)
         runCatching { installRotationGeometryHook(m, cl) }.onFailure { Logx.e("旋转几何钩子失败", it) }
         installImmersive(m, cl)

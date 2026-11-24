@@ -100,7 +100,7 @@ object GestureHandle {
     fun install(m: MainHook, cl: ClassLoader) {
         if (!installed.compareAndSet(false, true)) return
         loader = cl
-        Cfg.reload()
+        Cfg.reloadSoon()
         try {
             val handle = Class.forName(HANDLE, false, cl)
             hook(m, handle.getDeclaredMethod("onDraw", Canvas::class.java)) { chain -> draw(chain) }
@@ -256,7 +256,7 @@ object GestureHandle {
         }
         MOTION.rebaseForNewHost(SystemClock.uptimeMillis())
         initialize(view.context)
-        Cfg.reload()
+        Cfg.reloadSoon()
         refresh()
     }
 

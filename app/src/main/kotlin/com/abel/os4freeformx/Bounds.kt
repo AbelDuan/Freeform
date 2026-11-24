@@ -107,54 +107,60 @@ object Bounds {
         return "?"
     }
 
-    @Synchronized
-    fun load(ctx: Context) {
-        if (loaded) return
+    /** bounds 键在 Settings.System 里的前缀（与配置的 ffx_ 区分开）。 */
+    private fun bkey(k: String): String = "b_$k"
+
+    /** 索引键已迁移标记。 */
+    private const val KEY_INDEX = Store.KEY_BOUNDS_INDEX
+    private const val KEY_MIGRATED = "bounds_migrated"
+
+    /** 旧版 bounds（模块 App 的 Provider）一次性导入 Settings.System。 */
+    private fun migrateLegacyBoundsOnce(cr: android.content.ContentResolver, ctx: android.content.Context?) {
+        if (Store.has(cr, KEY_MIGRATED)) return
+        val c = ctx ?: runCatching { AppCtx.get() }.getOrNull() ?: return
+        val b = runCatching {
+            c.contentResolver.call(
+                android.net.Uri.parse("content://${Constants.AUTHORITY}"), "getAll", null, null
+            )
+        }.getOrNull() ?: return
         runCatching {
-            // ★ 修复：system_server / systemui 跨进程读本模块 StoreProvider 时，框架会校验
-            //   calling package 与 calling uid 是否匹配（ContentProviderHelper.getContentProvider），
-            //   不匹配会抛 SecurityException 并打断开窗转场（半透明背景卡住）。
-            //   clearCallingIdentity 让这次 call 以当前进程身份发出，绕过该校验。
-            val token = android.os.Binder.clearCallingIdentity()
-            val b = try {
-                ctx.contentResolver.call(
-                    android.net.Uri.parse("content://${Constants.AUTHORITY}"), "getAll", null, null
-                )
-            } finally {
-                android.os.Binder.restoreCallingIdentity(token)
+            val keys = b.keySet()
+            keys.forEach { k ->
+                val v = b.getString(k) ?: return@forEach
+                Store.putString(cr, bkey(k), v)
             }
-            b?.keySet()?.forEach { k ->
-                val raw = b.getString(k)
+            Store.putString(cr, KEY_INDEX, keys.joinToString(","))
+            Store.putBool(cr, KEY_MIGRATED, true)
+            Logx.always("旧窗口尺寸已迁移到 Settings.System（${keys.size} 条）")
+        }
+    }
+
+    @Synchronized
+    fun load(ctx: android.content.Context?) {
+        if (loaded) return
+        val cr = runCatching { AppCtx.get()?.contentResolver }.getOrNull() ?: ctx?.contentResolver
+        if (cr == null) {
+            Logx.once("boundsNoCr", "bounds 载入失败: 取不到 ContentResolver")
+            return
+        }
+        // 迁移涉及 Provider/Settings 调用，必须包住：异常冒到 hook 回调会让 SystemUI 崩溃
+        runCatching { migrateLegacyBoundsOnce(cr, ctx) }
+        runCatching {
+            // ★ 2026-11-24：读改走 Settings.System —— 不再 contentResolver.call 模块 App 的 Provider
+            //   （每次刷新都会把被杀掉的模块 App 拉起一次）。
+            val idx = Store.getString(cr, KEY_INDEX, "") ?: ""
+            idx.split(',').forEach { k0 ->
+                val k = k0.trim()
+                if (k.isEmpty()) return@forEach
+                val raw = Store.getString(cr, bkey(k), null) ?: return@forEach
                 // ★ v0.5.5：`@D` = 方向独立槽（"1"=横屏 / "0"=竖屏），与比例槽物理隔离
                 if (k.endsWith("@D")) {
-                    orientCache[k.removeSuffix("@D")] = (raw?.trim() == "1")
+                    orientCache[k.removeSuffix("@D")] = (raw.trim() == "1")
                     return@forEach
                 }
                 parseRect(raw)?.let { cache[k] = it }
-                raw?.substringAfter('@', "")?.toFloatOrNull()?.takeIf { it > 0f }?.let { scaleCache[k] = it }
+                raw.substringAfter('@', "").toFloatOrNull()?.takeIf { it > 0f }?.let { scaleCache[k] = it }
             }
-            // 旧格式键（@P/@L「方向槽」，已废弃）一次性清理：能迁的迁到新键，然后**一律删除**。
-            // 必须按 prefs 的**原始键**遍历：空值旧键解析不出 Rect，走 cache 遍历永远清不掉 ✗
-            // （真机存储里至今残留 `pkg|1672x2364@P=` / `@L=` 一串空值键，会让"读哪条"变得不确定）
-            runCatching {
-                val legacy = b?.keySet()?.filter { it.endsWith("@P") || it.endsWith("@L") } ?: emptyList()
-                var migrated = 0
-                legacy.forEach { old ->
-                    val base = old.substringBeforeLast('@')
-                    val rr = parseRect(b?.getString(old))
-                    val sc = b?.getString(old)?.substringAfter('@', "")?.toFloatOrNull() ?: 0f
-                    if (rr != null && !cache.containsKey(base)) {
-                        cache[base] = rr
-                        if (sc > 0f) scaleCache[base] = sc
-                        write(ctx, base, rr, sc)
-                        migrated++
-                    }
-                    cache.remove(old); scaleCache.remove(old)
-                    write(ctx, old, null)
-                }
-                if (legacy.isNotEmpty()) Logx.always("旧键清理: 迁移 $migrated 条、删除 ${legacy.size} 条 @P/@L")
-            }
-
             // ★ 发布不可变快照（供无锁读）——必须在 synchronized(this) 内完成，保证原子替换
             cacheRef = java.util.HashMap(cache)
             orientRef = java.util.HashMap(orientCache)
@@ -395,14 +401,19 @@ object Bounds {
         val v = if (raw != null) raw else if (r == null) "" else
             "${r.left},${r.top},${r.right},${r.bottom}" + if (scale > 0f) "@$scale" else ""
         runCatching {
-            // ★ 修复：同上，跨进程写也要 clearCallingIdentity，否则 system_server/systemui 写记忆抛 SecurityException
-            val b = Bundle().apply { putString("k", k); putString("v", v) }
-            val token = android.os.Binder.clearCallingIdentity()
-            try {
-                ctx.contentResolver.call(android.net.Uri.parse("content://${Constants.AUTHORITY}"), "put", null, b)
-            } finally {
-                android.os.Binder.restoreCallingIdentity(token)
+            // ★ 2026-11-24：写入也改走 Settings.System（SystemUI / system_server 有 WRITE_SETTINGS），
+            //   不再 call 模块 App 的 Provider —— 写一次就会把 App 拉起一次。
+            val cr = ctx.contentResolver
+            if (v.isEmpty()) {
+                Store.remove(cr, bkey(k))
+            } else {
+                Store.putString(cr, bkey(k), v)
             }
+            // 维护索引（load 时按索引逐个读）
+            val idx = Store.getString(cr, KEY_INDEX, "") ?: ""
+            val set = idx.split(',').map { it.trim() }.filter { it.isNotEmpty() }.toMutableSet()
+            if (v.isEmpty()) set.remove(k) else set.add(k)
+            Store.putString(cr, KEY_INDEX, set.joinToString(","))
         }.onFailure { Logx.e("bounds 写入失败($k)", it) }
     }
 
