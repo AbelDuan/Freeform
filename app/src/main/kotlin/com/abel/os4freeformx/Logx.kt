@@ -30,6 +30,9 @@ object Logx {
     }
 
     fun always(msg: String) {
+        // ★ 2026-11-24：日志开关关闭时**零开销**——不写 logcat、不写 Xposed 日志。
+        //   旧实现 always() 绕过开关，通知/手势热路径上的日志仍会持续写盘。
+        if (!verbose) return
         val n = lines.incrementAndGet()
         when {
             n <= MAX_XPOSED_LINES -> runCatching { mod?.log(Log.INFO, Constants.TAG, msg) }
@@ -58,6 +61,7 @@ object Logx {
     }
 
     fun e(msg: String, t: Throwable? = null) {
+        if (!verbose) return
         runCatching { Log.e(Constants.TAG, msg, t) }
         runCatching { mod?.log(Log.ERROR, Constants.TAG, if (t == null) msg else "$msg: $t") }
     }

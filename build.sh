@@ -9,7 +9,7 @@ HERE=$(cd "$(dirname "$0")" && pwd)
 # 会报 "cannot find libaapt2.so.0"。显式指定 --library-path 绕开它。
 # aapt2 必须用**相对路径**：proot 下它解析不了绝对路径（报 failed to open directory）。
 # 所以统一 cd 到仓库根，用 ./xxx 形式传参与输出。
-AAPT2_RUN=(/lib/ld-linux-aarch64.so.1 --library-path "$HERE/tools/android-tools" "$AAPT2")
+AAPT2_RUN=("$AAPT2")
 
 SRC=$HERE/app/src/main
 OUT=${OUT:-$HERE/build}
@@ -29,14 +29,27 @@ fi
 
 rm -rf "$OUT"; mkdir -p "$OUT/res" "$OUT/gen" "$OUT/kt" "$OUT/java" "$OUT/dex" "$OUT/stdlib" "$HERE/dist"
 
+# 清单里的 versionCode/versionName 优先于 aapt2 的 --version-code，构建前在副本里同步成 module.prop 的值
+python3 - "$HERE" "$VCODE" "$VER" <<'PYMANIFEST'
+import sys
+root, vcode, ver = sys.argv[1], sys.argv[2], sys.argv[3]
+s = open(root + '/app/src/main/AndroidManifest.xml').read()
+import re
+s = re.sub(r'(android:versionCode=")[^"]*"', r'\g<1>' + vcode + '"', s, count=1)
+s = re.sub(r'(android:versionName=")[^"]*"', r'\g<1>' + ver + '"', s, count=1)
+open(root + '/build/AndroidManifest.xml', 'w').write(s)
+PYMANIFEST
+
 echo "== 1/7 aapt2 compile =="
 ( cd "$HERE" && "${AAPT2_RUN[@]}" compile --dir ./app/src/main/res -o ./build/res.zip )
 
 echo "== 2/7 aapt2 link =="
 # aapt2 只认相对路径 ⇒ 用 --relative-to 把绝对路径换算成相对仓库根的路径
-RES_JAR_REL=$(python3 -c "import os,sys;print(os.path.relpath(sys.argv[1], sys.argv[2]))" "${ANDROID_RES_JAR:-$ANDROID_JAR}" "$HERE")
-( cd "$HERE" && "${AAPT2_RUN[@]}" link -o ./build/base.apk -I "$RES_JAR_REL" \
-    --manifest ./app/src/main/AndroidManifest.xml -R ./build/res.zip \
+# 本机 aapt2 是 Debian 2.19（arm64），只认到 android-23 的资源表格式；
+# 编译仍用 android-36，只有 link 这一步借用 android-23 的框架资源。
+RES_JAR=${ANDROID_RES_JAR:-/usr/lib/android-sdk/platforms/android-23/android.jar}
+( cd "$HERE" && "${AAPT2_RUN[@]}" link -o ./build/base.apk -I "$RES_JAR" \
+    --manifest ./build/AndroidManifest.xml -R ./build/res.zip \
     --auto-add-overlay --java ./build/gen \
     --min-sdk-version 33 --target-sdk-version 36 \
     --version-code "$VCODE" --version-name "$VER" )
@@ -46,9 +59,20 @@ echo "== 3a/7 javac（旋屏三件套是从 OS4 Themer 原样移植的 Java 代�
 #    所以 Java 必须先编出 class 供 kotlinc 当 classpath 用；反向依赖不允许出现。
 mkdir -p "$SRC/java"
 if find "$SRC/java" -name '*.java' 2>/dev/null | grep -q .; then
+    # Java 侧引用 Kotlin object LogUtil（@JvmStatic），javac 看不到 Kotlin 源码。
+    # 先编一个同签名的 stub 进 classpath，最终只打包 kotlinc 产出的 LogUtil。
+    mkdir -p "$OUT/stub-src/com/abel/os4freeformx" "$OUT/stub"
+    cat > "$OUT/stub-src/com/abel/os4freeformx/LogUtil.java" <<'JAVA'
+package com.abel.os4freeformx;
+public final class LogUtil {
+    public static void logAlways(String msg) {}
+    public static void logAlwaysOnce(String tag, String msg) {}
+}
+JAVA
+    "$JAVA_HOME/bin/javac" -nowarn -source 17 -target 17 -d "$OUT/stub" "$OUT/stub-src/com/abel/os4freeformx/LogUtil.java"
     find "$SRC/java" -name '*.java' > "$OUT/java-sources.txt"
     "$JAVA_HOME/bin/javac" -nowarn -source 17 -target 17 -encoding UTF-8 \
-        -classpath "$ANDROID_JAR:$LIBXP:$KOTLIN_STDLIB" \
+        -classpath "$ANDROID_JAR:$LIBXP:$KOTLIN_STDLIB:$OUT/stub" \
         -d "$OUT/java" @"$OUT/java-sources.txt"
 else
     echo "   （无 Java 源，跳过）"
@@ -105,7 +129,7 @@ else
     echo "  （无 native 库需要打包）"
 fi
 
-( cd "$HERE" && /lib/ld-linux-aarch64.so.1 --library-path "$HERE/tools/android-tools" "$ZIPALIGN" -f -p 4 ./build/app-unsigned.apk ./build/app-aligned.apk )
+( cd "$HERE" && "$ZIPALIGN" -f -p 4 ./build/app-unsigned.apk ./build/app-aligned.apk )
 
 echo "== 6/6 签名 =="
 if [ ! -f "$KS" ]; then
@@ -115,9 +139,9 @@ if [ ! -f "$KS" ]; then
         -dname "CN=OS4FreeFromX,O=AbelDuan,C=CN"
 fi
 APK="$HERE/dist/OS4FreeFromX-v$VER.apk"
-"$BT/apksigner" sign --ks "$KS" --ks-pass pass:android --key-pass pass:android \
+"$JAVA_HOME/bin/java" -jar "$HERE/tools/android-tools/apksigner.jar" sign --ks "$KS" --ks-pass pass:android --key-pass pass:android \
     --out "$APK" "$OUT/app-aligned.apk"
-"$BT/apksigner" verify "$APK" >/dev/null && echo "签名校验通过"
+"$JAVA_HOME/bin/java" -jar "$HERE/tools/android-tools/apksigner.jar" verify "$APK" >/dev/null && echo "签名校验通过"
 
 echo
 echo "产物：$APK"
